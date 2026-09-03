@@ -1549,6 +1549,7 @@ let offsetY = 0;
 let player = { x: 0, y: 0, facing: 'down', animFrame: 0 };
 let moveHistory = [];
 let moveCount = 0;
+let stageResetCount = 0; // 👈 누락된 재시작 카운트 변수 선언!
 let undoRemaining = 3;
 let globalHintRemaining = 5; // 게임 전체 통합 5회 (스테이지 이동/재시작 시 리필되지 않음)
 let isCleared = false;
@@ -1812,6 +1813,7 @@ function showTitleScreen() {
 
 function initStage(index, preserveTimer = false) {
   currentStageIndex = index;
+  if (!preserveTimer) stageResetCount = 0; // 👈 새 스테이지 진입 시 0으로 초기화
   const stageData = STAGES[index];
   
   if (gameState === 'PLAYING') {
@@ -1914,10 +1916,14 @@ function updateUI() {
       }
     }
   }
-  // 전체 30개에서 클리어할 때마다 1개씩 차감
+
+// 전체 30개에서 클리어할 때마다 1개씩 차감
   const remainGoals = Math.max(0, STAGES.length - clearedStages.size);
-  document.getElementById('targetRemaining').innerText = `${remainGoals}개`;
-  document.getElementById('clearedCount').innerText = `클리어: ${clearedStages.size} / ${STAGES.length}`;
+  const targetEl = document.getElementById('targetRemaining');
+  if (targetEl) targetEl.innerText = `${remainGoals}개`;
+
+  const clearEl = document.getElementById('clearedCount');
+  if (clearEl) clearEl.innerText = `클리어: ${clearedStages.size} / ${STAGES.length}`;
 
   // 되돌리기 잔여 횟수 및 버튼 상태 갱신
   const undoBtn = document.getElementById('undoBtn');
@@ -1935,19 +1941,12 @@ function updateUI() {
     }
   }
 
-  // 힌트 잔여 횟수 및 버튼 상태 갱신 (게임 전체 통합 5회)
-  const hintBtn = document.getElementById('hintBtn');
-  if (hintBtn) {
-    const textEl = hintBtn.querySelector('.btn-text');
+  // 🔄 재시작 횟수 버튼 갱신
+  const resetBtn = document.getElementById('resetBtn');
+  if (resetBtn) {
+    const textEl = resetBtn.querySelector('.btn-text');
     if (textEl) {
-      textEl.innerText = `힌트 (${globalHintRemaining})`;
-    }
-    if (globalHintRemaining <= 0) {
-      hintBtn.style.opacity = '0.4';
-      hintBtn.style.cursor = 'not-allowed';
-    } else {
-      hintBtn.style.opacity = '1.0';
-      hintBtn.style.cursor = 'pointer';
+      textEl.innerText = `재시작 (${stageResetCount})`;
     }
   }
 }
@@ -2040,7 +2039,9 @@ function resetStage() {
   if (gameState !== 'PLAYING') return;
   sound.init();
   sound.playUndo();
-  initStage(currentStageIndex, true); // 👈 타이머를 초기화하지 않고 그대로 유지!
+  stageResetCount++; // 👈 1씩 증가
+  initStage(currentStageIndex, true);
+  updateUI();
 }
 
 function checkVictory() {
@@ -2879,10 +2880,10 @@ function drawTitleScreen() {
   // 1. PUSH START 버튼 (20px)
   const pulse = Math.sin(titleTimer * 0.08) * 0.5 + 0.5;
   const btn = pushStartBtnRect;
-  btn.x = w / 2 - 125;
-  btn.y = 365;
-  btn.w = 250;
-  btn.h = 50;
+  btn.w = 280;  // 👈 250 -> 280px 확대
+  btn.h = 56;   // 👈 50 -> 56px 확대
+  btn.x = w / 2 - btn.w / 2;
+  btn.y = 372;  // 👈 아래로 내림
 
   ctx.save();
   ctx.shadowColor = `rgba(245, 158, 11, ${0.4 + pulse * 0.4})`;
@@ -2908,12 +2909,12 @@ function drawTitleScreen() {
   ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 31);
   ctx.restore();
 
-  // 버튼 위치 Y 442로 내리고 세로 44px로 확대
+  // 2. 하단 서브 버튼들 (스토리 보기 & 기록 초기화 대폭 확대)
   const sBtn = storyReplayBtnRect;
-  sBtn.x = w / 2 - 155;
-  sBtn.y = 442;
-  sBtn.w = 145;
-  sBtn.h = 44;
+  sBtn.w = 152; // 👈 145 -> 152px 확대
+  sBtn.h = 48;  // 👈 44 -> 48px 확대
+  sBtn.x = w / 2 - 162;
+  sBtn.y = 440; // 👈 아래로 내림
 
   ctx.save();
   ctx.fillStyle = '#1a2333';
@@ -2932,10 +2933,10 @@ function drawTitleScreen() {
   ctx.restore();
 
   const rBtn = resetProgressBtnRect;
+  rBtn.w = 152; // 👈 145 -> 152px 확대
+  rBtn.h = 48;  // 👈 44 -> 48px 확대
   rBtn.x = w / 2 + 10;
-  rBtn.y = 442;
-  rBtn.w = 145;
-  rBtn.h = 44;
+  rBtn.y = 440; // 👈 아래로 내림
 
   ctx.save();
   ctx.fillStyle = '#1e1b24';
@@ -3801,6 +3802,13 @@ canvas.addEventListener('pointerdown', (e) => {
   sound.init();
   if (sound.ctx && sound.ctx.state === 'suspended') sound.ctx.resume();
   e.preventDefault();
+
+  // 🎯 클리어 상태면 화면 터치 즉시 다음 판
+  if (isCleared) {
+    nextStage();
+    return;
+  }
+
   const rect = canvas.getBoundingClientRect();
   touchStartX = (e.clientX - rect.left) * (canvas.width / rect.width);
   touchStartY = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -3828,8 +3836,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 20px 이상 쓸면 무조건 딱 1칸만 이동
-  if (Math.max(absX, absY) > 20) {
+  // 10px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 10) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
@@ -3888,13 +3896,16 @@ if (hintBtnEl) {
 }
 document.getElementById('undoBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); undo(); });
 document.getElementById('resetBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); resetStage(); });
-const nextBtn = document.getElementById('nextStageBtn');
-if (nextBtn) {
-  nextBtn.addEventListener('pointerdown', (e) => {
+// 🎯 클리어 배너 전체 또는 버튼 어디든 탭하면 즉시 다음 스테이지!
+const clearBannerEl = document.getElementById('clearBanner');
+if (clearBannerEl) {
+  clearBannerEl.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
     e.stopPropagation();
     nextStage();
   });
-  nextBtn.addEventListener('click', (e) => {
+  clearBannerEl.addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
     nextStage();
   });
@@ -3910,6 +3921,10 @@ document.querySelectorAll('.dpad-btn').forEach(btn => {
     }
     if (gameState === 'STORY') {
       advanceStory();
+      return;
+    }
+    if (isCleared) {
+      nextStage();
       return;
     }
     if (dir === 'up') tryMove(0, -1, 'up');
