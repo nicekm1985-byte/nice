@@ -437,6 +437,13 @@
       body {
         padding: 6px 4px;
       }
+      /* 📱 모바일에서는 넓은 스테이지 바를 숨기고 [📂 스테이지] 버튼을 켬 */
+      .stage-selector-container {
+        display: none !important;
+      }
+      .mobile-stage-btn {
+        display: inline-flex !important;
+      }
       .game-container {
         padding: 10px 8px;
         border-radius: 12px;
@@ -477,6 +484,7 @@
   <div class="header-bar">
     <div class="title-group">
       <button class="home-btn" id="titleScreenBtn" title="타이틀 화면으로 이동">🏠 타이틀</button>
+      <button class="home-btn mobile-stage-btn" id="mobileStageSelectBtn" title="스테이지 선택 창 열기" style="display:none; background:#1e293b; color:#38bdf8; border-color:#38bdf8;">📂 스테이지</button>
       <div class="level-title" id="stageName">Stage 1</div>
     </div>
     <div class="stats-group">
@@ -513,7 +521,16 @@
     </div>
     <div class="level-grid-nav" id="levelNav"></div>
   </div>
-
+  <!-- 📱 모바일 전용 스테이지 선택 팝업 모달 -->
+  <div class="modal-backdrop" id="mobileStageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center; padding:16px;">
+    <div style="background:#141824; border:2px solid #38bdf8; border-radius:14px; width:100%; max-width:340px; padding:16px; box-shadow:0 12px 36px rgba(0,0,0,0.9); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #222a3d; padding-bottom:8px;">
+        <span style="font-size:14px; font-weight:800; color:#38bdf8;">📂 스테이지 선택 (1~30)</span>
+        <button id="closeMobileStageModalBtn" style="background:transparent; border:none; color:#9ca3af; font-size:18px; cursor:pointer; padding:0 4px;">✕</button>
+      </div>
+      <div id="mobileStageNav" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:260px; overflow-y:auto; padding:4px 0;"></div>
+    </div>
+  </div>
   <!-- 게임 화면 캔버스 -->
   <div class="canvas-wrapper">
     <canvas id="gameCanvas" width="600" height="410"></canvas>
@@ -3786,7 +3803,10 @@ const unlockAudio = () => {
 
 function renderNav() {
   const nav = document.getElementById('levelNav');
-  nav.innerHTML = '';
+  const mobileNav = document.getElementById('mobileStageNav');
+  if (nav) nav.innerHTML = '';
+  if (mobileNav) mobileNav.innerHTML = '';
+
   STAGES.forEach((stg, idx) => {
     const dot = document.createElement('div');
     const unlocked = idx === 0 || clearedStages.has(idx - 1) || devModeActive;
@@ -3800,7 +3820,7 @@ function renderNav() {
       dot.style.cursor = 'pointer';
       dot.addEventListener('click', () => {
         sound.init();
-        // 16단계(idx === 15)를 누르면 게임화면 바로 진입하지 않고 두 번째 스토리가 먼저 나오게 실행!
+        closeMobileStageModal();
         if (idx === 15) {
           startStory(2, 'gameplay');
           return;
@@ -3815,9 +3835,49 @@ function renderNav() {
       dot.style.opacity = '0.35';
       dot.style.cursor = 'not-allowed';
     }
-    nav.appendChild(dot);
+
+    if (nav) nav.appendChild(dot);
+    if (mobileNav) mobileNav.appendChild(dot.cloneNode(true));
   });
+
+  // 모바일 팝업 내 버튼들 클릭 이벤트 바인딩
+  if (mobileNav) {
+    Array.from(mobileNav.children).forEach((mDot, idx) => {
+      const unlocked = idx === 0 || clearedStages.has(idx - 1) || devModeActive;
+      if (unlocked) {
+        mDot.addEventListener('click', () => {
+          sound.init();
+          closeMobileStageModal();
+          if (idx === 15) {
+            startStory(2, 'gameplay');
+            return;
+          }
+          gameState = 'PLAYING';
+          initStage(idx);
+        });
+      }
+    });
+  }
 }
+
+// 📱 모바일 스테이지 팝업 창 열기 / 닫기 함수
+function openMobileStageModal() {
+  const modal = document.getElementById('mobileStageModal');
+  if (modal) {
+    renderNav();
+    modal.style.display = 'flex';
+  }
+}
+function closeMobileStageModal() {
+  const modal = document.getElementById('mobileStageModal');
+  if (modal) modal.style.display = 'none';
+}
+
+const mobileStageBtn = document.getElementById('mobileStageSelectBtn');
+if (mobileStageBtn) mobileStageBtn.addEventListener('click', openMobileStageModal);
+
+const closeMobileStageBtn = document.getElementById('closeMobileStageModalBtn');
+if (closeMobileStageBtn) closeMobileStageBtn.addEventListener('click', closeMobileStageModal);
 
 // 브라우저 오디오 정책 완벽 해제 (첫 터치/키 입력 시 AudioContext 즉시 활성화)
 ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(evt => {
