@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <!-- 📱 아이폰 사파리 메뉴창/주소창 완전 제거 (독립 앱 실행) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="김대리 창고" />
@@ -70,7 +72,10 @@
       width: 100%;
       position: relative;
     }
-
+    .no-double-tap {
+      touch-action: manipulation;
+    }
+    
     /* 상단 상태바 */
     .header-bar {
       width: 100%;
