@@ -228,7 +228,7 @@
       /* 📱 모바일 화면 폭에 맞춰 비율 유지하며 100% 자동 축소 */
       max-width: 100%;
       height: auto;
-      aspect-ratio: 600 / 410;
+      aspect-ratio: 600 / 500; /* 👈 도화지와 100% 일치시켜 찌그러짐 왜곡 완전 제거 */
     }
 
     /* 클리어 팝업 */
@@ -456,7 +456,7 @@
         margin-bottom: 8px;
       }
       canvas {
-        aspect-ratio: 600 / 540; /* 캔버스 세로 높이를 위아래로 더 길게 확장 (초기 410 대비 +130px, 약 +32%) */
+        aspect-ratio: 600 / 460;
       }
       .level-title {
         font-size: 12px;
@@ -539,7 +539,7 @@
   </div>
   <!-- 게임 화면 캔버스 -->
   <div class="canvas-wrapper">
-    <canvas id="gameCanvas" width="600" height="410"></canvas>
+    <canvas id="gameCanvas" width="600" height="500"></canvas>
     
     <!-- 스테이지 클리어 오버레이 -->
     <div class="banner-overlay" id="clearBanner">
@@ -570,7 +570,7 @@
         <span class="key-badge">Z</span>
       </div>
 
-      <!-- 재시작 (Reset, 단축키 R) -->
+       <!-- 재시작 (Reset, 단축키 R) -->
       <div class="circle-btn-wrapper">
         <button class="circle-btn reset" id="resetBtn" title="재시작 (단축키: R)">
           <span class="btn-text">재시작 (0)</span>
@@ -578,6 +578,7 @@
         <span class="key-badge">R</span>
       </div>
     </div>
+  </div> <!-- 👈 gamepad-container 닫는 태그 -->
 
   <!-- 힌트 & 가이드 바 (기본 숨김, 힌트 버튼 클릭 시 노출) -->
   <div class="help-hint" id="hintText" style="display: none;"></div>
@@ -1487,6 +1488,9 @@ let storyPlaybackMode = 'gameplay'; // 'gameplay' | 'replay'
 let showStorySelectModal = false; // 스토리 선택 팝업 플래그
 
 let currentStageIndex = 0;
+let isOverviewMode = false; // 🔍 전체보기 / 확대보기 토글
+let camCurrentX = 0;
+let camCurrentY = 0;
 let grid = [];
 let rows = 0;
 let cols = 0;
@@ -1826,12 +1830,12 @@ function initStage(index, preserveTimer = false) {
     grid.push(rowArr);
   }
   
-  const maxTileW = Math.floor((canvas.width - 32) / cols);
-  const maxTileH = Math.floor((canvas.height - 32) / rows);
-  tileSize = Math.min(maxTileW, maxTileH, 46);
+  // 🔍 방법 1: 블록/상자/캐릭터를 큼직하게 1:1 정비율 확대 (최소 56px)
+  const fitTile = Math.min(Math.floor((canvas.width - 32) / cols), Math.floor((canvas.height - 32) / rows));
+  tileSize = Math.max(56, Math.min(fitTile + 14, 62));
   
-  offsetX = Math.floor((canvas.width - cols * tileSize) / 2);
-  offsetY = Math.floor((canvas.height - rows * tileSize) / 2);
+  offsetX = 0;
+  offsetY = 0;
   
   updateUI();
   renderNav();
@@ -2670,41 +2674,41 @@ function drawFlusteredKimDaeri(cx, cy, timer) {
 
 function drawDialogBox(w, h, scene) {
   const boxX = 14;
-  const boxH = 138;
-  const boxY = h - boxH - 14;
+  const boxH = 155;
+  const boxY = h - boxH - 16;
   const boxW = w - 28;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(10, 14, 26, 0.94)';
+  ctx.fillStyle = 'rgba(10, 14, 26, 0.95)';
   ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+  ctx.roundRect(boxX, boxY, boxW, boxH, 14);
   ctx.fill();
   ctx.stroke();
 
-  // 화자 이름 (폰트 14px -> 17px로 시원하게 확대)
+  // 화자 이름 (20px ExtraBold)
   ctx.fillStyle = scene.speakerColor || '#f59e0b';
-  ctx.font = '900 17px "Pretendard", sans-serif';
+  ctx.font = '900 20px "Pretendard", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`[ ${scene.speaker} ]`, boxX + 18, boxY + 30);
+  ctx.fillText(`[ ${scene.speaker} ]`, boxX + 20, boxY + 34);
 
-  // 화자 부가 설명 (폰트 11px -> 13px로 확대)
+  // 화자 부가 설명 (14px)
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 13px "Pretendard", sans-serif';
+  ctx.font = '600 14px "Pretendard", sans-serif';
   const speakerWidth = ctx.measureText(`[ ${scene.speaker} ]`).width;
-  ctx.fillText(`- ${scene.sub}`, boxX + 26 + speakerWidth, boxY + 30);
+  ctx.fillText(`- ${scene.sub}`, boxX + 28 + speakerWidth, boxY + 34);
 
-  // 메인 스토리 대사 폰트 (14px -> 17.5px 굵고 선명하게 대폭 확대)
+  // 📖 메인 스토리 대사 폰트 (21px 볼드체, 줄간격 31px)
   ctx.fillStyle = '#ffffff';
-  ctx.font = '700 17.5px "Pretendard", -apple-system, sans-serif';
+  ctx.font = '700 21px "Pretendard", -apple-system, sans-serif';
   
   const currentText = scene.text.substring(0, storyTextProgress);
-  wrapText(ctx, currentText, boxX + 18, boxY + 64, boxW - 36, 26);
+  wrapText(ctx, currentText, boxX + 20, boxY + 72, boxW - 40, 31);
 
   if (titleTimer % 40 < 25) {
     ctx.fillStyle = '#fcd34d';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('▼ 터치하여 계속', boxX + boxW - 18, boxY + boxH - 14);
   }
@@ -2745,172 +2749,177 @@ function drawTitleScreen() {
   ctx.beginPath();
   for (let x = 0; x <= w; x += 60) {
     ctx.moveTo(x, 0);
-    ctx.lineTo(x + 30, 40);
+    ctx.lineTo(x + 30, 45);
     ctx.lineTo(x + 60, 0);
   }
   ctx.stroke();
 
   ctx.save();
-  const spotGrad = ctx.createRadialGradient(w / 2, 70, 20, w / 2, 220, 260);
-  spotGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+  const spotGrad = ctx.createRadialGradient(w / 2, 80, 25, w / 2, 260, 320);
+  spotGrad.addColorStop(0, 'rgba(245, 158, 11, 0.24)');
   spotGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.08)');
   spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = spotGrad;
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 40, 0);
-  ctx.lineTo(w / 2 + 40, 0);
-  ctx.lineTo(w / 2 + 220, h);
-  ctx.lineTo(w / 2 - 220, h);
+  ctx.moveTo(w / 2 - 50, 0);
+  ctx.lineTo(w / 2 + 50, 0);
+  ctx.lineTo(w / 2 + 250, h);
+  ctx.lineTo(w / 2 - 250, h);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-  draw3DBox(40, 260, 64, false);
-  draw3DBox(100, 260, 64, false);
-  draw3DBox(70, 205, 64, true);
-  draw3DBox(30, 150, 56, false);
+  draw3DBox(40, 320, 68, false);
+  draw3DBox(105, 320, 68, false);
+  draw3DBox(72, 260, 68, true);
+  draw3DBox(35, 200, 60, false);
 
-  draw3DBox(440, 260, 64, false);
-  draw3DBox(500, 260, 64, false);
-  draw3DBox(470, 205, 64, false);
-  draw3DBox(520, 150, 56, true);
+  draw3DBox(435, 320, 68, false);
+  draw3DBox(500, 320, 68, false);
+  draw3DBox(468, 260, 68, false);
+  draw3DBox(520, 200, 60, true);
 
   ctx.save();
   ctx.textAlign = 'center';
   
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 12px monospace';
+  ctx.font = 'bold 14px monospace';
   ctx.letterSpacing = '2px';
-  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 36);
+  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 38);
 
-  ctx.font = '900 38px "Pretendard", sans-serif';
+  // 큼직한 타이틀 (46px)
+  ctx.font = '900 46px "Pretendard", sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText('창고담당 김대리', w / 2 + 2, 82);
-  ctx.fillText('창고담당 김대리', w / 2 - 2, 82);
-  ctx.fillText('창고담당 김대리', w / 2, 84);
+  ctx.fillText('창고담당 김대리', w / 2 + 2, 92);
+  ctx.fillText('창고담당 김대리', w / 2 - 2, 92);
+  ctx.fillText('창고담당 김대리', w / 2, 94);
 
-  const titleGrad = ctx.createLinearGradient(0, 50, 0, 85);
+  const titleGrad = ctx.createLinearGradient(0, 55, 0, 95);
   titleGrad.addColorStop(0, '#fef08a');
   titleGrad.addColorStop(0.5, '#f59e0b');
   titleGrad.addColorStop(1, '#d97706');
   ctx.fillStyle = titleGrad;
-  ctx.fillText('창고담당 김대리', w / 2, 80);
+  ctx.fillText('창고담당 김대리', w / 2, 90);
 
+  // 서브 타이틀 (16px)
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '500 13px sans-serif';
-  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 108);
+  ctx.font = '600 16px "Pretendard", sans-serif';
+  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 126);
 
-  // 타이틀 화면 남은 목표 (30개에서 1개씩 차감)
+  // 남은 목표 (17px)
   const remainTitleGoals = Math.max(0, 30 - ((typeof clearedStages !== 'undefined' && clearedStages) ? clearedStages.size : 0));
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 14px "Pretendard", -apple-system, sans-serif';
-  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 134);
+  ctx.font = '900 17px "Pretendard", sans-serif';
+  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 156);
   ctx.restore();
 
-  drawHeroKimDaeri(w / 2, 215, titleTimer);
+  drawHeroKimDaeri(w / 2, 260, titleTimer);
 
-  // 1. PUSH START 버튼
+  // 1. PUSH START 버튼 (20px)
   const pulse = Math.sin(titleTimer * 0.08) * 0.5 + 0.5;
   const btn = pushStartBtnRect;
-  btn.x = w / 2 - 110;
-  btn.y = 308;
-  btn.w = 220;
-  btn.h = 44;
+  btn.x = w / 2 - 125;
+  btn.y = 365;
+  btn.w = 250;
+  btn.h = 50;
 
   ctx.save();
   ctx.shadowColor = `rgba(245, 158, 11, ${0.4 + pulse * 0.4})`;
-  ctx.shadowBlur = 16 * pulse + 8;
+  ctx.shadowBlur = 18 * pulse + 8;
 
   const btnGrad = ctx.createLinearGradient(btn.x, btn.y, btn.x, btn.y + btn.h);
   btnGrad.addColorStop(0, `rgba(245, 158, 11, ${0.9 + pulse * 0.1})`);
   btnGrad.addColorStop(1, `rgba(217, 119, 6, ${0.9 + pulse * 0.1})`);
   ctx.fillStyle = btnGrad;
   ctx.beginPath();
-  ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 10);
+  ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
   ctx.fill();
 
   ctx.strokeStyle = '#fef08a';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
   ctx.restore();
 
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#000';
-  ctx.font = '900 16px "Pretendard", monospace';
-  ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 27);
+  ctx.font = '900 20px "Pretendard", monospace';
+  ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 31);
   ctx.restore();
 
-  // 2. 하단 서브 버튼들: [스토리 보기] & [기록 초기화]
+  // 2. 하단 서브 버튼들 (14px)
   const sBtn = storyReplayBtnRect;
-  sBtn.x = w / 2 - 145;
-  sBtn.y = 362;
-  sBtn.w = 135;
-  sBtn.h = 32;
+  sBtn.x = w / 2 - 155;
+  sBtn.y = 432;
+  sBtn.w = 145;
+  sBtn.h = 36;
 
   ctx.save();
   ctx.fillStyle = '#1a2333';
   ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 6);
+  ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 12px "Pretendard", sans-serif';
+  ctx.font = 'bold 14px "Pretendard", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
   ctx.restore();
 
-  // [기록 초기화]
   const rBtn = resetProgressBtnRect;
   rBtn.x = w / 2 + 10;
-  rBtn.y = 362;
-  rBtn.w = 135;
-  rBtn.h = 32;
+  rBtn.y = 432;
+  rBtn.w = 145;
+  rBtn.h = 36;
 
   ctx.save();
   ctx.fillStyle = '#1e1b24';
   ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 6);
+  ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 12px "Pretendard", sans-serif';
+  ctx.font = 'bold 14px "Pretendard", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
   ctx.restore();
 
-  // 3. 타이틀 우측 하단 개발자 모드 버튼 ("개발자" 3글자, 비밀번호: 1029)
+  // 3. 개발자 버튼
   const dBtn = devModeBtnRect;
+  dBtn.x = w - 82;
+  dBtn.y = h - 38;
+  dBtn.w = 70;
+  dBtn.h = 28;
+
   ctx.save();
   ctx.fillStyle = devModeActive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(30, 41, 59, 0.7)';
   ctx.strokeStyle = devModeActive ? '#10b981' : '#475569';
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.roundRect(dBtn.x, dBtn.y, dBtn.w, dBtn.h, 5);
+  ctx.roundRect(dBtn.x, dBtn.y, dBtn.w, dBtn.h, 6);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = devModeActive ? '#34d399' : '#94a3b8';
-  ctx.font = 'bold 11px "Pretendard", sans-serif';
+  ctx.font = 'bold 12px "Pretendard", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('개발자', dBtn.x + dBtn.w / 2, dBtn.y + dBtn.h / 2);
-
   ctx.restore();
 
-  // 5. 스토리 선택 모달 팝업 창 (showStorySelectModal === true 일 때)
+  // 4. 스토리 선택 모달 팝업 창
   if (showStorySelectModal) {
     drawStorySelectModalPopup(w, h);
   }
-}
+} // 👈 누락되었던 닫는 중괄호!
 
 // 🎬 스토리 1/2 선택 팝업 모달 렌더링
 function drawStorySelectModalPopup(w, h) {
@@ -3117,9 +3126,10 @@ function drawHeroKimDaeri(cx, cy, timer) {
 }
 
 function drawInGame() {
-  // 🌊 16단계(인덱스 15) 이상 지하 10층 판정
   const isDeepZone = currentStageIndex >= 15;
-  ctx.fillStyle = isDeepZone ? '#060a0c' : '#090b10';
+  const isMobile = window.innerWidth <= 640; // 📱 모바일 기기 여부 판정
+
+  ctx.fillStyle = isDeepZone ? '#080d0e' : '#090b10';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
@@ -3131,69 +3141,124 @@ function drawInGame() {
     ctx.stroke();
   }
 
-  // 1. 바닥 & 목표 발판 & 이동 불가 벽
+  // 📐 타일 크기 & 오프셋 (PC: 기존 유지 / 모바일: 확대 추적 or 전체보기)
+  let curTile = 46;
+  let curOffsetX = 0;
+  let curOffsetY = 0;
+
+  if (!isMobile || isOverviewMode) {
+    // 🖥️ PC 환경 또는 모바일 전체보기: 기존 한눈 뷰 100% 유지
+    const fitW = Math.floor((canvas.width - 32) / cols);
+    const fitH = Math.floor((canvas.height - 32) / rows);
+    curTile = Math.min(fitW, fitH, 46);
+    curOffsetX = Math.floor((canvas.width - cols * curTile) / 2);
+    curOffsetY = Math.floor((canvas.height - rows * curTile) / 2);
+  } else {
+    // 📱 모바일 확대 뷰 (방법 1): 1:1 정비율 확대 + 김대리 추적 사방 스크롤
+    curTile = Math.max(58, Math.min(Math.floor((canvas.height - 40) / Math.min(rows, 6)), 68));
+    const targetCamX = (player.x + 0.5) * curTile - canvas.width / 2;
+    const targetCamY = (player.y + 0.5) * curTile - canvas.height / 2;
+
+    const mapW = cols * curTile;
+    const mapH = rows * curTile;
+
+    let targetX = mapW <= canvas.width ? -(canvas.width - mapW) / 2 : Math.max(0, Math.min(mapW - canvas.width, targetCamX));
+    let targetY = mapH <= canvas.height ? -(canvas.height - mapH) / 2 : Math.max(0, Math.min(mapH - canvas.height, targetCamY));
+
+    camCurrentX += (targetX - camCurrentX) * 0.25;
+    camCurrentY += (targetY - camCurrentY) * 0.25;
+
+    curOffsetX = -Math.round(camCurrentX);
+    curOffsetY = -Math.round(camCurrentY);
+  }
+
+  ctx.save();
+
+  // 1. 바닥 & 목표 발판 & 벽 렌더링
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
-      const px = offsetX + c * tileSize;
-      const py = offsetY + r * tileSize;
+      const px = curOffsetX + c * curTile;
+      const py = curOffsetY + r * curTile;
 
       if (cell.type === 'floor') {
         const isAlt = (r + c) % 2 === 0;
         if (isDeepZone) {
-          // 🌊 지하 10층: 눈이 편안한 다크 틸 청록 타일
           ctx.fillStyle = isAlt ? '#131f22' : '#0e1719';
-          ctx.fillRect(px, py, tileSize, tileSize);
+          ctx.fillRect(px, py, curTile, curTile);
           ctx.strokeStyle = '#1c2d31';
-          ctx.strokeRect(px + 0.5, py + 0.5, tileSize - 1, tileSize - 1);
+          ctx.strokeRect(px + 0.5, py + 0.5, curTile - 1, curTile - 1);
         } else {
-          // 🏢 지하 7층: 기존 슬레이트 네이비 타일
           ctx.fillStyle = isAlt ? '#181e2a' : '#141822';
-          ctx.fillRect(px, py, tileSize, tileSize);
+          ctx.fillRect(px, py, curTile, curTile);
           ctx.strokeStyle = '#222938';
-          ctx.strokeRect(px + 0.5, py + 0.5, tileSize - 1, tileSize - 1);
+          ctx.strokeRect(px + 0.5, py + 0.5, curTile - 1, curTile - 1);
         }
 
         if (cell.isGoal) {
-          drawGoalPad(px, py, tileSize, cell.hasBox);
+          drawGoalPad(px, py, curTile, cell.hasBox);
         }
       } else if (cell.type === 'wall') {
-        drawCustomWall(px, py, tileSize);
+        drawCustomWall(px, py, curTile);
       }
     }
   }
 
-  // 2. 오브젝트 레이어 (상자 + 플레이어)
+  // 2. 상자 & 플레이어 렌더링
   const renderList = [];
-
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
-      const px = offsetX + c * tileSize;
-      const py = offsetY + r * tileSize;
+      const px = curOffsetX + c * curTile;
+      const py = curOffsetY + r * curTile;
 
       if (cell.hasBox) {
         renderList.push({
           type: 'box',
           y: py,
-          draw: () => draw3DBox(px, py, tileSize, cell.isGoal)
+          draw: () => draw3DBox(px, py, curTile, cell.isGoal)
         });
       }
     }
   }
 
-  const playerPx = offsetX + player.x * tileSize;
-  const playerPy = offsetY + player.y * tileSize;
+  const playerPx = curOffsetX + player.x * curTile;
+  const playerPy = curOffsetY + player.y * curTile;
   renderList.push({
     type: 'player',
     y: playerPy,
-    draw: () => drawPixelCharacter(playerPx, playerPy, tileSize, player.facing, player.animFrame)
+    draw: () => drawPixelCharacter(playerPx, playerPy, curTile, player.facing, player.animFrame)
   });
 
   renderList.sort((a, b) => a.y - b.y);
   renderList.forEach(item => item.draw());
 
   drawParticles();
+  ctx.restore();
+
+  // 🔍 우측 상단 토글 버튼 (모바일 환경에서만 노출)
+  if (isMobile) {
+    const btnW = 96;
+    const btnH = 34;
+    const btnX = canvas.width - btnW - 14;
+    const btnY = 14;
+
+    ctx.save();
+    ctx.fillStyle = isOverviewMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.8)';
+    ctx.strokeStyle = isOverviewMode ? '#f59e0b' : '#38bdf8';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = isOverviewMode ? '#fcd34d' : '#38bdf8';
+    ctx.font = 'bold 13px "Pretendard", -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(isOverviewMode ? '🔍 확대보기' : '🔍 전체보기', btnX + btnW / 2, btnY + btnH / 2);
+    ctx.restore();
+  }
 }
 
 // 🧱 이동 불가 구역 벽 블록
@@ -3615,6 +3680,19 @@ canvas.addEventListener('pointerdown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
   const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+  // 🔍 우측 상단 [전체보기 / 확대보기] 버튼 클릭 판정
+  if (gameState === 'PLAYING') {
+    const btnW = 96;
+    const btnH = 34;
+    const btnX = canvas.width - btnW - 14;
+    const btnY = 14;
+    if (clickX >= btnX && clickX <= btnX + btnW && clickY >= btnY && clickY <= btnY + btnH) {
+      sound.init();
+      isOverviewMode = !isOverviewMode;
+      return;
+    }
+  }
 
   if (gameState === 'TITLE') {
     // A. 스토리 선택 모달이 열려 있을 때의 클릭 판정
