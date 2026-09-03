@@ -309,17 +309,17 @@
 
     .dpad-cross {
       display: grid;
-      grid-template-columns: repeat(3, 44px);
-      grid-template-rows: repeat(3, 40px);
-      gap: 3px;
+      grid-template-columns: repeat(3, 58px); /* 👈 46 -> 58px 확대 */
+      grid-template-rows: repeat(3, 50px);    /* 👈 38 -> 50px 확대 */
+      gap: 4px;
     }
 
     .dpad-btn {
       background: linear-gradient(180deg, #242d40, #1b2232);
       border: 1px solid #36425c;
       color: var(--text-main);
-      border-radius: 8px;
-      font-size: 16px;
+      border-radius: 10px;
+      font-size: 22px;
       font-weight: bold;
       display: flex;
       align-items: center;
@@ -370,8 +370,8 @@
     }
 
     .circle-btn {
-      width: 58px;
-      height: 58px;
+      width: 62px; /* 👈 52 -> 62px 확대 */
+      height: 62px;
       border-radius: 50%;
       border: 2px solid;
       background: #1a202e;
@@ -504,11 +504,12 @@
       }
 
       canvas {
-        width: 100%;
-        height: 100%;
+        max-width: 100%;
         max-height: 100%;
-        object-fit: contain; /* 👈 찌그러짐 없이 최대 크기로 꽉 채움 */
-        aspect-ratio: auto;
+        width: auto;
+        height: auto;
+        aspect-ratio: 600 / 500; /* 👈 캔버스 여백 왜곡 제거, 좌표 100% 일치 */
+        display: block;
       }
 
       /* 3. 하단 조작부: 맨 아래로 바짝 내림 */
@@ -1742,19 +1743,29 @@ function advanceStory() {
 function skipStory() {
   sound.init();
   sound.playStart();
+  isDoorOpening = false;
+  doorOpenProgress = 0;
+  const banner = document.getElementById('clearBanner');
+  if (banner) banner.classList.remove('active');
+
   if (storyPlaybackMode === 'replay') {
     showTitleScreen();
   } else {
-    const targetStage = storyChapter === 1 ? 0 : 15;
+    const targetStage = (storyChapter === 1) ? 0 : 15;
     startGame(targetStage);
   }
 }
 
 function finishStory() {
+  isDoorOpening = false;
+  doorOpenProgress = 0;
+  const banner = document.getElementById('clearBanner');
+  if (banner) banner.classList.remove('active');
+
   if (storyPlaybackMode === 'replay') {
     showTitleScreen();
   } else {
-    const targetStage = storyChapter === 1 ? 0 : 15;
+    const targetStage = (storyChapter === 1) ? 0 : 15;
     startGame(targetStage);
   }
 }
@@ -2195,10 +2206,12 @@ function drawStoryScreen() {
   ctx.restore();
 
   if (isDoorOpening) {
-    doorOpenProgress += 0.035;
+    doorOpenProgress += 0.05; // 👈 0.035 -> 0.05로 빠르게 페이드
     ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, doorOpenProgress)})`;
     ctx.fillRect(0, 0, w, h);
     if (doorOpenProgress >= 1.0) {
+      isDoorOpening = false;
+      doorOpenProgress = 0;
       finishStory();
     }
   }
@@ -3283,30 +3296,6 @@ function drawInGame() {
 
   drawParticles();
   ctx.restore();
-
-  // 🔍 우측 상단 토글 버튼 (모바일 환경에서만 노출)
-  if (isMobile) {
-    const btnW = 96;
-    const btnH = 34;
-    const btnX = canvas.width - btnW - 14;
-    const btnY = 14;
-
-    ctx.save();
-    ctx.fillStyle = isOverviewMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.8)';
-    ctx.strokeStyle = isOverviewMode ? '#f59e0b' : '#38bdf8';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.roundRect(btnX, btnY, btnW, btnH, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = isOverviewMode ? '#fcd34d' : '#38bdf8';
-    ctx.font = 'bold 13px "Pretendard", -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(isOverviewMode ? '🔍 확대보기' : '🔍 전체보기', btnX + btnW / 2, btnY + btnH / 2);
-    ctx.restore();
-  }
 }
 
 // 🧱 이동 불가 구역 벽 블록
@@ -3743,19 +3732,19 @@ function handleTitleClick(x, y) {
   // 모달 열려있을 때
   if (showStorySelectModal) {
     const m1 = modalStory1BtnRect;
-    if (x >= m1.x && x <= m1.x + m1.w && y >= m1.y && y <= m1.y + m1.h) {
+    if (x >= m1.x - 10 && x <= m1.x + m1.w + 10 && y >= m1.y - 10 && y <= m1.y + m1.h + 10) {
       startStory(1, 'replay');
       return;
     }
     const m2 = modalStory2BtnRect;
     const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
-    if (x >= m2.x && x <= m2.x + m2.w && y >= m2.y && y <= m2.y + m2.h) {
+    if (x >= m2.x - 10 && x <= m2.x + m2.w + 10 && y >= m2.y - 10 && y <= m2.y + m2.h + 10) {
       if (ch2Unlocked) startStory(2, 'replay');
       else alert('🔒 스토리 2는 15단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
       return;
     }
     const mc = modalCloseBtnRect;
-    if (x >= mc.x && x <= mc.x + mc.w && y >= mc.y && y <= mc.y + mc.h) {
+    if (x >= mc.x - 10 && x <= mc.x + mc.w + 10 && y >= mc.y - 10 && y <= mc.y + mc.h + 10) {
       showStorySelectModal = false;
       return;
     }
@@ -3763,9 +3752,9 @@ function handleTitleClick(x, y) {
     return;
   }
 
-  // 1. 개발자 버튼
+  // 1. 개발자 버튼 (판정 범위 대폭 확장)
   const d = devModeBtnRect;
-  if (x >= d.x && x <= d.x + d.w && y >= d.y && y <= d.y + d.h) {
+  if (x >= d.x - 12 && x <= d.x + d.w + 12 && y >= d.y - 12 && y <= d.y + d.h + 12) {
     if (devModeActive) {
       if (confirm('개발자 모드를 해제하시겠습니까?')) {
         devModeActive = false;
@@ -3784,25 +3773,25 @@ function handleTitleClick(x, y) {
     return;
   }
 
-  // 2. 스토리 보기 버튼 (터치 범위 여유 8px 확보)
+  // 2. 스토리 보기 버튼 (판정 범위 ±12px 확장)
   const s = storyReplayBtnRect;
-  if (x >= s.x - 8 && x <= s.x + s.w + 8 && y >= s.y - 8 && y <= s.y + s.h + 8) {
+  if (x >= s.x - 12 && x <= s.x + s.w + 12 && y >= s.y - 12 && y <= s.y + s.h + 12) {
     sound.init();
     sound.playTalk();
     showStorySelectModal = true;
     return;
   }
 
-  // 3. 기록 초기화 버튼 (터치 범위 여유 8px 확보)
+  // 3. 기록 초기화 버튼 (판정 범위 ±12px 확장)
   const r = resetProgressBtnRect;
-  if (x >= r.x - 8 && x <= r.x + r.w + 8 && y >= r.y - 8 && y <= r.y + r.h + 8) {
+  if (x >= r.x - 12 && x <= r.x + r.w + 12 && y >= r.y - 12 && y <= r.y + r.h + 12) {
     clearProgress();
     return;
   }
 
   // 4. PUSH START 버튼
   const b = pushStartBtnRect;
-  if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+  if (x >= b.x - 10 && x <= b.x + b.w + 10 && y >= b.y - 10 && y <= b.y + b.h + 10) {
     onTitlePushStart();
     return;
   }
@@ -3899,7 +3888,17 @@ if (hintBtnEl) {
 }
 document.getElementById('undoBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); undo(); });
 document.getElementById('resetBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); resetStage(); });
-document.getElementById('nextStageBtn').addEventListener('click', nextStage);
+const nextBtn = document.getElementById('nextStageBtn');
+if (nextBtn) {
+  nextBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    nextStage();
+  });
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    nextStage();
+  });
+}
 
 document.querySelectorAll('.dpad-btn').forEach(btn => {
   const dir = btn.getAttribute('data-dir');
