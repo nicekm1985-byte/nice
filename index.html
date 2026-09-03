@@ -1948,6 +1948,28 @@ function updateUI() {
 
   // 🔄 재시작 횟수 버튼 갱신
   const resetBtn = document.getElementById('resetBtn');
+  // ⇄ 십자키 <-> 액션 버튼 좌우 위치 반전 토글
+  const swapBtn = document.getElementById('swapCtrlBtn');
+  const gamepadContainer = document.querySelector('.gamepad-container');
+
+  // 저장된 설정 복원
+  if (localStorage.getItem('kimdaeri_ctrl_swapped') === 'true' && gamepadContainer) {
+  gamepadContainer.classList.add('swapped');
+  }
+
+  if (swapBtn && gamepadContainer) {
+  const toggleSwap = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sound.init();
+    sound.playPush();
+    const isSwapped = gamepadContainer.classList.toggle('swapped');
+    localStorage.setItem('kimdaeri_ctrl_swapped', isSwapped ? 'true' : 'false');
+  };
+  swapBtn.addEventListener('pointerdown', toggleSwap);
+  swapBtn.addEventListener('click', toggleSwap);
+  }
+
   if (resetBtn) {
     const textEl = resetBtn.querySelector('.btn-text');
     if (textEl) {
@@ -2850,39 +2872,39 @@ function drawTitleScreen() {
   ctx.save();
   ctx.textAlign = 'center';
   
-  // 1. 레트로 퍼즐 영문 (16px)
+  // 1. 레트로 퍼즐 영문 (Y: 40 -> 64)
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 16px monospace';
   ctx.letterSpacing = '3px';
-  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 40);
+  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 64);
 
-  // 2. 메인 타이틀 (52px ExtraBold 초대형 확대)
+  // 2. 메인 타이틀 (Y: 96 -> 122)
   ctx.font = '900 52px "Pretendard", sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText('창고담당 김대리', w / 2 + 2, 98);
-  ctx.fillText('창고담당 김대리', w / 2 - 2, 98);
-  ctx.fillText('창고담당 김대리', w / 2, 100);
+  ctx.fillText('창고담당 김대리', w / 2 + 2, 124);
+  ctx.fillText('창고담당 김대리', w / 2 - 2, 124);
+  ctx.fillText('창고담당 김대리', w / 2, 126);
 
-  const titleGrad = ctx.createLinearGradient(0, 55, 0, 105);
+  const titleGrad = ctx.createLinearGradient(0, 80, 0, 130);
   titleGrad.addColorStop(0, '#fef08a');
   titleGrad.addColorStop(0.5, '#f59e0b');
   titleGrad.addColorStop(1, '#d97706');
   ctx.fillStyle = titleGrad;
-  ctx.fillText('창고담당 김대리', w / 2, 96);
+  ctx.fillText('창고담당 김대리', w / 2, 122);
 
-  // 3. 서브 타이틀 (19px 볼드)
+  // 3. 서브 타이틀 (Y: 136 -> 164)
   ctx.fillStyle = '#94a3b8';
   ctx.font = '700 19px "Pretendard", sans-serif';
-  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 136);
+  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 164);
 
-  // 4. 남은 목표 뱃지 (21px ExtraBold 초대형)
+  // 4. 남은 목표 뱃지 (Y: 172 -> 200)
   const remainTitleGoals = Math.max(0, 30 - ((typeof clearedStages !== 'undefined' && clearedStages) ? clearedStages.size : 0));
   ctx.fillStyle = '#38bdf8';
   ctx.font = '900 21px "Pretendard", sans-serif';
-  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 172);
+  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 200);
   ctx.restore();
 
-  drawHeroKimDaeri(w / 2, 272, titleTimer); // 👈 김대리 위치 밸런스 조정
+  drawHeroKimDaeri(w / 2, 290, titleTimer); // 👈 김대리 위치 Y: 272 -> 290으로 하향
 
   // 1. PUSH START 버튼 (20px)
   const pulse = Math.sin(titleTimer * 0.08) * 0.5 + 0.5;
@@ -3843,8 +3865,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 5px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 5) {
+  // 4px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 4) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
