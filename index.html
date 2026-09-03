@@ -304,7 +304,38 @@
       justify-content: space-between;
       align-items: center;
       padding: 4px 8px;
-      gap: 16px;
+      gap: 12px;
+      transition: flex-direction 0.2s ease;
+    }
+
+    /* 🔄 좌우 반전 모드 */
+    .gamepad-container.swapped {
+      flex-direction: row-reverse;
+    }
+
+    /* ⇄ 중앙 작은 전환 버튼 */
+    .swap-ctrl-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #1e2536;
+      border: 1px solid #36425c;
+      color: #38bdf8;
+      font-size: 16px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .swap-ctrl-btn:active {
+      background: #38bdf8;
+      color: #000;
+      transform: scale(0.92);
     }
 
     .dpad-cross {
@@ -607,6 +638,9 @@
       <button class="dpad-btn dpad-right" data-dir="right" aria-label="오른쪽">▶</button>
       <button class="dpad-btn dpad-down" data-dir="down" aria-label="아래로">▼</button>
     </div>
+
+    <!-- ⇄ 중앙 좌우 전환 버튼 -->
+    <button id="swapCtrlBtn" class="swap-ctrl-btn" title="조작키 좌우 반전">⇄</button>
 
     <!-- 우측 원형 액션 버튼 (되돌리기 / 재시작) -->
     <div class="action-circle-group">
@@ -1949,15 +1983,15 @@ function updateUI() {
   // 🔄 재시작 횟수 버튼 갱신
   const resetBtn = document.getElementById('resetBtn');
   // ⇄ 십자키 <-> 액션 버튼 좌우 위치 반전 토글
-  const swapBtn = document.getElementById('swapCtrlBtn');
-  const gamepadContainer = document.querySelector('.gamepad-container');
+const swapBtn = document.getElementById('swapCtrlBtn');
+const gamepadContainer = document.querySelector('.gamepad-container');
 
-  // 저장된 설정 복원
-  if (localStorage.getItem('kimdaeri_ctrl_swapped') === 'true' && gamepadContainer) {
+// 저장된 설정 복원
+if (localStorage.getItem('kimdaeri_ctrl_swapped') === 'true' && gamepadContainer) {
   gamepadContainer.classList.add('swapped');
-  }
+}
 
-  if (swapBtn && gamepadContainer) {
+if (swapBtn && gamepadContainer) {
   const toggleSwap = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1968,7 +2002,7 @@ function updateUI() {
   };
   swapBtn.addEventListener('pointerdown', toggleSwap);
   swapBtn.addEventListener('click', toggleSwap);
-  }
+}
 
   if (resetBtn) {
     const textEl = resetBtn.querySelector('.btn-text');
