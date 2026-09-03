@@ -586,8 +586,8 @@
       <div class="stat-item" style="padding: 2px 6px; display: flex; align-items: center; gap: 3px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <span style="font-size:13px;">🔊</span>
-          <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.3" 
-                 style="width:60px; height:6px; accent-color:#f59e0b; cursor:pointer;" />
+          <input type="range" id="volSlider" min="0" max="1" step="0.02" value="0.7" 
+                 style="width:75px; height:20px; accent-color:#f59e0b; cursor:pointer; touch-action:pan-x;" />
         </div>
       </div> <!-- 👈 이 닫는 태그가 빠져 있었습니다! -->
       <div class="stat-item">
@@ -678,6 +678,9 @@
 /* =====================================================================
    1. 사운드 & 8비트 레트로 BGM 시스템 (Web Audio API 완전 통합)
    ===================================================================== */
+// 🎛️ BGM 음원 스위치: true = bgm1.mp3 재생 / false = 기존 신디사이저 로파이 재생
+const USE_MP3_BGM = true;
+
 class SoundEngine {
   constructor() {
     this.ctx = null;
@@ -686,9 +689,19 @@ class SoundEngine {
     this.sfxGain = null;
     
     this.bgmTimer = null;
-    this.bgmVolume = 0.3; // 기본값 30% (나른하고 평온한 볼륨)
+    this.bgmVolume = 0.7;
     this.bgmPlaying = false;
     this.bgmStep = 0;
+
+    // 🎵 mp3 음원 객체 생성 + 2중 무한 루프 방어 (아이폰 사파리 완벽 보장)
+    this.bgmAudio = new Audio('bgm1.mp3');
+    this.bgmAudio.loop = true;
+    this.bgmAudio.preload = 'auto';
+    this.bgmAudio.volume = this.bgmVolume * 0.1;
+    this.bgmAudio.addEventListener('ended', () => {
+      this.bgmAudio.currentTime = 0;
+      this.bgmAudio.play().catch(() => {});
+    });
   }
 
   init() {
@@ -698,7 +711,7 @@ class SoundEngine {
 
       // 마스터 노드 구조: Source -> (BGM/SFX Gain) -> Master Gain -> Destination
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
       this.bgmGain = this.ctx.createGain();
@@ -715,29 +728,50 @@ class SoundEngine {
     }
   }
 
-  // 🎵 인게임 전용: 나른하고 평온한 로파이 앰비언트 BGM
   startBGM() {
     this.init();
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
-    if (this.bgmPlaying) return;
+    if (this.bgmVolume <= 0) return;
     this.bgmPlaying = true;
-    this.scheduleBgmTick();
+
+    if (USE_MP3_BGM) {
+      // 1. mp3 재생 (10% 볼륨 유지)
+      this.bgmAudio.volume = this.bgmVolume * 0.1;
+      this.bgmAudio.play().catch(() => {});
+    } else {
+      // 2. 기존 신디사이저 로파이 재생 (보존)
+      this.scheduleBgmTick();
+    }
   }
 
   stopBGM() {
     this.bgmPlaying = false;
-    if (this.bgmTimer) {
-      clearTimeout(this.bgmTimer);
-      this.bgmTimer = null;
+    if (USE_MP3_BGM) {
+      if (this.bgmAudio) {
+        this.bgmAudio.pause();
+        this.bgmAudio.currentTime = 0;
+      }
+    } else {
+      if (this.bgmTimer) {
+        clearTimeout(this.bgmTimer);
+        this.bgmTimer = null;
+      }
     }
   }
 
   setBgmVolume(val) {
-    this.bgmVolume = Math.max(0, Math.min(1, val));
-    if (this.bgmGain && this.ctx) {
-      this.bgmGain.gain.setValueAtTime(this.bgmVolume, this.ctx.currentTime);
+    const x = Math.max(0, Math.min(1, val));
+    // 🎚️ 0~70% 구간: 최대 30% / 70~100% 구간: 31~100%
+    const vol = (x <= 0.7) ? (x / 0.7) * 0.3 : 0.31 + ((x - 0.7) / 0.3) * 0.69;
+    this.bgmVolume = vol;
+
+    // 🎵 BGM: 슬라이더 100%일 때 정확히 10% (초저음량 은은함)
+    if (this.bgmAudio) this.bgmAudio.volume = vol * 0.1;
+
+    if (this.ctx) {
+      if (this.masterGain) this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+      if (this.bgmGain) this.bgmGain.gain.setValueAtTime(vol * 0.1, this.ctx.currentTime);
+      // 🔊 효과음: 슬라이더 100%일 때 200%(1.3배) 폭풍 증폭
+      if (this.sfxGain) this.sfxGain.gain.setValueAtTime(vol * 1.3, this.ctx.currentTime);
     }
   }
 
@@ -830,6 +864,7 @@ class SoundEngine {
   }
 
   playStep() {
+    if (this.bgmVolume <= 0) return; // 👈 0일 때만 무음
     this.init();
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
@@ -974,7 +1009,7 @@ class SoundEngine {
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now + idx * 0.05);
-      gain.gain.setValueAtTime(0.25, now + idx * 0.05);
+      gain.gain.setValueAtTime(0.03, now + idx * 0.05); // 👈 0.25 -> 0.03 (초저음량 은은함)
       gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.2);
       osc.connect(gain);
       gain.connect(this.sfxGain || this.ctx.destination);
@@ -1736,7 +1771,6 @@ function startStory(chapter = 1, mode = 'gameplay') {
 
   sound.init();
   sound.stopBGM();
-  sound.playStart();
   gameState = 'STORY';
   storyChapter = chapter;
   storyPlaybackMode = mode;
@@ -1818,7 +1852,7 @@ function startGame(stageIdx = 0) {
   
   // 🎚️ 기본 볼륨 30%(0.3) 보장 및 슬라이더 동기화
   const slider = document.getElementById('volSlider');
-  const baseVol = slider ? (parseFloat(slider.value) || 0.3) : 0.3;
+  const baseVol = slider ? (parseFloat(slider.value) || 0.7) : 0.7;
   sound.setBgmVolume(baseVol);
 
   gameState = 'PLAYING';
@@ -1987,28 +2021,6 @@ function updateUI() {
 
   // 🔄 재시작 횟수 버튼 갱신
   const resetBtn = document.getElementById('resetBtn');
-  // ⇄ 십자키 <-> 액션 버튼 좌우 위치 반전 토글
-const swapBtn = document.getElementById('swapCtrlBtn');
-const gamepadContainer = document.querySelector('.gamepad-container');
-
-// 저장된 설정 복원
-if (localStorage.getItem('kimdaeri_ctrl_swapped') === 'true' && gamepadContainer) {
-  gamepadContainer.classList.add('swapped');
-}
-
-if (swapBtn && gamepadContainer) {
-  const toggleSwap = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    sound.init();
-    sound.playPush();
-    const isSwapped = gamepadContainer.classList.toggle('swapped');
-    localStorage.setItem('kimdaeri_ctrl_swapped', isSwapped ? 'true' : 'false');
-  };
-  swapBtn.addEventListener('pointerdown', toggleSwap);
-  swapBtn.addEventListener('click', toggleSwap);
-}
-
   if (resetBtn) {
     const textEl = resetBtn.querySelector('.btn-text');
     if (textEl) {
@@ -3727,10 +3739,11 @@ function drawParticles() {
    ===================================================================== */
   // 📱 화면 튕김만 차단 (버튼/캔버스 터치는 정상 작동)
   document.addEventListener('touchmove', (e) => {
-  // 모달 팝업 내부 스크롤 제외하고 브라우저 화면 꿀렁임만 차단
-  if (!e.target.closest('#stageModalNav')) {
+    // 모달 스크롤과 볼륨 슬라이더 드래그는 통과, 그 외 브라우저 튕김만 차단
+    if (e.target.closest('#stageModalNav') || e.target.closest('#volSlider')) {
+      return;
+    }
     e.preventDefault();
-  }
   }, { passive: false });
 
   document.addEventListener('touchmove', (e) => {
@@ -4125,7 +4138,24 @@ if (closeMobileStageBtn) closeMobileStageBtn.addEventListener('click', closeMobi
     }
   }, { passive: true });
 });
+// ⇄ 좌우 반전 토글 (단 1회 등록 -> 첫 터치 칼반응)
+const swapBtn = document.getElementById('swapCtrlBtn');
+const gamepadContainer = document.querySelector('.gamepad-container');
 
+if (localStorage.getItem('kimdaeri_ctrl_swapped') === 'true' && gamepadContainer) {
+  gamepadContainer.classList.add('swapped');
+}
+
+if (swapBtn && gamepadContainer) {
+  swapBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sound.init();
+    sound.playPush();
+    const isSwapped = gamepadContainer.classList.toggle('swapped');
+    localStorage.setItem('kimdaeri_ctrl_swapped', isSwapped ? 'true' : 'false');
+  });
+}
 showTitleScreen();
 renderNav();
 requestAnimationFrame(draw);
