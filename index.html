@@ -75,7 +75,7 @@
     .no-double-tap {
       touch-action: manipulation;
     }
-    
+
     /* 상단 상태바 */
     .header-bar {
       width: 100%;
@@ -3904,8 +3904,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 4px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 4) {
+  // 2px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 2) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
