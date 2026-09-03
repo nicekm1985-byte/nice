@@ -31,15 +31,18 @@
       -webkit-user-select: none;
       margin: 0;
       padding: 0;
-      touch-action: manipulation;
+      touch-action: manipulation; /* 👈 버튼 터치 지연 없이 즉시 반응 */
     }
 
-    body {
+    body body {
       width: 100%;
       height: 100%;
-      position: fixed; /* 👈 사파리 화면 끌어당김/바운스 100% 원천 차단 */
+      position: fixed;
+      top: 0;
+      left: 0;
       overflow: hidden;
       overscroll-behavior: none;
+      overscroll-behavior-y: none;
       -webkit-overflow-scrolling: auto;
     }
 
@@ -2892,12 +2895,12 @@ function drawTitleScreen() {
   ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 31);
   ctx.restore();
 
-  // 2. 하단 서브 버튼들 (14px)
+  // 버튼 위치 Y 442로 내리고 세로 44px로 확대
   const sBtn = storyReplayBtnRect;
   sBtn.x = w / 2 - 155;
-  sBtn.y = 432;
+  sBtn.y = 442;
   sBtn.w = 145;
-  sBtn.h = 36;
+  sBtn.h = 44;
 
   ctx.save();
   ctx.fillStyle = '#1a2333';
@@ -2917,9 +2920,9 @@ function drawTitleScreen() {
 
   const rBtn = resetProgressBtnRect;
   rBtn.x = w / 2 + 10;
-  rBtn.y = 432;
+  rBtn.y = 442;
   rBtn.w = 145;
-  rBtn.h = 36;
+  rBtn.h = 44;
 
   ctx.save();
   ctx.fillStyle = '#1e1b24';
@@ -3664,7 +3667,21 @@ function drawParticles() {
 /* =====================================================================
    7. 입력 핸들러 & UI 이벤트
    ===================================================================== */
-window.addEventListener('keydown', (e) => {
+  // 📱 화면 튕김만 차단 (버튼/캔버스 터치는 정상 작동)
+  document.addEventListener('touchmove', (e) => {
+  // 모달 팝업 내부 스크롤 제외하고 브라우저 화면 꿀렁임만 차단
+  if (!e.target.closest('#stageModalNav')) {
+    e.preventDefault();
+  }
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+  if (!e.target.closest('#stageModalNav')) {
+    e.preventDefault();
+  }
+  }, { passive: false });
+  
+   window.addEventListener('keydown', (e) => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
     e.preventDefault();
   }
@@ -3720,34 +3737,99 @@ window.addEventListener('keydown', (e) => {
 
 let touchStartX = 0;
 let touchStartY = 0;
+let touchMoved = false;
+
+function handleTitleClick(x, y) {
+  // 모달 열려있을 때
+  if (showStorySelectModal) {
+    const m1 = modalStory1BtnRect;
+    if (x >= m1.x && x <= m1.x + m1.w && y >= m1.y && y <= m1.y + m1.h) {
+      startStory(1, 'replay');
+      return;
+    }
+    const m2 = modalStory2BtnRect;
+    const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
+    if (x >= m2.x && x <= m2.x + m2.w && y >= m2.y && y <= m2.y + m2.h) {
+      if (ch2Unlocked) startStory(2, 'replay');
+      else alert('🔒 스토리 2는 15단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
+      return;
+    }
+    const mc = modalCloseBtnRect;
+    if (x >= mc.x && x <= mc.x + mc.w && y >= mc.y && y <= mc.y + mc.h) {
+      showStorySelectModal = false;
+      return;
+    }
+    showStorySelectModal = false;
+    return;
+  }
+
+  // 1. 개발자 버튼
+  const d = devModeBtnRect;
+  if (x >= d.x && x <= d.x + d.w && y >= d.y && y <= d.y + d.h) {
+    if (devModeActive) {
+      if (confirm('개발자 모드를 해제하시겠습니까?')) {
+        devModeActive = false;
+        renderNav();
+        updateUI();
+      }
+    } else {
+      const pw = prompt('개발자 모드 암호를 입력하세요:');
+      if (pw === '1029') {
+        devModeActive = true;
+        alert('🔓 개발자 모드 활성화!');
+        renderNav();
+        updateUI();
+      } else if (pw !== null) alert('❌ 암호 불일치');
+    }
+    return;
+  }
+
+  // 2. 스토리 보기 버튼 (터치 범위 여유 8px 확보)
+  const s = storyReplayBtnRect;
+  if (x >= s.x - 8 && x <= s.x + s.w + 8 && y >= s.y - 8 && y <= s.y + s.h + 8) {
+    sound.init();
+    sound.playTalk();
+    showStorySelectModal = true;
+    return;
+  }
+
+  // 3. 기록 초기화 버튼 (터치 범위 여유 8px 확보)
+  const r = resetProgressBtnRect;
+  if (x >= r.x - 8 && x <= r.x + r.w + 8 && y >= r.y - 8 && y <= r.y + r.h + 8) {
+    clearProgress();
+    return;
+  }
+
+  // 4. PUSH START 버튼
+  const b = pushStartBtnRect;
+  if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+    onTitlePushStart();
+    return;
+  }
+}
 
 canvas.addEventListener('pointerdown', (e) => {
   sound.init();
   if (sound.ctx && sound.ctx.state === 'suspended') sound.ctx.resume();
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
-  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  touchStartX = (e.clientX - rect.left) * (canvas.width / rect.width);
+  touchStartY = (e.clientY - rect.top) * (canvas.height / rect.height);
+  touchMoved = false;
 
-  // 👉 터치 시작 좌표 기록
-  touchStartX = clickX;
-  touchStartY = clickY;
-
-  // 🔍 우측 상단 [전체보기 / 확대보기] 버튼 클릭 판정
-  if (gameState === 'PLAYING') {
-    const btnW = 96;
-    const btnH = 34;
-    const btnX = canvas.width - btnW - 14;
-    const btnY = 14;
-    if (clickX >= btnX && clickX <= btnX + btnW && clickY >= btnY && clickY <= btnY + btnH) {
-      sound.init();
-      isOverviewMode = !isOverviewMode;
-      return;
-    }
+  // 타이틀 화면 클릭 처리
+  if (gameState === 'TITLE') {
+    handleTitleClick(touchStartX, touchStartY);
+    return;
   }
-// 📱 캔버스 화면 스와이프 제스처 이동 (상하좌우 슥 쓸어넘기기)
+  if (gameState === 'STORY') {
+    if (touchStartX >= canvas.width - 95 && touchStartY <= 45) skipStory();
+    else advanceStory();
+  }
+});
+
 canvas.addEventListener('pointerup', (e) => {
-  if (gameState !== 'PLAYING' || isCleared) return;
+  if (gameState !== 'PLAYING' || isCleared || touchMoved) return;
   const rect = canvas.getBoundingClientRect();
   const endX = (e.clientX - rect.left) * (canvas.width / rect.width);
   const endY = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -3757,8 +3839,9 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 최소 25px 이상 쓸어넘겼을 때만 방향 이동 인정
-  if (Math.max(absX, absY) > 25) {
+  // 20px 이상 쓸면 무조건 딱 1칸만 이동
+  if (Math.max(absX, absY) > 20) {
+    touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
       else tryMove(-1, 0, 'left');
@@ -3768,106 +3851,7 @@ canvas.addEventListener('pointerup', (e) => {
     }
   }
 });
-  if (gameState === 'TITLE') {
 
-
-    // A. 스토리 선택 모달이 열려 있을 때의 클릭 판정
-    if (showStorySelectModal) {
-      // 1. 스토리 1 버튼
-      const m1 = modalStory1BtnRect;
-      if (clickX >= m1.x && clickX <= m1.x + m1.w && clickY >= m1.y && clickY <= m1.y + m1.h) {
-        startStory(1, 'replay');
-        return;
-      }
-
-      // 2. 스토리 2 버튼 (15단계 클리어 or 개발자 모드 시)
-      const m2 = modalStory2BtnRect;
-      const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
-      if (clickX >= m2.x && clickX <= m2.x + m2.w && clickY >= m2.y && clickY <= m2.y + m2.h) {
-        if (ch2Unlocked) {
-          startStory(2, 'replay');
-        } else {
-          alert('🔒 스토리 2는 15단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
-        }
-        return;
-      }
-
-      // 3. 닫기 버튼 or 모달 바깥 클릭
-      const mc = modalCloseBtnRect;
-      if (clickX >= mc.x && clickX <= mc.x + mc.w && clickY >= mc.y && clickY <= mc.y + mc.h) {
-        showStorySelectModal = false;
-        return;
-      }
-
-      // 모달 바깥 클릭 시 닫기
-      const mw = 320, mh = 220;
-      const mx = canvas.width / 2 - mw / 2, my = canvas.height / 2 - mh / 2;
-      if (clickX < mx || clickX > mx + mw || clickY < my || clickY > my + mh) {
-        showStorySelectModal = false;
-      }
-      return;
-    }
-
-    // B. 일반 타이틀 화면에서의 클릭 판정
-    // 0. 개발자 모드 버튼 클릭 (비밀번호: 1029)
-    const d = devModeBtnRect;
-    if (clickX >= d.x && clickX <= d.x + d.w && clickY >= d.y && clickY <= d.y + d.h) {
-      if (devModeActive) {
-        if (confirm('개발자 모드를 해제하시겠습니까?')) {
-          devModeActive = false;
-          renderNav();
-          updateUI();
-        }
-      } else {
-        const pw = prompt('개발자 모드 암호를 입력하세요:');
-        if (pw === '1029') {
-          devModeActive = true;
-          alert('🔓 개발자 모드가 활성화되었습니다!\n모든 스테이지를 자유롭게 선택할 수 있습니다.');
-          renderNav();
-          updateUI();
-        } else if (pw !== null) {
-          alert('❌ 암호가 올바르지 않습니다.');
-        }
-      }
-      return;
-    }
-
-    // 1. PUSH START 버튼 클릭
-    const b = pushStartBtnRect;
-    if (clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h) {
-      onTitlePushStart();
-      return;
-    }
-
-    // 2. 스토리 보기 버튼 클릭 -> 스토리 선택 모달 창 열기
-    const s = storyReplayBtnRect;
-    if (clickX >= s.x && clickX <= s.x + s.w && clickY >= s.y && clickY <= s.y + s.h) {
-      sound.init();
-      sound.playTalk();
-      showStorySelectModal = true;
-      return;
-    }
-
-    // 3. 기록 초기화 버튼 클릭
-    const r = resetProgressBtnRect;
-    if (clickX >= r.x && clickX <= r.x + r.w && clickY >= r.y && clickY <= r.y + r.h) {
-      clearProgress();
-      return;
-    }
-
-    // 그 외 영역 클릭 시 기본 PUSH START 실행
-    onTitlePushStart();
-    return;
-  }
-
-  if (gameState === 'STORY') {
-    if (clickX >= canvas.width - 95 && clickY <= 45) {
-      skipStory();
-    } else {
-      advanceStory();
-    }
-  }
-});
 
 function nextStage() {
   // 🎯 15단계를 깼다면 이미 봤든, 개발자 모드든 무조건 두 번째 스토리 재생!
