@@ -234,10 +234,10 @@
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       cursor: pointer;
-      /* 📱 모바일 화면 폭에 맞춰 비율 유지하며 100% 자동 축소 */
+      width: 100%;       /* 👈 가로 공간 100% 꽉 채움 */
       max-width: 100%;
       height: auto;
-      aspect-ratio: 600 / 500; /* 👈 도화지와 100% 일치시켜 찌그러짐 왜곡 완전 제거 */
+      aspect-ratio: 600 / 500;
     }
 
     /* 클리어 팝업 */
@@ -3843,8 +3843,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 10px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 10) {
+  // 5px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 5) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
