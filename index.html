@@ -456,7 +456,7 @@
         margin-bottom: 8px;
       }
       canvas {
-        aspect-ratio: 600 / 480; /* 캔버스 세로 높이를 시원하게 확장 (기존 410 대비 +70px) */
+        aspect-ratio: 600 / 540; /* 캔버스 세로 높이를 위아래로 더 길게 확장 (초기 410 대비 +130px, 약 +32%) */
       }
       .level-title {
         font-size: 12px;
@@ -2670,39 +2670,43 @@ function drawFlusteredKimDaeri(cx, cy, timer) {
 
 function drawDialogBox(w, h, scene) {
   const boxX = 14;
-  const boxY = h - 130;
+  const boxH = 138;
+  const boxY = h - boxH - 14;
   const boxW = w - 28;
-  const boxH = 118;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(10, 14, 26, 0.92)';
-  ctx.strokeStyle = '#334155';
+  ctx.fillStyle = 'rgba(10, 14, 26, 0.94)';
+  ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+  ctx.roundRect(boxX, boxY, boxW, boxH, 12);
   ctx.fill();
   ctx.stroke();
 
+  // 화자 이름 (폰트 14px -> 17px로 시원하게 확대)
   ctx.fillStyle = scene.speakerColor || '#f59e0b';
-  ctx.font = 'bold 14px "Pretendard", sans-serif';
+  ctx.font = '900 17px "Pretendard", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`[ ${scene.speaker} ]`, boxX + 16, boxY + 26);
+  ctx.fillText(`[ ${scene.speaker} ]`, boxX + 18, boxY + 30);
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '11px sans-serif';
-  ctx.fillText(`- ${scene.sub}`, boxX + 100, boxY + 26);
+  // 화자 부가 설명 (폰트 11px -> 13px로 확대)
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '600 13px "Pretendard", sans-serif';
+  const speakerWidth = ctx.measureText(`[ ${scene.speaker} ]`).width;
+  ctx.fillText(`- ${scene.sub}`, boxX + 26 + speakerWidth, boxY + 30);
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = '500 14px "Pretendard", sans-serif';
+  // 메인 스토리 대사 폰트 (14px -> 17.5px 굵고 선명하게 대폭 확대)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '700 17.5px "Pretendard", -apple-system, sans-serif';
   
   const currentText = scene.text.substring(0, storyTextProgress);
-  wrapText(ctx, currentText, boxX + 16, boxY + 54, boxW - 32, 22);
+  wrapText(ctx, currentText, boxX + 18, boxY + 64, boxW - 36, 26);
 
   if (titleTimer % 40 < 25) {
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#fcd34d';
+    ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('▼ 터치하여 계속', boxX + boxW - 16, boxY + boxH - 12);
+    ctx.fillText('▼ 터치하여 계속', boxX + boxW - 18, boxY + boxH - 14);
   }
 
   ctx.restore();
