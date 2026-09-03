@@ -1801,6 +1801,11 @@ function showTitleScreen() {
   const timerEl = document.getElementById('stageTimer');
   if (timerEl) timerEl.innerText = "00:00";
 
+  // 🎯 상단 상태바 남은 목표 동기화 (30 - 클리어수)
+  const remainGoals = Math.max(0, STAGES.length - clearedStages.size);
+  const targetEl = document.getElementById('targetRemaining');
+  if (targetEl) targetEl.innerText = `${remainGoals}개`;
+
   // 🎯 2. 타이틀 화면에서는 '난이도' 칸 전체를 숨김
   const diffBadge = document.getElementById('diffBadge');
   if (diffBadge && diffBadge.parentElement) {
@@ -2831,51 +2836,53 @@ function drawTitleScreen() {
   ctx.fill();
   ctx.restore();
 
-  draw3DBox(40, 320, 68, false);
-  draw3DBox(105, 320, 68, false);
-  draw3DBox(72, 260, 68, true);
-  draw3DBox(35, 200, 60, false);
+   // 500px 높이에 맞춘 좌우 3D 상자 배치
+  draw3DBox(35, 335, 72, false);
+  draw3DBox(105, 335, 72, false);
+  draw3DBox(70, 270, 72, true);
+  draw3DBox(30, 205, 64, false);
 
-  draw3DBox(435, 320, 68, false);
-  draw3DBox(500, 320, 68, false);
-  draw3DBox(468, 260, 68, false);
-  draw3DBox(520, 200, 60, true);
+  draw3DBox(435, 335, 72, false);
+  draw3DBox(505, 335, 72, false);
+  draw3DBox(470, 270, 72, false);
+  draw3DBox(520, 205, 64, true);
 
   ctx.save();
   ctx.textAlign = 'center';
   
+  // 1. 레트로 퍼즐 영문 (16px)
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 14px monospace';
-  ctx.letterSpacing = '2px';
-  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 38);
+  ctx.font = 'bold 16px monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 40);
 
-  // 큼직한 타이틀 (46px)
-  ctx.font = '900 46px "Pretendard", sans-serif';
+  // 2. 메인 타이틀 (52px ExtraBold 초대형 확대)
+  ctx.font = '900 52px "Pretendard", sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText('창고담당 김대리', w / 2 + 2, 92);
-  ctx.fillText('창고담당 김대리', w / 2 - 2, 92);
-  ctx.fillText('창고담당 김대리', w / 2, 94);
+  ctx.fillText('창고담당 김대리', w / 2 + 2, 98);
+  ctx.fillText('창고담당 김대리', w / 2 - 2, 98);
+  ctx.fillText('창고담당 김대리', w / 2, 100);
 
-  const titleGrad = ctx.createLinearGradient(0, 55, 0, 95);
+  const titleGrad = ctx.createLinearGradient(0, 55, 0, 105);
   titleGrad.addColorStop(0, '#fef08a');
   titleGrad.addColorStop(0.5, '#f59e0b');
   titleGrad.addColorStop(1, '#d97706');
   ctx.fillStyle = titleGrad;
-  ctx.fillText('창고담당 김대리', w / 2, 90);
+  ctx.fillText('창고담당 김대리', w / 2, 96);
 
-  // 서브 타이틀 (16px)
+  // 3. 서브 타이틀 (19px 볼드)
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 16px "Pretendard", sans-serif';
-  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 126);
+  ctx.font = '700 19px "Pretendard", sans-serif';
+  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 136);
 
-  // 남은 목표 (17px)
+  // 4. 남은 목표 뱃지 (21px ExtraBold 초대형)
   const remainTitleGoals = Math.max(0, 30 - ((typeof clearedStages !== 'undefined' && clearedStages) ? clearedStages.size : 0));
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '900 17px "Pretendard", sans-serif';
-  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 156);
+  ctx.font = '900 21px "Pretendard", sans-serif';
+  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 172);
   ctx.restore();
 
-  drawHeroKimDaeri(w / 2, 260, titleTimer);
+  drawHeroKimDaeri(w / 2, 272, titleTimer); // 👈 김대리 위치 밸런스 조정
 
   // 1. PUSH START 버튼 (20px)
   const pulse = Math.sin(titleTimer * 0.08) * 0.5 + 0.5;
