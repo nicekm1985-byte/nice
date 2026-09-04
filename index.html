@@ -541,10 +541,9 @@
 
       canvas {
         width: 100%;
-        height: 100%;
+        height: auto;
         max-height: 100%;
-        object-fit: contain; /* 👈 캐릭터·상자 1:1 정사각형 비율 완벽 보존 */
-        aspect-ratio: auto;
+        aspect-ratio: 600 / 500; /* 👈 도화지와 1:1 일치로 여백 최소화 */
         display: block;
       }
 
@@ -1729,9 +1728,9 @@ function stopStageTimer() {
 }
 
 // 타이틀 버튼 히트박스
-const pushStartBtnRect = { x: 190, y: 308, w: 220, h: 44 };
-const storyReplayBtnRect = { x: 155, y: 362, w: 135, h: 32 };
-const resetProgressBtnRect = { x: 310, y: 362, w: 135, h: 32 };
+const pushStartBtnRect = { x: 160, y: 372, w: 280, h: 56 };
+const storyReplayBtnRect = { x: 138, y: 440, w: 152, h: 48 };
+const resetProgressBtnRect = { x: 310, y: 440, w: 152, h: 48 };
 const singleResetBtnRect = { x: 232, y: 362, w: 135, h: 32 };
 const devModeBtnRect = { x: 520, y: 370, w: 66, h: 26 };
 
@@ -3288,16 +3287,16 @@ function drawInGame() {
   let curOffsetX = 0;
   let curOffsetY = 0;
 
-  if (!isMobile || isOverviewMode) {
-    // 🖥️ PC 환경 또는 모바일 전체보기: 기존 한눈 뷰 100% 유지
+  if (!isMobile) {
+    // 🖥️ PC: 전체 맵 한눈에 깔끔 뷰
     const fitW = Math.floor((canvas.width - 32) / cols);
     const fitH = Math.floor((canvas.height - 32) / rows);
     curTile = Math.min(fitW, fitH, 46);
     curOffsetX = Math.floor((canvas.width - cols * curTile) / 2);
     curOffsetY = Math.floor((canvas.height - rows * curTile) / 2);
   } else {
-    // 📱 모바일 확대 뷰 (방법 1): 1:1 정비율 확대 + 김대리 추적 사방 스크롤
-    curTile = Math.max(58, Math.min(Math.floor((canvas.height - 40) / Math.min(rows, 6)), 68));
+    // 📱 모바일: 억지 늘림 없이 1:1 정비율 유지하며 화면 꽉 차게 최대 확대 + 카메라 추적
+    curTile = Math.max(62, Math.min(Math.floor((canvas.width - 24) / Math.min(cols, 8)), 72));
     const targetCamX = (player.x + 0.5) * curTile - canvas.width / 2;
     const targetCamY = (player.y + 0.5) * curTile - canvas.height / 2;
 
