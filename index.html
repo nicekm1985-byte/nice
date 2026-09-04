@@ -601,7 +601,7 @@
         <!-- 모바일 전용 ◀ 수치 ▶ 터치 버튼 -->
         <div class="mobile-vol-btn-group" style="display:none; align-items:center; gap:2px;">
           <button id="volDownBtn" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; border-radius:4px; width:22px; height:22px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">◀</button>
-          <span id="volTextDisplay" style="font-size:11px; font-family:monospace; color:#fcd34d; min-width:32px; text-align:center; font-weight:bold;">70%</span>
+          <span id="volTextDisplay" style="font-size:11px; font-family:monospace; color:#fcd34d; min-width:32px; text-align:center; font-weight:bold;">100%</span>
           <button id="volUpBtn" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; border-radius:4px; width:22px; height:22px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">▶</button>
         </div>
       </div> <!-- 👈 이 닫는 태그가 빠져 있었습니다! -->
@@ -888,7 +888,7 @@ class SoundEngine {
     osc.frequency.setValueAtTime(140, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.04);
     // 📱 모바일(스마트폰 스피커)에서는 1.2로 초대형 증폭, PC는 0.60 유지
-    const stepGain = (window.innerWidth <= 640) ? 1.2 : 0.60;
+    const stepGain = (window.innerWidth <= 640) ? 1.7 : 0.60;
     gain.gain.setValueAtTime(stepGain, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
     osc.connect(gain);
@@ -4037,7 +4037,7 @@ let isBgmMuted = false;
 const volSlider = document.getElementById('volSlider');
 
 // 📱 모바일 ◀ 볼륨수치 ▶ 터치 조작 (10% 단위 증감)
-let currentVolPercent = 70; // 기본 70%
+let currentVolPercent = 100; // 기본 100%
 
 function applyVolume(percent) {
   currentVolPercent = Math.max(0, Math.min(100, percent));
