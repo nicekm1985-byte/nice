@@ -4007,29 +4007,7 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 });
 
-canvas.addEventListener('pointerup', (e) => {
-  if (gameState !== 'PLAYING' || isCleared || touchMoved) return;
-  const rect = canvas.getBoundingClientRect();
-  const endX = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const endY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-  const dx = endX - touchStartX;
-  const dy = endY - touchStartY;
-  const absX = Math.abs(dx);
-  const absY = Math.abs(dy);
-
-  // 0.5px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 0.5) {
-    touchMoved = true;
-    if (absX > absY) {
-      if (dx > 0) tryMove(1, 0, 'right');
-      else tryMove(-1, 0, 'left');
-    } else {
-      if (dy > 0) tryMove(0, 1, 'down');
-      else tryMove(0, -1, 'up');
-    }
-  }
-});
 
 
 function nextStage() {
