@@ -3049,13 +3049,15 @@ function drawTitleScreen() {
   const tBtn = touchModeBtnRect;
   tBtn.w = 140; tBtn.h = 48; tBtn.x = w / 2 - 70; tBtn.y = 440;
   ctx.save();
-  // 십자키 있을 때: [👆 터치 모드] 버튼 노출 / 십자키 없을 때: [🎮 십자키 모드] 버튼 노출
-  ctx.fillStyle = !isTouchMode ? 'rgba(245, 158, 11, 0.25)' : '#1a2333';
-  ctx.strokeStyle = !isTouchMode ? '#f59e0b' : '#38bdf8'; ctx.lineWidth = 1.6;
+  // 십자키 있음(!isTouchMode) -> [👆 터치 모드] 버튼 (누르면 터치모드 전환)
+  // 십자키 없음(isTouchMode)  -> [🎮 십자키 모드] 버튼 (누르면 십자키 복귀)
+  const showTouchText = !isTouchMode;
+  ctx.fillStyle = showTouchText ? '#1a2333' : 'rgba(245, 158, 11, 0.25)';
+  ctx.strokeStyle = showTouchText ? '#38bdf8' : '#f59e0b'; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = !isTouchMode ? '#fcd34d' : '#38bdf8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.fillStyle = showTouchText ? '#38bdf8' : '#fcd34d'; ctx.font = 'bold 13px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(!isTouchMode ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
+  ctx.fillText(showTouchText ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
   ctx.restore();
 
   const rBtn = resetProgressBtnRect;
