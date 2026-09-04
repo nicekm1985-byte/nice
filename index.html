@@ -566,7 +566,7 @@
         width: 100%;
         height: auto;
         max-height: 100%;
-        aspect-ratio: 600 / 500; /* 👈 도화지와 1:1 일치로 여백 최소화 */
+        aspect-ratio: 600 / 660; /* 👈 늘어난 캔버스 도화지 660과 1:1 일치 */
         display: block;
       }
 
@@ -679,7 +679,7 @@
 
   <!-- 게임 화면 캔버스 -->
   <div class="canvas-wrapper">
-    <canvas id="gameCanvas" width="600" height="500"></canvas>
+    <canvas id="gameCanvas" width="600" height="660"></canvas>
     
     <!-- 스테이지 클리어 오버레이 -->
     <div class="banner-overlay" id="clearBanner">
@@ -3439,7 +3439,10 @@ function drawInGame() {
     curOffsetY = Math.floor((canvas.height - rows * curTile) / 2);
   } else {
     // 📱 모바일: 억지 늘림 없이 1:1 정비율 유지하며 화면 꽉 차게 최대 확대 + 카메라 추적
-    curTile = Math.max(62, Math.min(Math.floor((canvas.width - 24) / Math.min(cols, 8)), 72));
+    // 📱 가로/세로 모두 보라색 영역에 쏙 들어가도록 정비율 계산
+    const fitW = Math.floor((canvas.width - 24) / cols);
+    const fitH = Math.floor((canvas.height - 24) / rows);
+    curTile = Math.max(58, Math.min(fitW, fitH, 72));
     const targetCamX = (player.x + 0.5) * curTile - canvas.width / 2;
     const targetCamY = (player.y + 0.5) * curTile - canvas.height / 2;
 
