@@ -1870,10 +1870,6 @@ function onTitlePushStart() {
       }
     }
     // 16단계 시작 전이고 2번째 스토리를 아직 안 봤다면 Chapter 2 재생
-    if (targetStage >= 15 && !chapter2Seen && !devModeActive) {
-      startStory(2, 'gameplay');
-      return;
-    }
     sound.playStart();
     startGame(targetStage);
   } else {
@@ -4269,10 +4265,6 @@ function renderNav() {
       dot.addEventListener('click', () => {
         sound.init();
         closeStageModal();
-        if (idx === 15) {
-          startStory(2, 'gameplay');
-          return;
-        }
         gameState = 'PLAYING';
         initStage(idx);
       });
