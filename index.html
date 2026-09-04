@@ -3054,7 +3054,7 @@ function drawTitleScreen() {
   ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = isTouchMode ? '#fcd34d' : '#94a3b8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(isTouchMode ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
+  ctx.fillText(isTouchMode ? '🎮 십자키 모드' : '👆 터치 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
   ctx.restore();
 
   const rBtn = resetProgressBtnRect;
@@ -4015,8 +4015,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 1px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 1) {
+  // 0.5px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 0.5) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
