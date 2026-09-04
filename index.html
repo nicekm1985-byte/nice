@@ -480,6 +480,13 @@
     /* 📱 사파리 주소창/하단바 제외 순수 화면 100% 꽉 채움 */
     /* 📱 사파리 주소창 제외: 하단 키패드 최하단 밀착 + 남은 전체 영역 게임 화면 */
     @media (max-width: 640px) {
+      .pc-vol-slider {
+        display: none !important; /* 모바일에서 슬라이더 숨김 */
+      }
+      .mobile-vol-btn-group {
+        display: flex !important; /* 모바일에서 ◀ 수치 ▶ 버튼 노출 */
+      }
+
       body {
         padding: 0;
         margin: 0;
@@ -582,11 +589,20 @@
       <div class="level-title" id="stageName">Stage 1</div>
     </div>
     <div class="stats-group">
-      <div class="stat-item" style="padding: 2px 6px; display: flex; align-items: center; gap: 3px;">
-        <div style="display:flex; align-items:center; gap:6px;">
+      <!-- 🔊 볼륨 컨트롤 (PC: 슬라이더 / 모바일: ◀ 볼륨수치 ▶) -->
+      <div class="stat-item vol-control-item" style="padding: 2px 6px; display: flex; align-items: center; gap: 3px;">
+        <!-- PC 전용 슬라이더 -->
+        <div class="pc-vol-slider" style="display:flex; align-items:center; gap:5px;">
           <span style="font-size:13px;">🔊</span>
-          <input type="range" id="volSlider" min="0" max="1" step="0.02" value="0.7" 
-                 style="width:75px; height:20px; accent-color:#f59e0b; cursor:pointer; touch-action:pan-x;" />
+          <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.7" 
+                 style="width:70px; height:18px; accent-color:#f59e0b; cursor:pointer;" />
+        </div>
+
+        <!-- 모바일 전용 ◀ 수치 ▶ 터치 버튼 -->
+        <div class="mobile-vol-btn-group" style="display:none; align-items:center; gap:2px;">
+          <button id="volDownBtn" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; border-radius:4px; width:22px; height:22px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">◀</button>
+          <span id="volTextDisplay" style="font-size:11px; font-family:monospace; color:#fcd34d; min-width:32px; text-align:center; font-weight:bold;">70%</span>
+          <button id="volUpBtn" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; border-radius:4px; width:22px; height:22px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">▶</button>
         </div>
       </div> <!-- 👈 이 닫는 태그가 빠져 있었습니다! -->
       <div class="stat-item">
@@ -4017,6 +4033,44 @@ document.querySelectorAll('.dpad-btn').forEach(btn => {
 let isBgmMuted = false;
 
 const volSlider = document.getElementById('volSlider');
+
+// 📱 모바일 ◀ 볼륨수치 ▶ 터치 조작 (10% 단위 증감)
+let currentVolPercent = 70; // 기본 70%
+
+function applyVolume(percent) {
+  currentVolPercent = Math.max(0, Math.min(100, percent));
+  const val = currentVolPercent / 100;
+  
+  sound.init();
+  sound.setBgmVolume(val);
+  
+  // UI 텍스트 갱신
+  const txt = document.getElementById('volTextDisplay');
+  if (txt) txt.innerText = currentVolPercent === 0 ? 'OFF' : `${currentVolPercent}%`;
+  
+  // 슬라이더와 동기화
+  const slider = document.getElementById('volSlider');
+  if (slider) slider.value = val;
+
+  if (val > 0 && gameState === 'PLAYING' && !sound.bgmPlaying) {
+    sound.startBGM();
+  }
+}
+
+const vDown = document.getElementById('volDownBtn');
+if (vDown) {
+  const onDown = (e) => { e.preventDefault(); e.stopPropagation(); sound.playPush(); applyVolume(currentVolPercent - 10); };
+  vDown.addEventListener('pointerdown', onDown);
+  vDown.addEventListener('click', onDown);
+}
+
+const vUp = document.getElementById('volUpBtn');
+if (vUp) {
+  const onUp = (e) => { e.preventDefault(); e.stopPropagation(); sound.playPush(); applyVolume(currentVolPercent + 10); };
+  vUp.addEventListener('pointerdown', onUp);
+  vUp.addEventListener('click', onUp);
+}
+
 if (volSlider) {
   volSlider.addEventListener('input', (e) => {
     e.stopPropagation();
