@@ -1883,6 +1883,8 @@ function onTitlePushStart() {
 }
 
 function startStory(chapter = 1, mode = 'gameplay') {
+  isCleared = false; // 👈 필수! 클리어 플래그 해제 (첫 대사 무한루프 차단)
+
   // 🚪 클리어 팝업 창을 즉시 닫아서 스토리 화면이 바로 보이도록 합니다!
   const banner = document.getElementById('clearBanner');
   if (banner) banner.classList.remove('active');
