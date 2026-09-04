@@ -871,7 +871,7 @@ class SoundEngine {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(140, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.04);
-    gain.gain.setValueAtTime(0.35, this.ctx.currentTime); // 3배 증폭
+    gain.gain.setValueAtTime(0.60, this.ctx.currentTime); // 👈 2배 증폭 (또렷한 발소리)
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
     osc.connect(gain);
     gain.connect(this.sfxGain || this.ctx.destination);
