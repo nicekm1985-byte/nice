@@ -1765,13 +1765,13 @@ function stopStageTimer() {
   }
 }
 
-// 타이틀 버튼 히트박스
-const pushStartBtnRect = { x: 160, y: 372, w: 280, h: 56 };
-const storyReplayBtnRect = { x: 138, y: 440, w: 152, h: 48 };
-const resetProgressBtnRect = { x: 310, y: 440, w: 152, h: 48 };
+// 타이틀 버튼 히트박스 (화면 너비 600 기준 정확한 시작 좌표 지정)
+const pushStartBtnRect   = { x: 160, y: 372, w: 280, h: 56 };
+const storyReplayBtnRect = { x: 85,  y: 440, w: 135, h: 48 }; // 👈 600 / 2 - 215 = 85
+const touchModeBtnRect   = { x: 230, y: 440, w: 140, h: 48 }; // 👈 600 / 2 - 70 = 230
+const resetProgressBtnRect = { x: 380, y: 440, w: 135, h: 48 }; // 👈 600 / 2 + 80 = 380
 const singleResetBtnRect = { x: 232, y: 362, w: 135, h: 32 };
-const devModeBtnRect = { x: 520, y: 370, w: 66, h: 26 };
-const touchModeBtnRect = { x: 235, y: 440, w: 130, h: 48 }; // 👈 추가
+const devModeBtnRect     = { x: 518, y: 462, w: 70,  h: 28 };
 let isTouchMode = localStorage.getItem('kimdaeri_touch_mode') === 'true'; // 👈 추가
 
 // 스토리 선택 모달 내부 버튼 히트박스
@@ -3055,7 +3055,7 @@ function drawTitleScreen() {
   ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
   ctx.fillStyle = !isTouchMode ? '#fcd34d' : '#38bdf8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(!isTouchMode ? '👆 터치 모드로' : '🎮 십자키 모드로', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
+  ctx.fillText(!isTouchMode ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
   ctx.restore();
 
   const rBtn = resetProgressBtnRect;
