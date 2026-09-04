@@ -1845,12 +1845,12 @@ function stopStageTimer() {
 }
 
 // 타이틀 버튼 히트박스 (화면 너비 600 기준 정확한 시작 좌표 지정)
-const pushStartBtnRect   = { x: 160, y: 372, w: 280, h: 56 };
-const storyReplayBtnRect = { x: 85,  y: 440, w: 135, h: 48 }; // 👈 600 / 2 - 215 = 85
-const touchModeBtnRect   = { x: 230, y: 440, w: 140, h: 48 }; // 👈 600 / 2 - 70 = 230
-const resetProgressBtnRect = { x: 380, y: 440, w: 135, h: 48 }; // 👈 600 / 2 + 80 = 380
+const pushStartBtnRect   = { x: 150, y: 495, w: 300, h: 62 };
+const storyReplayBtnRect = { x: 80,  y: 575, w: 138, h: 52 };
+const touchModeBtnRect   = { x: 230, y: 575, w: 140, h: 52 };
+const resetProgressBtnRect = { x: 382, y: 575, w: 138, h: 52 };
 const singleResetBtnRect = { x: 232, y: 362, w: 135, h: 32 };
-const devModeBtnRect     = { x: 518, y: 462, w: 70,  h: 28 };
+const devModeBtnRect     = { x: 515, y: 615, w: 72,  h: 30 };
 let isTouchMode = localStorage.getItem('kimdaeri_touch_mode') === 'true'; // 👈 추가
 
 // 스토리 선택 모달 내부 버튼 히트박스
@@ -3012,6 +3012,7 @@ function drawTitleScreen() {
   const w = canvas.width;
   const h = canvas.height;
 
+  // 1. 다크 배경 그라데이션
   const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
   bgGrad.addColorStop(0, '#0a0d16');
   bgGrad.addColorStop(0.7, '#131929');
@@ -3019,191 +3020,170 @@ function drawTitleScreen() {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
+  // 천장 레트로 트러스 철골
   ctx.strokeStyle = '#1e283d';
   ctx.lineWidth = 3;
   ctx.beginPath();
   for (let x = 0; x <= w; x += 60) {
     ctx.moveTo(x, 0);
-    ctx.lineTo(x + 30, 45);
+    ctx.lineTo(x + 30, 48);
     ctx.lineTo(x + 60, 0);
   }
   ctx.stroke();
 
+  // 중앙 스포트라이트 조명 (660px 높이 꽉 차게 확장)
   ctx.save();
-  const spotGrad = ctx.createRadialGradient(w / 2, 80, 25, w / 2, 260, 320);
-  spotGrad.addColorStop(0, 'rgba(245, 158, 11, 0.24)');
-  spotGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.08)');
+  const spotGrad = ctx.createRadialGradient(w / 2, 90, 30, w / 2, 340, 420);
+  spotGrad.addColorStop(0, 'rgba(245, 158, 11, 0.28)');
+  spotGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.09)');
   spotGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = spotGrad;
   ctx.beginPath();
-  ctx.moveTo(w / 2 - 50, 0);
-  ctx.lineTo(w / 2 + 50, 0);
-  ctx.lineTo(w / 2 + 250, h);
-  ctx.lineTo(w / 2 - 250, h);
+  ctx.moveTo(w / 2 - 60, 0);
+  ctx.lineTo(w / 2 + 60, 0);
+  ctx.lineTo(w / 2 + 280, h);
+  ctx.lineTo(w / 2 - 280, h);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-   // 500px 높이에 맞춘 좌우 3D 상자 배치
-  draw3DBox(35, 335, 72, false);
-  draw3DBox(105, 335, 72, false);
-  draw3DBox(70, 270, 72, true);
-  draw3DBox(30, 205, 64, false);
+  // 📦 660px 높이에 맞춰 좌우 3D 크라프트/에메랄드 상자더미 큼직하게 하향 배치
+  // 좌측 4단 상자탑 (Y: 270 ~ 445)
+  draw3DBox(25, 445, 82, false);
+  draw3DBox(105, 445, 82, false);
+  draw3DBox(65, 370, 80, true);
+  draw3DBox(20, 295, 74, false);
 
-  draw3DBox(435, 335, 72, false);
-  draw3DBox(505, 335, 72, false);
-  draw3DBox(470, 270, 72, false);
-  draw3DBox(520, 205, 64, true);
+  // 우측 4단 상자탑 (Y: 270 ~ 445)
+  draw3DBox(415, 445, 82, false);
+  draw3DBox(495, 445, 82, false);
+  draw3DBox(455, 370, 80, false);
+  draw3DBox(510, 295, 74, true);
 
   ctx.save();
   ctx.textAlign = 'center';
   
-  // 1. 레트로 퍼즐 영문 (Y: 40 -> 64)
+  // 1. 레트로 퍼즐 영문 (Y: 72)
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 16px monospace';
-  ctx.letterSpacing = '3px';
-  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 64);
+  ctx.font = 'bold 18px monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('★ RETRO LOGIC PUZZLE ★', w / 2, 72);
 
-  // 2. 메인 타이틀 (Y: 96 -> 122)
-  ctx.font = '900 52px "Pretendard", sans-serif';
+  // 2. 메인 타이틀 (58px 초대형 ExtraBold, Y: 145)
+  ctx.font = '900 58px "Pretendard", sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText('창고담당 김대리', w / 2 + 2, 124);
-  ctx.fillText('창고담당 김대리', w / 2 - 2, 124);
-  ctx.fillText('창고담당 김대리', w / 2, 126);
+  ctx.fillText('창고담당 김대리', w / 2 + 2, 147);
+  ctx.fillText('창고담당 김대리', w / 2 - 2, 147);
+  ctx.fillText('창고담당 김대리', w / 2, 149);
 
-  const titleGrad = ctx.createLinearGradient(0, 80, 0, 130);
+  const titleGrad = ctx.createLinearGradient(0, 100, 0, 155);
   titleGrad.addColorStop(0, '#fef08a');
   titleGrad.addColorStop(0.5, '#f59e0b');
   titleGrad.addColorStop(1, '#d97706');
   ctx.fillStyle = titleGrad;
-  ctx.fillText('창고담당 김대리', w / 2, 122);
+  ctx.fillText('창고담당 김대리', w / 2, 145);
 
-  // 3. 서브 타이틀 (Y: 136 -> 164)
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '700 19px "Pretendard", sans-serif';
-  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 164);
+  // 3. 서브 타이틀 (21px 볼드, Y: 195)
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '700 21px "Pretendard", sans-serif';
+  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 195);
 
-  // 4. 남은 목표 뱃지 (Y: 172 -> 200)
+  // 4. 남은 목표 뱃지 (24px ExtraBold, Y: 240)
   const remainTitleGoals = Math.max(0, 30 - ((typeof clearedStages !== 'undefined' && clearedStages) ? clearedStages.size : 0));
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '900 21px "Pretendard", sans-serif';
-  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 200);
+  ctx.font = '900 24px "Pretendard", sans-serif';
+  ctx.fillText(`📋 남은 목표: ${remainTitleGoals}개`, w / 2, 240);
   ctx.restore();
 
-  drawHeroKimDaeri(w / 2, 290, titleTimer); // 👈 김대리 위치 Y: 272 -> 290으로 하향
+  // 🧑‍💼 2등신 김대리 (Y: 385 위치로 큼직하고 당당하게 배치)
+  drawHeroKimDaeri(w / 2, 385, titleTimer);
 
-  // 1. PUSH START 버튼 (20px)
+  // 1. PUSH START 메인 버튼 (크기 300x62, Y: 495로 하향 배치)
   const pulse = Math.sin(titleTimer * 0.08) * 0.5 + 0.5;
   const btn = pushStartBtnRect;
-  btn.w = 280;  // 👈 250 -> 280px 확대
-  btn.h = 56;   // 👈 50 -> 56px 확대
+  btn.w = 300;
+  btn.h = 62;
   btn.x = w / 2 - btn.w / 2;
-  btn.y = 372;  // 👈 아래로 내림
+  btn.y = 495;
 
   ctx.save();
   ctx.shadowColor = `rgba(245, 158, 11, ${0.4 + pulse * 0.4})`;
-  ctx.shadowBlur = 18 * pulse + 8;
+  ctx.shadowBlur = 20 * pulse + 8;
 
   const btnGrad = ctx.createLinearGradient(btn.x, btn.y, btn.x, btn.y + btn.h);
   btnGrad.addColorStop(0, `rgba(245, 158, 11, ${0.9 + pulse * 0.1})`);
   btnGrad.addColorStop(1, `rgba(217, 119, 6, ${0.9 + pulse * 0.1})`);
   ctx.fillStyle = btnGrad;
   ctx.beginPath();
-  ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 12);
+  ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 14);
   ctx.fill();
 
   ctx.strokeStyle = '#fef08a';
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 2.8;
   ctx.stroke();
   ctx.restore();
 
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#000';
-  ctx.font = '900 20px "Pretendard", monospace';
-  ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 31);
+  ctx.font = '900 22px "Pretendard", monospace';
+  ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 35);
   ctx.restore();
 
-  // 2. 하단 3대 서브 버튼 (스토리 보기 | 터치/버튼 모드 | 기록 초기화)
+  // 2. 하단 3대 서브 버튼 (Y: 575로 맨 아래 안정적 배치)
+  // [스토리 보기]
   const sBtn = storyReplayBtnRect;
-  sBtn.w = 135; sBtn.h = 48; sBtn.x = w / 2 - 215; sBtn.y = 440;
+  sBtn.w = 138; sBtn.h = 52; sBtn.x = w / 2 - 220; sBtn.y = 575;
   ctx.save();
-  ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 15px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
   ctx.restore();
 
-  // 👆 터치 조작 모드 토글 버튼
+  // [터치/십자키 모드 토글]
   const tBtn = touchModeBtnRect;
-  tBtn.w = 140; tBtn.h = 48; tBtn.x = w / 2 - 70; tBtn.y = 440;
+  tBtn.w = 144; tBtn.h = 52; tBtn.x = w / 2 - 72; tBtn.y = 575;
   ctx.save();
-  // 십자키 있음(!isTouchMode) -> [👆 터치 모드] 버튼 (누르면 터치모드 전환)
-  // 십자키 없음(isTouchMode)  -> [🎮 십자키 모드] 버튼 (누르면 십자키 복귀)
   const showTouchText = !isTouchMode;
   ctx.fillStyle = showTouchText ? '#1a2333' : 'rgba(245, 158, 11, 0.25)';
-  ctx.strokeStyle = showTouchText ? '#38bdf8' : '#f59e0b'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = showTouchText ? '#38bdf8' : '#fcd34d'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.strokeStyle = showTouchText ? '#38bdf8' : '#f59e0b'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = showTouchText ? '#38bdf8' : '#fcd34d'; ctx.font = 'bold 15px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(showTouchText ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
   ctx.restore();
 
+  // [기록 초기화]
   const rBtn = resetProgressBtnRect;
-  rBtn.w = 135; rBtn.h = 48; rBtn.x = w / 2 + 80; rBtn.y = 440;
+  rBtn.w = 138; rBtn.h = 52; rBtn.x = w / 2 + 82; rBtn.y = 575;
   ctx.save();
-  ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f87171'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f87171'; ctx.font = 'bold 15px "Pretendard", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
   ctx.restore();
 
-  ctx.save();
-  ctx.fillStyle = '#1e1b24';
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 14px "Pretendard", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
-  ctx.restore();
-
-  // 3. 개발자 버튼
+  // 3. 우측 하단 [개발자] 버튼 (Y: 615)
   const dBtn = devModeBtnRect;
-  dBtn.x = w - 82;
-  dBtn.y = h - 38;
-  dBtn.w = 70;
-  dBtn.h = 28;
-
+  dBtn.x = w - 85; dBtn.y = h - 45; dBtn.w = 72; dBtn.h = 30;
   ctx.save();
   ctx.fillStyle = devModeActive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(30, 41, 59, 0.7)';
-  ctx.strokeStyle = devModeActive ? '#10b981' : '#475569';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.roundRect(dBtn.x, dBtn.y, dBtn.w, dBtn.h, 6);
-  ctx.fill();
-  ctx.stroke();
-
+  ctx.strokeStyle = devModeActive ? '#10b981' : '#475569'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.roundRect(dBtn.x, dBtn.y, dBtn.w, dBtn.h, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = devModeActive ? '#34d399' : '#94a3b8';
-  ctx.font = 'bold 12px "Pretendard", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('개발자', dBtn.x + dBtn.w / 2, dBtn.y + dBtn.h / 2);
   ctx.restore();
 
-  // 스토리 선택 팝업 모달
+  // 4. 스토리 선택 모달
   if (showStorySelectModal) {
     drawStorySelectModalPopup(w, h);
   }
-} // 👈 이 닫는 중괄호가 빠져 있었습니다!
+}
 
 // 🎬 스토리 1/2 선택 팝업 모달 렌더링
 function drawStorySelectModalPopup(w, h) {
