@@ -312,7 +312,14 @@
       gap: 12px;
       transition: flex-direction 0.2s ease;
     }
-
+    /* 👆 터치 조작 모드: 십자키/교체버튼 숨기고 하단 전체를 제스처 영역화 */
+    .gamepad-container.touch-only-mode .dpad-cross,
+    .gamepad-container.touch-only-mode .swap-ctrl-btn {
+      display: none !important;
+    }
+    .gamepad-container.touch-only-mode {
+      justify-content: flex-end; /* 되돌리기/재시작 버튼 우측 밀착 */
+    }
     /* 🔄 좌우 반전 모드 */
     .gamepad-container.swapped {
       flex-direction: row-reverse;
@@ -1764,6 +1771,8 @@ const storyReplayBtnRect = { x: 138, y: 440, w: 152, h: 48 };
 const resetProgressBtnRect = { x: 310, y: 440, w: 152, h: 48 };
 const singleResetBtnRect = { x: 232, y: 362, w: 135, h: 32 };
 const devModeBtnRect = { x: 520, y: 370, w: 66, h: 26 };
+const touchModeBtnRect = { x: 235, y: 440, w: 130, h: 48 }; // 👈 추가
+let isTouchMode = localStorage.getItem('kimdaeri_touch_mode') === 'true'; // 👈 추가
 
 // 스토리 선택 모달 내부 버튼 히트박스
 const modalStory1BtnRect = { x: 170, y: 170, w: 260, h: 42 };
@@ -3025,34 +3034,38 @@ function drawTitleScreen() {
   ctx.fillText('▶ PUSH START ◀', w / 2, btn.y + 31);
   ctx.restore();
 
-  // 2. 하단 서브 버튼들 (스토리 보기 & 기록 초기화 대폭 확대)
+  // 2. 하단 3대 서브 버튼 (스토리 보기 | 터치/버튼 모드 | 기록 초기화)
   const sBtn = storyReplayBtnRect;
-  sBtn.w = 152; // 👈 145 -> 152px 확대
-  sBtn.h = 48;  // 👈 44 -> 48px 확대
-  sBtn.x = w / 2 - 162;
-  sBtn.y = 440; // 👈 아래로 내림
-
+  sBtn.w = 135; sBtn.h = 48; sBtn.x = w / 2 - 215; sBtn.y = 440;
   ctx.save();
-  ctx.fillStyle = '#1a2333';
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 14px "Pretendard", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
   ctx.restore();
 
+  // 👆 터치 조작 모드 토글 버튼
+  const tBtn = touchModeBtnRect;
+  tBtn.w = 140; tBtn.h = 48; tBtn.x = w / 2 - 70; tBtn.y = 440;
+  ctx.save();
+  ctx.fillStyle = isTouchMode ? 'rgba(245, 158, 11, 0.25)' : '#1a2333';
+  ctx.strokeStyle = isTouchMode ? '#f59e0b' : '#64748b'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = isTouchMode ? '#fcd34d' : '#94a3b8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(isTouchMode ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
+  ctx.restore();
+
   const rBtn = resetProgressBtnRect;
-  rBtn.w = 152; // 👈 145 -> 152px 확대
-  rBtn.h = 48;  // 👈 44 -> 48px 확대
-  rBtn.x = w / 2 + 10;
-  rBtn.y = 440; // 👈 아래로 내림
+  rBtn.w = 135; rBtn.h = 48; rBtn.x = w / 2 + 80; rBtn.y = 440;
+  ctx.save();
+  ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f87171'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
+  ctx.restore();
 
   ctx.save();
   ctx.fillStyle = '#1e1b24';
@@ -3846,6 +3859,45 @@ let touchStartX = 0;
 let touchStartY = 0;
 let touchMoved = false;
 
+// 📱 터치 모드 UI 갱신 함수
+function updateTouchModeUI() {
+  const pad = document.querySelector('.gamepad-container');
+  if (pad) {
+    pad.classList.toggle('touch-only-mode', isTouchMode);
+  }
+}
+
+// 📱 게임 화면 + 하단 컨트롤러 영역 전체 스와이프(슬라이드) 방향전환
+let globalTouchStartX = 0;
+let globalTouchStartY = 0;
+
+window.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('button')) return; // 버튼 누를 땐 스와이프 제외
+  globalTouchStartX = e.clientX;
+  globalTouchStartY = e.clientY;
+}, { passive: true });
+
+window.addEventListener('pointerup', (e) => {
+  if (gameState !== 'PLAYING' || isCleared) return;
+  if (e.target.closest('button')) return;
+
+  const dx = e.clientX - globalTouchStartX;
+  const dy = e.clientY - globalTouchStartY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  // 10px만 스쳐도 즉시 1칸 이동 (화면 + 하단패드 어디든 작동)
+  if (Math.max(absX, absY) > 10) {
+    if (absX > absY) {
+      if (dx > 0) tryMove(1, 0, 'right');
+      else tryMove(-1, 0, 'left');
+    } else {
+      if (dy > 0) tryMove(0, 1, 'down');
+      else tryMove(0, -1, 'up');
+    }
+  }
+}, { passive: true });
+
 function handleTitleClick(x, y) {
   // 모달 열려있을 때
   if (showStorySelectModal) {
@@ -3907,6 +3959,16 @@ function handleTitleClick(x, y) {
     return;
   }
 
+  // 👆 터치 모드 토글 버튼 클릭
+  const t = touchModeBtnRect;
+  if (x >= t.x - 10 && x <= t.x + t.w + 10 && y >= t.y - 10 && y <= t.y + t.h + 10) {
+    sound.init(); sound.playPush();
+    isTouchMode = !isTouchMode;
+    localStorage.setItem('kimdaeri_touch_mode', isTouchMode ? 'true' : 'false');
+    updateTouchModeUI();
+    return;
+  }
+
   // 4. PUSH START 버튼
   const b = pushStartBtnRect;
   if (x >= b.x - 10 && x <= b.x + b.w + 10 && y >= b.y - 10 && y <= b.y + b.h + 10) {
@@ -3953,8 +4015,8 @@ canvas.addEventListener('pointerup', (e) => {
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
-  // 2px만 스쳐도 즉각 1칸 이동 (초민감 터치)
-  if (Math.max(absX, absY) > 2) {
+  // 1px만 스쳐도 즉각 1칸 이동 (초민감 터치)
+  if (Math.max(absX, absY) > 1) {
     touchMoved = true;
     if (absX > absY) {
       if (dx > 0) tryMove(1, 0, 'right');
