@@ -4317,6 +4317,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
 });
+updateTouchModeUI(); // 👈 이 줄 추가 (시작 즉시 실제 십자키 유무와 버튼 상태 100% 동기화)
 showTitleScreen();
 renderNav();
 requestAnimationFrame(draw);
