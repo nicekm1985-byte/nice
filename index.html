@@ -660,7 +660,14 @@
         <span style="font-size:15px; font-weight:800; color:#f59e0b;">🎵 배경음악 선택</span>
         <button id="closeBgmModalBtn" style="background:transparent; border:none; color:#9ca3af; font-size:20px; cursor:pointer; padding:0 6px;">✕</button>
       </div>
+      
       <div style="display:flex; flex-direction:column; gap:8px;">
+        <!-- 재생 모드 버튼 2개 -->
+        <button class="bgm-pick-btn" data-track="seq" style="background:#1e2536; border:1px solid #38bdf8; color:#38bdf8; border-radius:8px; padding:9px; font-size:12.5px; font-weight:bold; cursor:pointer;">🔁 순차 재생 (1 → 5 순환)</button>
+        <button class="bgm-pick-btn" data-track="rand" style="background:#1e2536; border:1px solid #a855f7; color:#a855f7; border-radius:8px; padding:9px; font-size:12.5px; font-weight:bold; cursor:pointer;">🔀 랜덤 재생 (무작위 셔플)</button>
+
+        <div style="height:1px; background:#222a3d; margin:2px 0;"></div>
+        
         <button class="bgm-pick-btn" data-track="1" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM1</button>
         <button class="bgm-pick-btn" data-track="2" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM2</button>
         <button class="bgm-pick-btn" data-track="3" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM3</button>
@@ -731,26 +738,58 @@
 const USE_MP3_BGM = true;
 
 class SoundEngine {
-  setTrack(trackNum) {
+  setTrack(modeOrTrack) {
     const isPlaying = this.bgmPlaying;
     if (this.bgmAudio) {
       this.bgmAudio.pause();
     }
-    this.currentTrack = trackNum;
-    this.bgmAudio = new Audio(`bgm${trackNum}.mp3`);
-    this.bgmAudio.loop = true;
+
+    this.playMode = modeOrTrack; // 'seq' | 'rand' | '1'~'5'
+
+    let fileNum = 1;
+    if (modeOrTrack === 'seq') {
+      fileNum = this.currentSeqIndex || 1;
+    } else if (modeOrTrack === 'rand') {
+      // 직전 곡과 다른 곡 무작위 선택
+      let nextR;
+      do {
+        nextR = Math.floor(Math.random() * 5) + 1;
+      } while (nextR === this.currentRandIndex && 5 > 1);
+      this.currentRandIndex = nextR;
+      fileNum = nextR;
+    } else {
+      fileNum = parseInt(modeOrTrack, 10) || 1;
+    }
+
+    this.bgmAudio = new Audio(`bgm${fileNum}.mp3`);
+    this.bgmAudio.loop = (!['seq', 'rand'].includes(modeOrTrack)); // 단일 곡일 때만 단독 루프
     this.bgmAudio.preload = 'auto';
+
     const isMobile = window.innerWidth <= 640;
     const bgmRatio = isMobile ? 0.05 : 0.10;
     this.bgmAudio.volume = this.bgmVolume * bgmRatio;
+
+    // 곡 끝났을 때 동작 분기
     this.bgmAudio.addEventListener('ended', () => {
-      this.bgmAudio.currentTime = 0;
-      this.bgmAudio.play().catch(() => {});
+      if (this.playMode === 'seq') {
+        // 1 -> 2 -> 3 -> 4 -> 5 -> 1 순환
+        this.currentSeqIndex = ((fileNum % 5) + 1);
+        this.setTrack('seq');
+      } else if (this.playMode === 'rand') {
+        // 랜덤 다음 곡
+        this.setTrack('rand');
+      } else {
+        // 단일 곡 무한 루프
+        this.bgmAudio.currentTime = 0;
+        this.bgmAudio.play().catch(() => {});
+      }
     });
+
     if (isPlaying) {
       this.bgmAudio.play().catch(() => {});
     }
-    localStorage.setItem('kimdaeri_bgm_track', trackNum);
+
+    localStorage.setItem('kimdaeri_bgm_track', modeOrTrack);
   }
 
   constructor() {
