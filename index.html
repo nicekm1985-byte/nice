@@ -887,7 +887,9 @@ class SoundEngine {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(140, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.04);
-    gain.gain.setValueAtTime(0.60, this.ctx.currentTime); // 👈 2배 증폭 (또렷한 발소리)
+    // 📱 모바일(스마트폰 스피커)에서는 1.2로 초대형 증폭, PC는 0.60 유지
+    const stepGain = (window.innerWidth <= 640) ? 1.2 : 0.60;
+    gain.gain.setValueAtTime(stepGain, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
     osc.connect(gain);
     gain.connect(this.sfxGain || this.ctx.destination);
