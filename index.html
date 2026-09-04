@@ -602,7 +602,8 @@
     <div class="title-group">
       <button class="home-btn" id="titleScreenBtn" title="타이틀 화면으로 이동">🏠 타이틀</button>
       <button class="home-btn" id="stageSelectBtn" title="스테이지 선택 창 열기" style="background:#1e293b; color:#38bdf8; border-color:#38bdf8;">📂 스테이지</button>
-      <div class="level-title" id="stageName">Stage 1</div>
+       <div class="level-title" id="stageName">Stage 1</div>
+      <button class="home-btn" id="bgmSelectBtn" title="배경음악 선택" style="background:#1e293b; color:#f59e0b; border-color:#f59e0b; padding:2px 7px; font-size:11px; margin-left:6px;">🎵 BGM</button>
     </div>
     <div class="stats-group">
       <!-- 🔊 볼륨 컨트롤 (PC: 슬라이더 / 모바일: ◀ 볼륨수치 ▶) -->
@@ -649,6 +650,23 @@
         <button id="closeStageModalBtn" style="background:transparent; border:none; color:#9ca3af; font-size:20px; cursor:pointer; padding:0 6px;">✕</button>
       </div>
       <div id="stageModalNav" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-height:320px; overflow-y:auto; padding:6px 0;"></div>
+    </div>
+  </div>
+
+  <!-- 🎵 BGM 선택 팝업 모달 -->
+  <div class="modal-backdrop" id="bgmSelectModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); z-index:9999; justify-content:center; align-items:center; padding:16px;">
+    <div style="background:#141824; border:2px solid #f59e0b; border-radius:14px; width:100%; max-width:320px; padding:18px; box-shadow:0 16px 40px rgba(0,0,0,0.9); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #222a3d; padding-bottom:8px;">
+        <span style="font-size:15px; font-weight:800; color:#f59e0b;">🎵 배경음악 선택</span>
+        <button id="closeBgmModalBtn" style="background:transparent; border:none; color:#9ca3af; font-size:20px; cursor:pointer; padding:0 6px;">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="bgm-pick-btn" data-track="1" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM1</button>
+        <button class="bgm-pick-btn" data-track="2" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM2</button>
+        <button class="bgm-pick-btn" data-track="3" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM3</button>
+        <button class="bgm-pick-btn" data-track="4" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM4</button>
+        <button class="bgm-pick-btn" data-track="5" style="background:#1e2536; border:1px solid #36425c; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">BGM5</button>
+      </div>
     </div>
   </div>
 
@@ -713,6 +731,28 @@
 const USE_MP3_BGM = true;
 
 class SoundEngine {
+  setTrack(trackNum) {
+    const isPlaying = this.bgmPlaying;
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+    }
+    this.currentTrack = trackNum;
+    this.bgmAudio = new Audio(`bgm${trackNum}.mp3`);
+    this.bgmAudio.loop = true;
+    this.bgmAudio.preload = 'auto';
+    const isMobile = window.innerWidth <= 640;
+    const bgmRatio = isMobile ? 0.05 : 0.10;
+    this.bgmAudio.volume = this.bgmVolume * bgmRatio;
+    this.bgmAudio.addEventListener('ended', () => {
+      this.bgmAudio.currentTime = 0;
+      this.bgmAudio.play().catch(() => {});
+    });
+    if (isPlaying) {
+      this.bgmAudio.play().catch(() => {});
+    }
+    localStorage.setItem('kimdaeri_bgm_track', trackNum);
+  }
+
   constructor() {
     this.ctx = null;
     this.masterGain = null;
@@ -4296,6 +4336,48 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 updateTouchModeUI(); // 👈 이 줄 추가 (시작 즉시 실제 십자키 유무와 버튼 상태 100% 동기화)
+
+// 🎵 BGM 선택 팝업 모달 이벤트
+const bgmModal = document.getElementById('bgmSelectModal');
+const openBgmBtn = document.getElementById('bgmSelectBtn');
+const closeBgmBtn = document.getElementById('closeBgmModalBtn');
+
+function openBgmModal() {
+  if (bgmModal) bgmModal.style.display = 'flex';
+  const saved = localStorage.getItem('kimdaeri_bgm_track') || '1';
+  document.querySelectorAll('.bgm-pick-btn').forEach(btn => {
+    const active = btn.getAttribute('data-track') === saved;
+    btn.style.borderColor = active ? '#f59e0b' : '#36425c';
+    btn.style.color = active ? '#f59e0b' : '#fff';
+    btn.style.background = active ? 'rgba(245, 158, 11, 0.15)' : '#1e2536';
+  });
+}
+
+function closeBgmModal() {
+  if (bgmModal) bgmModal.style.display = 'none';
+}
+
+if (openBgmBtn) openBgmBtn.addEventListener('click', openBgmModal);
+if (closeBgmBtn) closeBgmBtn.addEventListener('click', closeBgmModal);
+if (bgmModal) {
+  bgmModal.addEventListener('click', (e) => {
+    if (e.target === bgmModal) closeBgmModal();
+  });
+}
+
+document.querySelectorAll('.bgm-pick-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const track = btn.getAttribute('data-track');
+    sound.setTrack(track);
+    closeBgmModal();
+  });
+});
+
+// 저장된 트랙 복원
+const savedTrack = localStorage.getItem('kimdaeri_bgm_track');
+if (savedTrack) sound.setTrack(savedTrack);
+
 showTitleScreen();
 renderNav();
 requestAnimationFrame(draw);
