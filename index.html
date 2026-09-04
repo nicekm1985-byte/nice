@@ -480,6 +480,15 @@
     /* 📱 사파리 주소창/하단바 제외 순수 화면 100% 꽉 채움 */
     /* 📱 사파리 주소창 제외: 하단 키패드 최하단 밀착 + 남은 전체 영역 게임 화면 */
     @media (max-width: 640px) {
+      /* 모바일에서는 시계 이모티콘 빼고 순수 '시간'만 표시 */
+      #timerLabel {
+        font-size: 0;
+      }
+      #timerLabel::after {
+        content: "시간";
+        font-size: 11px;
+      }
+
       .pc-vol-slider {
         display: none !important; /* 모바일에서 슬라이더 숨김 */
       }
@@ -606,7 +615,7 @@
         </div>
       </div> <!-- 👈 이 닫는 태그가 빠져 있었습니다! -->
       <div class="stat-item">
-        <span class="label">⏱️ 시간</span>
+        <span class="label"><span class="timer-icon">⏱️ </span>시간</span>
         <span id="stageTimer" style="font-family: monospace; color:#fcd34d;">00:00</span>
       </div>
       <div class="stat-item">
