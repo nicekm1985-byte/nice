@@ -887,8 +887,8 @@ class SoundEngine {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(140, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.04);
-    // 📱 모바일(스마트폰 스피커)에서는 1.2로 초대형 증폭, PC는 0.60 유지
-    const stepGain = (window.innerWidth <= 640) ? 1.7 : 0.60;
+    // 📱 모바일(스마트폰 스피커)에서는 2로 초대형 증폭, PC는 0.60 유지
+    const stepGain = (window.innerWidth <= 640) ? 2 : 0.60;
     gain.gain.setValueAtTime(stepGain, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
     osc.connect(gain);
@@ -4210,6 +4210,28 @@ if (swapBtn && gamepadContainer) {
     localStorage.setItem('kimdaeri_ctrl_swapped', isSwapped ? 'true' : 'false');
   });
 }
+// 📱 화면 끄거나 다른 앱 전환 시 오디오 자동 일시정지 / 복귀 시 자동 재생
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // 화면 꺼짐 or 다른 앱 전환: BGM 즉시 일시정지
+    if (sound.bgmAudio && !sound.bgmAudio.paused) {
+      sound.bgmAudio.pause();
+    }
+    if (sound.ctx && sound.ctx.state === 'running') {
+      sound.ctx.suspend().catch(() => {});
+    }
+  } else {
+    // 게임 복귀: 게임 중이었으면 BGM 즉시 이어 재생
+    if (gameState === 'PLAYING' && sound.bgmVolume > 0) {
+      if (sound.ctx && sound.ctx.state === 'suspended') {
+        sound.ctx.resume().catch(() => {});
+      }
+      if (sound.bgmAudio && sound.bgmPlaying) {
+        sound.bgmAudio.play().catch(() => {});
+      }
+    }
+  }
+});
 showTitleScreen();
 renderNav();
 requestAnimationFrame(draw);
