@@ -2092,12 +2092,23 @@ function initStage(index, preserveTimer = false) {
   offsetX = 0;
   offsetY = 0;
 
-  // 🎯 시작 즉시 김대리/맵 정중앙으로 카메라 즉각 배치 (쏠림 0)
+  // 🎯 실제 벽/바닥 유효 범위(Bounding Box) 계산
+  let minC = cols, maxC = 0, minR = rows, maxR = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c].type !== 'void') {
+        if (c < minC) minC = c;
+        if (c > maxC) maxC = c;
+        if (r < minR) minR = r;
+        if (r > maxR) maxR = r;
+      }
+    }
+  }
   const initTile = Math.max(62, Math.min(Math.floor((canvas.width - 24) / Math.min(cols, 8)), 72));
-  const mapW = cols * initTile;
-  const mapH = rows * initTile;
-  camCurrentX = mapW <= canvas.width ? -(canvas.width - mapW) / 2 : Math.max(0, Math.min(mapW - canvas.width, (player.x + 0.5) * initTile - canvas.width / 2));
-  camCurrentY = mapH <= canvas.height ? -(canvas.height - mapH) / 2 : Math.max(0, Math.min(mapH - canvas.height, (player.y + 0.5) * initTile - canvas.height / 2));
+  const validCenterX = ((minC + maxC + 1) / 2) * initTile;
+  const validCenterY = ((minR + maxR + 1) / 2) * initTile;
+  camCurrentX = validCenterX - canvas.width / 2;
+  camCurrentY = validCenterY - canvas.height / 2;
   
   updateUI();
   renderNav();
@@ -3435,9 +3446,23 @@ function drawInGame() {
     const mapW = cols * curTile;
     const mapH = rows * curTile;
 
-    // 🎯 캔버스 남는 상하/좌우 공간 정중앙 균등 배분
-    let targetX = mapW <= canvas.width ? Math.floor((mapW - canvas.width) / 2) : Math.max(0, Math.min(mapW - canvas.width, targetCamX));
-    let targetY = mapH <= canvas.height ? Math.floor((mapH - canvas.height) / 2) : Math.max(0, Math.min(mapH - canvas.height, targetCamY));
+    // 🎯 앞뒤 빈 공백 제거한 실제 유효 맵 중심 정렬
+    let minC = cols, maxC = 0, minR = rows, maxR = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c].type !== 'void') {
+          if (c < minC) minC = c; if (c > maxC) maxC = c;
+          if (r < minR) minR = r; if (r > maxR) maxR = r;
+        }
+      }
+    }
+    const realW = (maxC - minC + 1) * curTile;
+    const realH = (maxR - minR + 1) * curTile;
+    const realCenterX = ((minC + maxC + 1) / 2) * curTile;
+    const realCenterY = ((minR + maxR + 1) / 2) * curTile;
+
+    let targetX = realW <= canvas.width ? realCenterX - canvas.width / 2 : Math.max(minC * curTile, Math.min((maxC + 1) * curTile - canvas.width, targetCamX));
+    let targetY = realH <= canvas.height ? realCenterY - canvas.height / 2 : Math.max(minR * curTile, Math.min((maxR + 1) * curTile - canvas.height, targetCamY));
 
     camCurrentX += (targetX - camCurrentX) * 0.25;
     camCurrentY += (targetY - camCurrentY) * 0.25;
