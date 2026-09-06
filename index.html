@@ -500,6 +500,7 @@
     /* 📱 사파리 주소창/하단바 제외 순수 화면 100% 꽉 채움 */
     /* 📱 사파리 주소창 제외: 하단 키패드 최하단 밀착 + 남은 전체 영역 게임 화면 */
     @media (max-width: 640px) {
+
       /* 모바일에서는 가상 십자키와 반전버튼 다시 켜기 */
       .dpad-cross {
         display: grid !important;
@@ -517,11 +518,11 @@
         font-size: 11px;
       }
 
-      .pc-vol-slider {
-        display: none !important; /* 모바일에서 슬라이더 숨김 */
+      pc-vol-slider {
+        display: none !important; /* 👈 모바일에서 스피커 + 슬라이더 완전 삭제 */
       }
       .mobile-vol-btn-group {
-        display: flex !important; /* 모바일에서 ◀ 수치 ▶ 버튼 노출 */
+        display: flex !important; /* 👈 모바일에서 ◀ 100% ▶ 만 표시 */
       }
 
       body {
@@ -633,10 +634,14 @@
   </div>
 
   <!-- 2단: 인게임 스탯 바 (볼륨 -- 시간 -- 이동 -- 남은 목표 균일 간격) -->
-<div class="stats-group" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+  <div class="stats-group" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
   <div class="stat-item vol-control-item" style="padding: 2px 6px; display: flex; align-items: center; gap: 4px;">
-    <span style="font-size:13px; cursor:default;">🔊</span>
-    <input type="range" id="volSlider" min="0" max="1" step="0.05" value="1.0" style="width:70px; height:18px; accent-color:#f59e0b; cursor:pointer;" />
+    <!-- 🖥️ PC 전용: 스피커 + 슬라이더 -->
+    <div class="pc-vol-slider" style="display:flex; align-items:center; gap:4px;">
+      <span style="font-size:13px; cursor:default;">🔊</span>
+      <input type="range" id="volSlider" min="0" max="1" step="0.05" value="1.0" style="width:70px; height:18px; accent-color:#f59e0b; cursor:pointer;" />
+    </div>
+    <!-- 📱 모바일 전용: ◀ 100% ▶ 만 노출 -->
     <div class="mobile-vol-btn-group" style="display:none; align-items:center; gap:2px;">
       <button id="volDownBtn" style="background:#1e293b; border:1px solid #334155; color:#38bdf8; border-radius:4px; width:22px; height:22px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">◀</button>
       <span id="volTextDisplay" style="font-size:11px; font-family:monospace; color:#fcd34d; min-width:32px; text-align:center; font-weight:bold;">100%</span>
@@ -1870,10 +1875,10 @@ function stopStageTimer() {
 }
 
 // 타이틀 버튼 히트박스 (화면 너비 600 기준 정확한 시작 좌표 지정)
-const pushStartBtnRect   = { x: 150, y: 495, w: 300, h: 62 };
-const storyReplayBtnRect = { x: 80,  y: 575, w: 138, h: 52 };
-const touchModeBtnRect   = { x: 230, y: 575, w: 140, h: 52 };
-const resetProgressBtnRect = { x: 382, y: 575, w: 138, h: 52 };
+const pushStartBtnRect   = { x: 150, y: 540, w: 300, h: 62 };
+const storyReplayBtnRect = { x: 80,  y: 610, w: 138, h: 52 };
+const touchModeBtnRect   = { x: 230, y: 610, w: 140, h: 52 };
+const resetProgressBtnRect = { x: 382, y: 610, w: 138, h: 52 };
 const singleResetBtnRect = { x: 232, y: 362, w: 135, h: 32 };
 const devModeBtnRect     = { x: 515, y: 615, w: 72,  h: 30 };
 let isTouchMode = localStorage.getItem('kimdaeri_touch_mode') === 'true'; // 👈 추가
@@ -3092,7 +3097,7 @@ function drawTitleScreen() {
   btn.w = 300;
   btn.h = 62;
   btn.x = w / 2 - btn.w / 2;
-  btn.y = 495;
+  btn.y = 540;
 
   ctx.save();
   ctx.shadowColor = `rgba(245, 158, 11, ${0.4 + pulse * 0.4})`;
@@ -3126,7 +3131,7 @@ function drawTitleScreen() {
   if (isMobile) {
     // 📱 모바일: [스토리 보기] | [터치/십자키 모드] | [기록 초기화]
     const sBtn = storyReplayBtnRect;
-    sBtn.w = 135; sBtn.h = 48; sBtn.x = w / 2 - 215; sBtn.y = 440;
+    sBtn.w = 135; sBtn.h = 48; sBtn.x = w / 2 - 215; sBtn.y = 610;
     ctx.save();
     ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
