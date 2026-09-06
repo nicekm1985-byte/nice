@@ -300,13 +300,12 @@
       transform: scale(0.96);
     }
 
-    /* 모바일 친화 컨트롤 바 */
     .gamepad-container {
       width: 100%;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end; /* 👈 PC에서는 버튼들을 오른쪽 끝으로 정렬 */
       align-items: center;
-      padding: 4px 8px;
+      padding: 8px 4px 4px 4px;
       gap: 12px;
       transition: flex-direction 0.2s ease;
     }
@@ -491,7 +490,7 @@
       .swap-ctrl-btn {
         display: flex !important;
       }
-      
+
       /* 모바일에서는 시계 이모티콘 빼고 순수 '시간'만 표시 */
       #timerLabel {
         font-size: 0;
