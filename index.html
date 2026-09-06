@@ -67,13 +67,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px;
-      max-width: 720px;
+      padding: 12px;
+      max-width: 540px; /* 👈 720px에서 축소 */
       width: 100%;
       position: relative;
-    }
-    .no-double-tap {
-      touch-action: manipulation;
     }
 
     /* 상단 상태바 */
@@ -242,28 +239,29 @@
       width: 100%;       /* 👈 가로 공간 100% 꽉 채움 */
       max-width: 100%;
       height: auto;
-      aspect-ratio: 600 / 500;
+      aspect-ratio: 600 / 660;
     }
 
     /* 클리어 팝업 */
     .banner-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(8, 11, 18, 0.9);
-      backdrop-filter: blur(5px);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000000; /* 👈 완전 암전 */
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s ease;
-      z-index: 10;
+      transition: opacity 0.2s ease;
+      z-index: 100;
       text-align: center;
       padding: 16px;
+    }
+
+    .banner-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .banner-overlay.active {
@@ -1748,6 +1746,7 @@ let particles = [];
 
 let stageStartTime = null;
 let stageTimerInterval = null;
+let clearBannerTimeout = null; // 👈 이 변수 선언이 빠져서 즉사했음!
 let stageClearTimes = {}; // 스테이지별 최고 클리어 시간 (초 단위)
 
 // 세이브 불러오기
@@ -1879,9 +1878,8 @@ function onTitlePushStart() {
 }
 
 function startStory(chapter = 1, mode = 'gameplay') {
-  isCleared = false; // 👈 필수! 클리어 플래그 해제 (첫 대사 무한루프 차단)
-
-  // 🚪 클리어 팝업 창을 즉시 닫아서 스토리 화면이 바로 보이도록 합니다!
+  isCleared = false;
+  clearTimeout(clearBannerTimeout); // 👈 뒤늦게 뜨려는 팝업 타이머 즉시 파기!
   const banner = document.getElementById('clearBanner');
   if (banner) banner.classList.remove('active');
 
@@ -2268,52 +2266,32 @@ function checkVictory() {
 
   if (allDone) {
     isCleared = true;
+    gameState = 'CLEAR'; // 👈 골인 즉시 키 입력 차단 (연타 방지)
     stopStageTimer();
 
-    // 클리어 시간 계산 및 최고 기록 저장
     const elapsedSec = stageStartTime ? Math.max(1, Math.floor((Date.now() - stageStartTime) / 1000)) : 0;
-    if (!stageClearTimes[currentStageIndex] || elapsedSec < stageClearTimes[currentStageIndex]) {
-      stageClearTimes[currentStageIndex] = elapsedSec;
-    }
-
+    stageClearTimes[currentStageIndex] = elapsedSec;
     clearedStages.add(currentStageIndex);
     saveProgress();
     sound.playVictory();
     renderNav();
     updateUI();
-    
+
     const bannerTitle = document.querySelector('#clearBanner .banner-title');
     const bannerDesc = document.querySelector('#clearBanner .banner-desc');
     const bannerBtn = document.getElementById('nextStageBtn');
     const stageTimeStr = formatKoreanDuration(elapsedSec);
 
-    // 30 스테이지(최종 엔딩) 클리어 시에만 꽃가루 대폭발 + 칼퇴 확정 & 총 시간 연출!
+    // 30 스테이지(최종 엔딩)
     if (currentStageIndex >= STAGES.length - 1) {
       let totalSec = 0;
-      for (let i = 0; i < STAGES.length; i++) {
-        totalSec += (stageClearTimes[i] || 0);
-      }
+      for (let i = 0; i < STAGES.length; i++) totalSec += (stageClearTimes[i] || 0);
       const totalTimeStr = formatKoreanDuration(totalSec);
-
       if (bannerTitle) bannerTitle.innerText = "🎉 전설의 칼퇴 확정! 김대리 퇴근 성공!";
-      if (bannerDesc) bannerDesc.innerHTML = `30개의 모든 난관을 뚫고 7년 전 기획서까지 완벽하게 찾아냈습니다.<br><strong style="color:#fcd34d;">⏱️ 이번 스테이지: ${stageTimeStr} | 🏆 총 누적 클리어 시간: ${totalTimeStr}</strong><br>이제 진짜 당당하게 퇴근합니다!`;
+      if (bannerDesc) bannerDesc.innerHTML = `모든 난관을 뚫고 7년 전 기획서까지 완벽하게 찾아냈습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong><br>이제 진짜 당당하게 퇴근합니다!`;
       if (bannerBtn) bannerBtn.innerText = "🏠 타이틀로 돌아가기 (Space / Enter)";
-
-      // 화려한 축하 꽃가루 파티클 150개 대폭발
-      for (let i = 0; i < 150; i++) {
-        particles.push({
-          x: canvas.width / 2 + (Math.random() - 0.5) * canvas.width * 0.9,
-          y: (Math.random() - 0.5) * 60,
-          vx: (Math.random() - 0.5) * 8,
-          vy: Math.random() * 4 + 1.5,
-          color: ['#f59e0b', '#10b981', '#38bdf8', '#fbbf24', '#ec4899', '#a855f7', '#ffffff'][Math.floor(Math.random() * 7)],
-          size: Math.random() * 7 + 3,
-          life: 1.8,
-          decay: Math.random() * 0.012 + 0.008
-        });
-      }
     } else {
-      // 1~29 스테이지 클리어 시간 표시 및 팝업
+      // 1~29 스테이지
       if (bannerTitle) bannerTitle.innerText = "✨ 스테이지 클리어!";
       if (bannerDesc) {
         const descMsg = (currentStageIndex === 14) 
@@ -2322,24 +2300,10 @@ function checkVictory() {
         bannerDesc.innerHTML = `${descMsg}<br><span style="color:#fcd34d; font-weight:700;">⏱️ 클리어 시간: ${stageTimeStr}</span>`;
       }
       if (bannerBtn) bannerBtn.innerText = "다음 업무로 (Space / Enter)";
-
-      for (let i = 0; i < 40; i++) {
-        particles.push({
-          x: canvas.width / 2 + (Math.random() - 0.5) * 220,
-          y: canvas.height / 2 + (Math.random() - 0.5) * 120,
-          vx: (Math.random() - 0.5) * 7,
-          vy: (Math.random() - 0.8) * 6,
-          color: ['#f59e0b', '#10b981', '#38bdf8', '#fbbf24'][Math.floor(Math.random() * 4)],
-          size: Math.random() * 5 + 3,
-          life: 1.0,
-          decay: Math.random() * 0.02 + 0.015
-        });
-      }
     }
 
-    setTimeout(() => {
-      document.getElementById('clearBanner').classList.add('active');
-    }, 350);
+    // 🎯 핵심 변경: setTimeout 없이 즉시 배너 노출
+    document.getElementById('clearBanner').classList.add('active');
   }
 }
 
@@ -3130,39 +3094,67 @@ function drawTitleScreen() {
 
   // 2. 하단 3대 서브 버튼 (Y: 575로 맨 아래 안정적 배치)
   // [스토리 보기]
-  const sBtn = storyReplayBtnRect;
-  sBtn.w = 138; sBtn.h = 52; sBtn.x = w / 2 - 220; sBtn.y = 575;
-  ctx.save();
-  ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 10); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 15px "Pretendard", sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
-  ctx.restore();
+  // 2. 하단 서브 버튼들 (모바일: 3개 버튼 / PC: 터치모드 제거 후 2개 버튼 깔끔 배치)
+  const isMobile = window.innerWidth <= 640;
 
-  // [터치/십자키 모드 토글]
-  const tBtn = touchModeBtnRect;
-  tBtn.w = 144; tBtn.h = 52; tBtn.x = w / 2 - 72; tBtn.y = 575;
-  ctx.save();
-  const showTouchText = !isTouchMode;
-  ctx.fillStyle = showTouchText ? '#1a2333' : 'rgba(245, 158, 11, 0.25)';
-  ctx.strokeStyle = showTouchText ? '#38bdf8' : '#f59e0b'; ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 10); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = showTouchText ? '#38bdf8' : '#fcd34d'; ctx.font = 'bold 15px "Pretendard", sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(showTouchText ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
-  ctx.restore();
+  if (isMobile) {
+    // 📱 모바일: [스토리 보기] | [터치/십자키 모드] | [기록 초기화]
+    const sBtn = storyReplayBtnRect;
+    sBtn.w = 135; sBtn.h = 48; sBtn.x = w / 2 - 215; sBtn.y = 440;
+    ctx.save();
+    ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
+    ctx.restore();
 
-  // [기록 초기화]
-  const rBtn = resetProgressBtnRect;
-  rBtn.w = 138; rBtn.h = 52; rBtn.x = w / 2 + 82; rBtn.y = 575;
-  ctx.save();
-  ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 10); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f87171'; ctx.font = 'bold 15px "Pretendard", sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
-  ctx.restore();
+    const tBtn = touchModeBtnRect;
+    tBtn.w = 140; tBtn.h = 48; tBtn.x = w / 2 - 70; tBtn.y = 440;
+    ctx.save();
+    const showTouchText = !isTouchMode;
+    ctx.fillStyle = showTouchText ? '#1a2333' : 'rgba(245, 158, 11, 0.25)';
+    ctx.strokeStyle = showTouchText ? '#38bdf8' : '#f59e0b'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(tBtn.x, tBtn.y, tBtn.w, tBtn.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = showTouchText ? '#38bdf8' : '#fcd34d'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(showTouchText ? '👆 터치 모드' : '🎮 십자키 모드', tBtn.x + tBtn.w / 2, tBtn.y + tBtn.h / 2);
+    ctx.restore();
+
+    const rBtn = resetProgressBtnRect;
+    rBtn.w = 135; rBtn.h = 48; rBtn.x = w / 2 + 80; rBtn.y = 440;
+    ctx.save();
+    ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f87171'; ctx.font = 'bold 13px "Pretendard", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
+    ctx.restore();
+  } else {
+    // 🖥️ PC: 터치모드 버튼 숨김 (클릭 판정 제거), [스토리 보기] & [기록 초기화] 2개만 배치
+    touchModeBtnRect.w = 0; 
+    touchModeBtnRect.h = 0;
+
+    const sBtn = storyReplayBtnRect;
+    sBtn.w = 160; sBtn.h = 48; sBtn.x = w / 2 - 175; sBtn.y = 440;
+    ctx.save();
+    ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 14px "Pretendard", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('스토리 보기', sBtn.x + sBtn.w / 2, sBtn.y + sBtn.h / 2);
+    ctx.restore();
+
+    const rBtn = resetProgressBtnRect;
+    rBtn.w = 160; rBtn.h = 48; rBtn.x = w / 2 + 15; rBtn.y = 440;
+    ctx.save();
+    ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f87171'; ctx.font = 'bold 14px "Pretendard", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('기록 초기화', rBtn.x + rBtn.w / 2, rBtn.y + rBtn.h / 2);
+    ctx.restore();
+  }
 
   // 3. 우측 하단 [개발자] 버튼 (Y: 615)
   const dBtn = devModeBtnRect;
@@ -3909,6 +3901,7 @@ function drawParticles() {
   }
 
   if (isCleared && (e.code === 'Space' || e.code === 'Enter')) {
+    e.preventDefault();
     nextStage();
     return;
   }
@@ -3987,25 +3980,31 @@ window.addEventListener('pointerup', (e) => {
 }, { passive: true });
 
 function handleTitleClick(x, y) {
-  // 모달 열려있을 때
+   // 모달 열려있을 때
   if (showStorySelectModal) {
-    const m1 = modalStory1BtnRect;
-    if (x >= m1.x - 10 && x <= m1.x + m1.w + 10 && y >= m1.y - 10 && y <= m1.y + m1.h + 10) {
+    const my = canvas.height / 2 - 110; // 660 / 2 - 110 = 220
+    const mx = canvas.width / 2 - 130;  // 600 / 2 - 130 = 170
+
+    // 1. 스토리 1 버튼 (Y: 265 ~ 320)
+    if (x >= 150 && x <= 450 && y >= my + 45 && y <= my + 95) {
+      sound.init(); sound.playTalk();
+      showStorySelectModal = false;
       startStory(1, 'replay');
       return;
     }
-    const m2 = modalStory2BtnRect;
-    const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
-    if (x >= m2.x - 10 && x <= m2.x + m2.w + 10 && y >= m2.y - 10 && y <= m2.y + m2.h + 10) {
-      if (ch2Unlocked) startStory(2, 'replay');
-      else alert('🔒 스토리 2는 15단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
+    // 2. 스토리 2 버튼 (Y: 320 ~ 375)
+    if (x >= 150 && x <= 450 && y >= my + 98 && y <= my + 150) {
+      const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
+      if (ch2Unlocked) {
+        sound.init(); sound.playTalk();
+        showStorySelectModal = false;
+        startStory(2, 'replay');
+      } else {
+        alert('🔒 스토리 2는 15단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
+      }
       return;
     }
-    const mc = modalCloseBtnRect;
-    if (x >= mc.x - 10 && x <= mc.x + mc.w + 10 && y >= mc.y - 10 && y <= mc.y + mc.h + 10) {
-      showStorySelectModal = false;
-      return;
-    }
+    // 3. 닫기 버튼 or 바깥 터치 (모달 닫기)
     showStorySelectModal = false;
     return;
   }
@@ -4096,13 +4095,21 @@ canvas.addEventListener('pointerdown', (e) => {
 
 
 function nextStage() {
-  // 🎯 15단계를 깼다면 이미 봤든, 개발자 모드든 무조건 두 번째 스토리 재생!
+  // 1. 배너 닫기
+  const banner = document.getElementById('clearBanner');
+  if (banner) banner.classList.remove('active');
+
+  isCleared = false;
+
+  // 2. 15단계면 스토리 2로 전환
   if (currentStageIndex === 14) {
     startStory(2, 'gameplay');
     return;
   }
-  
+
+  // 3. 다음 스테이지 또는 타이틀
   if (currentStageIndex + 1 < STAGES.length) {
+    gameState = 'PLAYING';
     initStage(currentStageIndex + 1);
   } else {
     showTitleScreen();
@@ -4141,18 +4148,25 @@ if (hintBtnEl) {
 }
 document.getElementById('undoBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); undo(); });
 document.getElementById('resetBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); resetStage(); });
-// 🎯 클리어 배너 전체 또는 버튼 어디든 탭하면 즉시 다음 스테이지!
+// 🎯 클리어 버튼 터치/클릭 즉시 다음 스테이지 진행
+const nextBtn = document.getElementById('nextStageBtn');
+if (nextBtn) {
+  const goNext = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    nextStage();
+  };
+  nextBtn.addEventListener('click', goNext);
+  nextBtn.addEventListener('touchend', goNext);
+}
+
 const clearBannerEl = document.getElementById('clearBanner');
 if (clearBannerEl) {
-  clearBannerEl.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    nextStage();
-  });
   clearBannerEl.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    nextStage();
+    if (e.target === clearBannerEl) {
+      e.preventDefault();
+      nextStage();
+    }
   });
 }
 
