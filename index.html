@@ -348,11 +348,10 @@
       transform: scale(0.92);
     }
 
-    .dpad-cross {
-      display: grid;
-      grid-template-columns: repeat(3, 58px); /* 👈 46 -> 58px 확대 */
-      grid-template-rows: repeat(3, 50px);    /* 👈 38 -> 50px 확대 */
-      gap: 4px;
+    /* PC에서는 가상 십자키와 반전버튼 숨김 (키보드로 조작) */
+    .dpad-cross,
+    .swap-ctrl-btn {
+      display: none !important;
     }
 
     .dpad-btn {
@@ -485,6 +484,14 @@
     /* 📱 사파리 주소창/하단바 제외 순수 화면 100% 꽉 채움 */
     /* 📱 사파리 주소창 제외: 하단 키패드 최하단 밀착 + 남은 전체 영역 게임 화면 */
     @media (max-width: 640px) {
+      /* 모바일에서는 가상 십자키와 반전버튼 다시 켜기 */
+      .dpad-cross {
+        display: grid !important;
+      }
+      .swap-ctrl-btn {
+        display: flex !important;
+      }
+      
       /* 모바일에서는 시계 이모티콘 빼고 순수 '시간'만 표시 */
       #timerLabel {
         font-size: 0;
