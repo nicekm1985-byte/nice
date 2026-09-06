@@ -623,7 +623,7 @@
   <!-- 1단: 상단 내비게이션 바 (좌: 타이틀/스테이지 ── 우: BGM/스테이지 팝업) -->
   <div class="header-bar">
     <div class="title-group">
-      <button class="home-btn" id="titleScreenBtn" title="타이틀 화면으로 이동">🏠 타이틀</button>
+      <button class="home-btn" id="titleScreenBtn" title="타이틀 화면으로 이동">🏠 HOME</button>
       <div class="level-title" id="stageName">Stage 1</div>
     </div>
     <!-- 우측 끝: BGM 및 스테이지 선택 모달 버튼 -->
@@ -3167,7 +3167,7 @@ function drawTitleScreen() {
     touchModeBtnRect.h = 0;
 
     const sBtn = storyReplayBtnRect;
-    sBtn.w = 160; sBtn.h = 48; sBtn.x = w / 2 - 175; sBtn.y = 440;
+    sBtn.w = 160; sBtn.h = 48; sBtn.x = w / 2 - 175; sBtn.y = 530;
     ctx.save();
     ctx.fillStyle = '#1a2333'; ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.roundRect(sBtn.x, sBtn.y, sBtn.w, sBtn.h, 8); ctx.fill(); ctx.stroke();
@@ -3177,7 +3177,7 @@ function drawTitleScreen() {
     ctx.restore();
 
     const rBtn = resetProgressBtnRect;
-    rBtn.w = 160; rBtn.h = 48; rBtn.x = w / 2 + 15; rBtn.y = 440;
+    rBtn.w = 160; rBtn.h = 48; rBtn.x = w / 2 + 15; rBtn.y = 530;
     ctx.save();
     ctx.fillStyle = '#1e1b24'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.roundRect(rBtn.x, rBtn.y, rBtn.w, rBtn.h, 8); ctx.fill(); ctx.stroke();
