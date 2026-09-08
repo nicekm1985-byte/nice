@@ -1158,8 +1158,8 @@ class SoundEngine {
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(140, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.04);
-    // 📱 모바일(스마트폰 스피커)에서는 2로 초대형 증폭, PC는 0.60 유지
-    const stepGain = (window.innerWidth <= 640) ? 2 : 0.60;
+    // 📱 모바일(스마트폰 스피커)에서는 2로 초대형 증폭, PC는 0.50 유지
+    const stepGain = (window.innerWidth <= 640) ? 1.5 : 0.30;
     gain.gain.setValueAtTime(stepGain, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
     osc.connect(gain);
@@ -1177,7 +1177,7 @@ class SoundEngine {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(180, this.ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(55, this.ctx.currentTime + 0.09);
-    gain.gain.setValueAtTime(0.65, this.ctx.currentTime); // 상자 밀기 2.3배 증폭
+    gain.gain.setValueAtTime(0.50, this.ctx.currentTime); // 상자 밀기 2.3배 증폭
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.09);
     osc.connect(gain);
     gain.connect(this.sfxGain || this.ctx.destination);
@@ -1878,92 +1878,85 @@ const STAGES = [
   {
     name: "Stage 31",
     diff: "마스터",
-    diffColor: "#ef4444",
-    optimalMoves: 96,
+    diffColor: "#a855f7",
     map: [
-      "##########",
-      "#........#",
-      "#.######.#",
-      "#.#..*...#",
-      "#.#$.&#..#",
-      "#.#..*...#",
-      "#.&&&*..##",
-      "#...#.### ",
-      "##..#.#   ",
-      " #$##$#   ",
-      " #...@#   ",
-      " ######   "
+      "    ####    ",
+      "    #..#    ",
+      "#####..#####",
+      "#...#....$.#",
+      "#.#.##.###.#",
+      "#.#**$*.*#.#",
+      "#.#...$$.#.#",
+      "#.#.&*&.*#.#",
+      "#.###.##.#.#",
+      "#.$@$..#...#",
+      "####...#####",
+      "   #####    "
     ]
   },
-   {
+    {
     name: "Stage 32",
     diff: "마스터",
     diffColor: "#a855f7",
-    optimalMoves: 88,
     map: [
-      "   #####   ",
-      "   #...#   ",
-      "####.#.####",
-      "#......$..#",
-      "#.##.##.#.#",
-      "#.***$***.#",
-      "#.##$$.##.#",
-      "#.#..*..#.#",
-      "#.$@.$..#.#",
-      "###.###...#",
-      "  #.....###",
-      "  #######  "
+      "####        ",
+      "#..#####    ",
+      "#......###  ",
+      "#.*###.$.###",
+      "##.#.*.$**.#",
+      " #.#..$.*#.#",
+      " #$###$*.#.#",
+      " #...#.*##.#",
+      " ###..$..$.#",
+      "   ###*$####",
+      "     #.@#   ",
+      "     ####   "
     ]
   },
-  {
+    {
     name: "Stage 33",
     diff: "마스터",
     diffColor: "#a855f7",
-    optimalMoves: 92,
-    hint: "🌌 <strong>나보코스모스 03 (8상자):</strong> 최하단 포켓에서 상자를 1칸씩 밀어 올리며 진로를 확보하고, 대각선 빗금 영역에 안쪽부터 채워 넣습니다.",
     map: [
-      "  #####    ",
-      "  #...###  ",
-      "###.#.$.###",
-      "#.#.*.$**.#",
-      "#.#..$.*#.#",
-      "#$###$*.#.#",
-      "#...#.*##.#",
-      "###..$..$.#",
-      "  ###*$####",
-      "    #.@#   ",
-      "    ####   "
+      "        #####",
+      "     #####..#",
+      "   ####.$.$.#",
+      "#####*&..#..#",
+      "#.$@$***....#",
+      "#..#$.&*#####",
+      "#.....####   ",
+      "#..#####     ",
+      "#####        "
     ]
   },
-  {
+    {
     name: "Stage 34",
     diff: "마스터",
     diffColor: "#a855f7",
-    optimalMoves: 78,
     map: [
-      "      #######",
-      "    ###..$..#",
-      "#####.*..#..#",
-      "#.$@$***....#",
-      "#..#$.$*#####",
-      "#......##    ",
-      "########     "
+      "  ########## ",
+      "###...##...##",
+      "#..$.$#*..$.#",
+      "#**&**&&$$..#",
+      "#.....#+$...#",
+      "#############"
     ]
   },
-  {
+    {
     name: "Stage 35",
     diff: "마스터",
     diffColor: "#a855f7",
-    optimalMoves: 106,
     map: [
-      "  #########  ",
-      "###...#...###",
-      "#..$.$*...$.#",
-      "#*&**&&&$...#",
-      "#.....#+$.###",
-      "#############"
+      "  ###########",
+      "  #.........#",
+      "###.#######.#",
+      "#.$...*.$@#.#",
+      "#..$.$*#$$#.#",
+      "###...&****.#",
+      "  ######....#",
+      "       ######"
     ]
-  }
+  },
 ];
 
 /* =====================================================================
