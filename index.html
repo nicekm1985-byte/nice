@@ -386,6 +386,8 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
+      padding: 15px; /* 👈 외곽 터치 여유 영역 15px 확장 */
+      margin: -15px 0 0 -15px; /* 레이아웃 틀어짐 방지 음수 마진 */
     }
 
     /* 십자키 날개 공통 스타일 */
@@ -4330,28 +4332,68 @@ if (clearBannerEl) {
   });
 }
 
-document.querySelectorAll('.dpad-btn').forEach(btn => {
-  const dir = btn.getAttribute('data-dir');
-  btn.addEventListener('pointerdown', (e) => {
+/* =====================================================================
+   🎯 십자키 스마트 터치 감지기 (외곽 및 대각선 20px 오차 자동 보정)
+   ===================================================================== */
+(function() {
+  const dpad = document.querySelector('.dpad-cross');
+  if (!dpad) return;
+
+  function triggerDir(dir) {
+    if (!dir) return;
+    const btn = dpad.querySelector(`[data-dir="${dir}"]`);
+    if (btn) {
+      btn.classList.add('active');
+      setTimeout(() => btn.classList.remove('active'), 120);
+    }
+    // 사운드 및 실제 이동 실행
+    if (window.sound && typeof sound.init === 'function') sound.init();
+    if (typeof handleDpadMove === 'function') {
+      handleDpadMove(dir);
+    } else if (typeof movePlayer === 'function') {
+      movePlayer(dir);
+    }
+  }
+
+  // 십자키 중심점 기준 각도(4분면) 판정으로 빗맞은 터치까지 100% 흡수
+  function handleTouch(e) {
     e.preventDefault();
-    if (gameState === 'TITLE') {
-      onTitlePushStart();
-      return;
+    e.stopPropagation();
+    const touch = e.touches ? e.touches[0] : e;
+    const rect = dpad.getBoundingClientRect();
+    
+    // 십자키 중심 좌표
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    
+    const dx = touch.clientX - cx;
+    const dy = touch.clientY - cy;
+    
+    // 중앙 무반응 존 (너무 정중앙은 오작동 방지)
+    const dist = Math.hypot(dx, dy);
+    if (dist < 12) return;
+
+    // 각도로 4방향 계산 (상/하/좌/우)
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI); // -180 ~ 180
+    
+    let dir = '';
+    if (angle >= -45 && angle < 45) {
+      dir = 'right';
+    } else if (angle >= 45 && angle < 135) {
+      dir = 'down';
+    } else if (angle >= -135 && angle < -45) {
+      dir = 'up';
+    } else {
+      dir = 'left';
     }
-    if (gameState === 'STORY') {
-      advanceStory();
-      return;
-    }
-    if (isCleared) {
-      nextStage();
-      return;
-    }
-    if (dir === 'up') tryMove(0, -1, 'up');
-    if (dir === 'down') tryMove(0, 1, 'down');
-    if (dir === 'left') tryMove(-1, 0, 'left');
-    if (dir === 'right') tryMove(1, 0, 'right');
-  });
-});
+
+    triggerDir(dir);
+  }
+
+  // 외곽 +20px 여유 공간 포함 터치 이벤트 바인딩
+  dpad.addEventListener('touchstart', handleTouch, { passive: false });
+  dpad.addEventListener('mousedown', handleTouch);
+})();
 
 // BGM 볼륨 슬라이더 및 자동 재생 언락
 let isBgmMuted = false;
