@@ -2,9 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <!-- 📱 아이폰 사파리 메뉴창/주소창 완전 제거 (독립 앱 실행) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <!-- 📱 아이폰 사파리 화면 최하단 바닥까지 빈틈없이 100% 꽉 채움 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -644,8 +643,9 @@
         width: 100%;
         height: 100svh;
         max-width: 100%;
-        /* 상단 4px, 좌우 4px, 하단은 아이폰 홈바(safe-area)에 바짝 밀착 */
-        padding: 4px 4px env(safe-area-inset-bottom, 2px) 4px;
+        /* 상단 4px, 좌우 4px, 하단 패딩 0으로 주소창 끝까지 완전 밀착 */
+        padding: 4px 4px 0 4px;
+        background: var(--card-bg); /* 네이비 배경이 화면 끝까지 연장 */
         border: none;
         border-radius: 0;
         display: flex;
@@ -707,7 +707,7 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: flex-end !important; /* 바닥 기준 정렬 */
-        padding: 0 10px env(safe-area-inset-bottom, 2px) 10px !important;
+        padding: 0 10px 0 10px !important;
         margin-bottom: 0 !important;
         flex-shrink: 0 !important;
         height: 172px !important; /* 십자키 높이(168px) + 여유 */
