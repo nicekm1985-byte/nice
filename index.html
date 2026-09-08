@@ -375,13 +375,13 @@
       display: none !important;
     }
 
-     /* 🎮 일체형 Retro Pixel Art 십자키 (+) */
+    /* 🎮 일체형 Retro Pixel Art 십자키 (+) - 150px 미세 조정 */
     .dpad-cross {
       display: grid;
-      grid-template-columns: repeat(3, 56px);
-      grid-template-rows: repeat(3, 56px);
-      width: 168px;
-      height: 168px;
+      grid-template-columns: repeat(3, 50px);
+      grid-template-rows: repeat(3, 50px);
+      width: 150px;
+      height: 150px;
       position: relative;
       user-select: none;
       -webkit-user-select: none;
@@ -713,27 +713,27 @@
         height: 172px !important; /* 십자키 높이(168px) + 여유 */
       }
 
-      /* 십자키 바닥 밀착 */
+      /* 십자키 150px로 축소 및 바닥 밀착 */
       .dpad-cross {
-        grid-template-columns: repeat(3, 56px) !important;
-        grid-template-rows: repeat(3, 56px) !important;
-        width: 168px !important;
-        height: 168px !important;
+        grid-template-columns: repeat(3, 50px) !important;
+        grid-template-rows: repeat(3, 50px) !important;
+        width: 150px !important;
+        height: 150px !important;
         gap: 0 !important;
         margin-bottom: 0 !important;
         align-self: flex-end !important;
       }
 
-      /* ⇄ 중앙 반전 버튼: 십자키 오른쪽 버튼(Row 2) 중심에 수평 일치 */
+      /* ⇄ 중앙 반전 버튼: 십자키 오른쪽 버튼 중심(바닥에서 75px)과 일치 */
       .swap-ctrl-btn {
         align-self: flex-end !important;
-        margin-bottom: 73px !important; /* 56px(Row 3) + 28px(중심) - 11px(버튼절반) */
+        margin-bottom: 64px !important;
       }
 
-      /* 🎯 우측 액션 버튼(되돌리기/재시작): 십자키 오른쪽 버튼과 수평선 일치 */
+      /* 🎯 우측 액션 버튼: 십자키 오른쪽 버튼(Row 2: 50~100px)과 수평 정렬 */
       .action-circle-group {
         align-self: flex-end !important;
-        margin-bottom: 56px !important; /* 십자키 Row 3 높이(56px)만큼 띄워 Row 2와 정확히 수평 정렬 */
+        margin-bottom: 47px !important;
       }
 
 
