@@ -833,7 +833,7 @@
     
     <!-- 스테이지 클리어 오버레이 -->
     <div class="banner-overlay" id="clearBanner">
-      <div class="banner-title">✨ 칼퇴 확정! 스테이지 클리어!</div>
+      <div class="banner-title">✨ 퇴근 확정! 스테이지 클리어!</div>
       <div class="banner-desc" id="clearDesc">김대리가 모든 상자를 완벽하게 정리했습니다.</div>
       <button class="banner-btn" id="nextStageBtn">다음 업무로 (Space / Enter)</button>
     </div>
@@ -1338,7 +1338,7 @@ const STORY_CHAPTER_1 = [
     type: 'office',
     speaker: '박부장',
     speakerColor: '#ef4444',
-    text: '“그래서 뭐? 지금 나한테 말대꾸하는 거야? 퇴근 전에 못 찾으면 오늘 야근이야!!”',
+    text: '“그래서 뭐? 지금 나한테 말대꾸하는 거야? 퇴근 전에 못 찾으면 집에 못 가!!”',
     sub: '박부장의 필살기: 그래서 뭐?'
   },
   {
@@ -1369,7 +1369,7 @@ const STORY_CHAPTER_2 = [
     type: 'office',
     speaker: '김대리',
     speakerColor: '#38bdf8',
-    text: '“감사합니다 부장님! 그럼 저 이제 드디어 칼퇴해도 되겠습니까...?!”',
+    text: '“감사합니다 부장님! 그럼 저 이제 드디어 퇴근해도 되겠습니까...?!”',
     sub: '기획1팀 김대리 (설레는 퇴근 직전)'
   },
   {
@@ -1397,7 +1397,7 @@ const STORY_CHAPTER_2 = [
     type: 'warehouse_inside',
     speaker: '김대리',
     speakerColor: '#38bdf8',
-    text: '“으악... 지하 10층은 상자가 두 배로 꼬여있잖아...?! 이번에야말로 진짜 칼퇴하고 만다!!”',
+    text: '“으악... 지하 10층은 상자가 두 배로 꼬여있잖아...?! 이번에야말로 진짜 퇴근하고 만다!!”',
     sub: '지하 14층 심층 폐쇄 창고 내부'
   }
 ];
@@ -1847,7 +1847,6 @@ const STAGES = [
     name: "Stage 29",
     diff: "두뇌 한계",
     diffColor: "#dc2626",
-    hint: "👑 <strong>두뇌 한계:</strong> 61수의 장거리 수읽기를 통해 상자를 구출하세요.",
     map: [
       "      ####  ",
       "      #.@#  ",
@@ -1864,7 +1863,6 @@ const STAGES = [
     name: "Stage 30",
     diff: "마스터",
     diffColor: "#a855f7",
-    hint: "🏆 <strong>그랜드마스터 (104수):</strong> 전설의 104수 초장거리 연쇄 퍼즐! 소코반의 정점에서 칼퇴의 신화가 되세요!",
     map: [
       "     #####    ",
       "     #...##   ",
@@ -1874,7 +1872,96 @@ const STAGES = [
       "#.$.$.@..##   ",
       "#.######*#    ",
       "#........#    ",
-      "##########    "
+       "##########    "
+    ]
+  },
+  {
+    name: "Stage 31",
+    diff: "마스터",
+    diffColor: "#ef4444",
+    optimalMoves: 96,
+    map: [
+      "##########",
+      "#........#",
+      "#.######.#",
+      "#.#..*...#",
+      "#.#$.&#..#",
+      "#.#..*...#",
+      "#.&&&*..##",
+      "#...#.### ",
+      "##..#.#   ",
+      " #$##$#   ",
+      " #...@#   ",
+      " ######   "
+    ]
+  },
+   {
+    name: "Stage 32",
+    diff: "마스터",
+    diffColor: "#a855f7",
+    optimalMoves: 88,
+    map: [
+      "   #####   ",
+      "   #...#   ",
+      "####.#.####",
+      "#......$..#",
+      "#.##.##.#.#",
+      "#.***$***.#",
+      "#.##$$.##.#",
+      "#.#..*..#.#",
+      "#.$@.$..#.#",
+      "###.###...#",
+      "  #.....###",
+      "  #######  "
+    ]
+  },
+  {
+    name: "Stage 33",
+    diff: "마스터",
+    diffColor: "#a855f7",
+    optimalMoves: 92,
+    hint: "🌌 <strong>나보코스모스 03 (8상자):</strong> 최하단 포켓에서 상자를 1칸씩 밀어 올리며 진로를 확보하고, 대각선 빗금 영역에 안쪽부터 채워 넣습니다.",
+    map: [
+      "  #####    ",
+      "  #...###  ",
+      "###.#.$.###",
+      "#.#.*.$**.#",
+      "#.#..$.*#.#",
+      "#$###$*.#.#",
+      "#...#.*##.#",
+      "###..$..$.#",
+      "  ###*$####",
+      "    #.@#   ",
+      "    ####   "
+    ]
+  },
+  {
+    name: "Stage 34",
+    diff: "마스터",
+    diffColor: "#a855f7",
+    optimalMoves: 78,
+    map: [
+      "      #######",
+      "    ###..$..#",
+      "#####.*..#..#",
+      "#.$@$***....#",
+      "#..#$.$*#####",
+      "#......##    ",
+      "########     "
+    ]
+  },
+  {
+    name: "Stage 35",
+    diff: "마스터",
+    diffColor: "#a855f7",
+    optimalMoves: 106,
+    map: [
+      "  #########  ",
+      "###...#...###",
+      "#..$.$*...$.#",
+      "#*&**&&&$...#",
+      "#.....#+$.###",
+      "#############"
     ]
   }
 ];
@@ -2461,7 +2548,7 @@ function checkVictory() {
       let totalSec = 0;
       for (let i = 0; i < STAGES.length; i++) totalSec += (stageClearTimes[i] || 0);
       const totalTimeStr = formatKoreanDuration(totalSec);
-      if (bannerTitle) bannerTitle.innerText = "🎉 전설의 칼퇴 확정! 김대리 퇴근 성공!";
+      if (bannerTitle) bannerTitle.innerText = "🎉 전설의 상자정리! 김대리 퇴근 성공!";
       if (bannerDesc) bannerDesc.innerHTML = `모든 난관을 뚫고 7년 전 기획서까지 완벽하게 찾아냈습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong><br>이제 진짜 당당하게 퇴근합니다!`;
       if (bannerBtn) bannerBtn.innerText = "🏠 타이틀로 돌아가기 (Space / Enter)";
     } else {
@@ -3222,7 +3309,7 @@ function drawTitleScreen() {
   // 3. 서브 타이틀 (21px 볼드, Y: 195)
   ctx.fillStyle = '#cbd5e1';
   ctx.font = '700 21px "Pretendard", sans-serif';
-  ctx.fillText('“오늘도 무사히 칼퇴할 수 있을까...?”', w / 2, 195);
+  ctx.fillText('“오늘도 무사히 퇴근할 수 있을까...?”', w / 2, 195);
 
   // 4. 남은 목표 뱃지 (24px ExtraBold, Y: 240)
   const remainTitleGoals = Math.max(0, 30 - ((typeof clearedStages !== 'undefined' && clearedStages) ? clearedStages.size : 0));
