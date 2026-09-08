@@ -3709,7 +3709,14 @@ function drawInGame() {
 
       if (cell.type === 'floor') {
         const isAlt = (r + c) % 2 === 0;
-        if (isDeepZone) {
+        const isMasterRedZone = currentStageIndex >= 30 && currentStageIndex <= 34; // 31~35단계
+        if (isMasterRedZone) {
+          // 🔴 31~35단계: 은은한 흑적색 다크 버건디 바닥
+          ctx.fillStyle = isAlt ? '#1a1013' : '#140c0f';
+          ctx.fillRect(px, py, curTile, curTile);
+          ctx.strokeStyle = '#2d151a';
+          ctx.strokeRect(px + 0.5, py + 0.5, curTile - 1, curTile - 1);
+        } else if (isDeepZone) {
           ctx.fillStyle = isAlt ? '#131f22' : '#0e1719';
           ctx.fillRect(px, py, curTile, curTile);
           ctx.strokeStyle = '#1c2d31';
@@ -3763,10 +3770,17 @@ function drawInGame() {
   ctx.restore();
 }
 
-// 🧱 이동 불가 구역 벽 블록
+// 🧱 이동 불가 구역 벽 블록 (31~35단계: 붉은 메탈 크림슨 벽체)
 function drawCustomWall(x, y, size) {
+  const isMasterRedZone = currentStageIndex >= 30 && currentStageIndex <= 34; // 31~35단계 (인덱스 30~34)
   const isDeepZone = currentStageIndex >= 15;
-  ctx.fillStyle = isDeepZone ? '#080d0e' : '#0c1017';
+
+  // 1. 블록 바탕 베이스
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#12080a'; // 흑적색 베이스
+  } else {
+    ctx.fillStyle = isDeepZone ? '#080d0e' : '#0c1017';
+  }
   ctx.fillRect(x, y, size, size);
 
   const topH = Math.floor(size * 0.44);
@@ -3774,30 +3788,56 @@ function drawCustomWall(x, y, size) {
   const halfW = Math.floor((size - margin * 3) / 2);
   const panelH = topH - margin * 2;
 
-  // 1. 상단 메탈 패널 (지하 10층: 다크 틸 메탈)
-  ctx.fillStyle = isDeepZone ? '#283c42' : '#394354';
+  // 2. 상단 메탈 패널 (31~35단계: 고급스러운 붉은 와인/크림슨 메탈)
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#5c1d24'; // 붉은 메탈 상단 패널
+  } else {
+    ctx.fillStyle = isDeepZone ? '#283c42' : '#394354';
+  }
   ctx.fillRect(x + margin, y + margin, halfW, panelH);
   ctx.fillRect(x + margin * 2 + halfW, y + margin, halfW, panelH);
 
-  // 2. 상단 하이라이트 라인
-  ctx.fillStyle = isDeepZone ? '#3b545c' : '#4c5970';
+  // 3. 상단 하이라이트 빛 라인
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#852d36'; // 밝은 붉은 하이라이트
+  } else {
+    ctx.fillStyle = isDeepZone ? '#3b545c' : '#4c5970';
+  }
   ctx.fillRect(x + margin + 1, y + margin + 1, halfW - 2, 2);
   ctx.fillRect(x + margin * 2 + halfW + 1, y + margin + 1, halfW - 2, 2);
 
-  // 3. 패널 사이 분할 홈 섀도우
-  ctx.fillStyle = isDeepZone ? '#141f22' : '#1c2330';
+  // 4. 패널 사이 분할 홈 섀도우
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#260a0f';
+  } else {
+    ctx.fillStyle = isDeepZone ? '#141f22' : '#1c2330';
+  }
   ctx.fillRect(x + margin + halfW, y + margin, margin, panelH);
 
-  // 4. 하단 베이스 블록
+  // 5. 하단 베이스 블록
   const bottomY = y + topH;
   const bottomH = size - topH - margin;
-  ctx.fillStyle = isDeepZone ? '#1d2c30' : '#262f40';
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#3b1419'; // 붉은 기가 도는 하단 메탈 블록
+  } else {
+    ctx.fillStyle = isDeepZone ? '#1d2c30' : '#262f40';
+  }
   ctx.fillRect(x + margin, bottomY, size - margin * 2, bottomH);
 
-  ctx.fillStyle = isDeepZone ? '#10181a' : '#171c26';
+  // 6. 하단 밑바닥 섀도우
+  if (isMasterRedZone) {
+    ctx.fillStyle = '#1a070a';
+  } else {
+    ctx.fillStyle = isDeepZone ? '#10181a' : '#171c26';
+  }
   ctx.fillRect(x + margin, y + size - 4, size - margin * 2, 3);
 
-  ctx.strokeStyle = isDeepZone ? '#06090a' : '#0b0f16';
+  // 7. 외곽 테두리선
+  if (isMasterRedZone) {
+    ctx.strokeStyle = '#380a10';
+  } else {
+    ctx.strokeStyle = isDeepZone ? '#06090a' : '#0b0f16';
+  }
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
 }
