@@ -375,7 +375,7 @@
       display: none !important;
     }
 
-    /* 🎮 일체형 Retro Pixel Art 십자키 (+) */
+    /* 🎮 일체형 Retro Pixel Art 십자키 (+) - 150px 미세 조정 */
     .dpad-cross {
       display: grid;
       grid-template-columns: repeat(3, 50px);
@@ -388,6 +388,7 @@
       touch-action: none;
     }
 
+    /* 십자키 날개 공통 스타일 */
     .dpad-btn {
       background-color: #383435;
       border: none;
@@ -402,17 +403,18 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* 🎯 핵심: 위치 왜곡 없이 버튼 테두리 밖 12px까지 터치 인식 확대 */
-    .dpad-btn::after {
+    /* 터치 범위 확장 히트박스 */
+    .dpad-btn::before {
       content: '';
       position: absolute;
-      top: -12px;
-      left: -12px;
-      right: -12px;
-      bottom: -12px;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
       z-index: 10;
     }
 
+    /* 일체형 십자키 중앙 블록 */
     .dpad-center {
       grid-column: 2;
       grid-row: 2;
@@ -420,7 +422,7 @@
       z-index: 1;
     }
 
-    /* 일체형 외곽선 & 베벨 */
+    /* 각 방향별 외곽 검은선 + 브라운 베벨 테두리 (안쪽은 터서 일체화) */
     .dpad-up {
       grid-column: 2; grid-row: 1;
       box-shadow: 
@@ -446,6 +448,7 @@
         4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;
     }
 
+    /* 누를 때 픽셀 눌림 피드백 */
     .dpad-btn:active {
       background-color: #2b2829;
     }
@@ -453,7 +456,7 @@
       transform: translate(2px, 2px);
     }
 
-    /* 픽셀 도트 화살표 */
+    /* 계단식 픽셀 도트 화살표 (Retro Pixel Art) */
     .pixel-arrow {
       width: 24px;
       height: 24px;
@@ -461,6 +464,7 @@
       pointer-events: none;
       background-repeat: no-repeat;
     }
+    /* 위 화살표 ▲ */
     .dpad-up .pixel-arrow {
       background-image: 
         linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
@@ -468,6 +472,7 @@
       background-size: 4px 4px, 12px 4px, 20px 4px, 8px 6px;
       background-position: 10px 2px, 6px 6px, 2px 10px, 8px 14px;
     }
+    /* 아래 화살표 ▼ */
     .dpad-down .pixel-arrow {
       background-image: 
         linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
@@ -475,6 +480,7 @@
       background-size: 8px 6px, 20px 4px, 12px 4px, 4px 4px;
       background-position: 8px 4px, 2px 10px, 6px 14px, 10px 18px;
     }
+    /* 왼쪽 화살표 ◀ */
     .dpad-left .pixel-arrow {
       background-image: 
         linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
@@ -482,6 +488,7 @@
       background-size: 4px 4px, 4px 12px, 4px 20px, 6px 8px;
       background-position: 2px 10px, 6px 6px, 10px 2px, 14px 8px;
     }
+    /* 오른쪽 화살표 ▶ */
     .dpad-right .pixel-arrow {
       background-image: 
         linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
@@ -4323,7 +4330,28 @@ if (clearBannerEl) {
   });
 }
 
-
+document.querySelectorAll('.dpad-btn').forEach(btn => {
+  const dir = btn.getAttribute('data-dir');
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (gameState === 'TITLE') {
+      onTitlePushStart();
+      return;
+    }
+    if (gameState === 'STORY') {
+      advanceStory();
+      return;
+    }
+    if (isCleared) {
+      nextStage();
+      return;
+    }
+    if (dir === 'up') tryMove(0, -1, 'up');
+    if (dir === 'down') tryMove(0, 1, 'down');
+    if (dir === 'left') tryMove(-1, 0, 'left');
+    if (dir === 'right') tryMove(1, 0, 'right');
+  });
+});
 
 // BGM 볼륨 슬라이더 및 자동 재생 언락
 let isBgmMuted = false;
