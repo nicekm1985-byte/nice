@@ -375,7 +375,7 @@
       display: none !important;
     }
 
-     /* 🎮 초대형 레트로 픽셀 D-Pad 매트릭스 (3x3 - 168px) */
+     /* 🎮 일체형 Retro Pixel Art 십자키 (+) */
     .dpad-cross {
       display: grid;
       grid-template-columns: repeat(3, 56px);
@@ -385,11 +385,12 @@
       position: relative;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none; /* 제스처 간섭 원천 차단 */
+      touch-action: none;
     }
 
+    /* 십자키 날개 공통 스타일 */
     .dpad-btn {
-      background-color: #3b4252;
+      background-color: #383435;
       border: none;
       position: relative;
       cursor: pointer;
@@ -398,15 +399,11 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      box-shadow: 
-        inset 4px 4px 0px #5e687e,
-        inset -4px -4px 0px #212631,
-        0px 0px 0px 2px #0f1218;
       z-index: 2;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* 🎯 터치 인식률 극대화: 버튼 외곽으로 +10px 투명 히트박스 확장 */
+    /* 터치 범위 확장 히트박스 */
     .dpad-btn::before {
       content: '';
       position: absolute;
@@ -417,42 +414,90 @@
       z-index: 10;
     }
 
-    .dpad-btn:active {
-      background-color: #2e3440;
-      box-shadow: 
-        inset 4px 4px 0px #1e222b,
-        inset -4px -4px 0px #4c566a,
-        0px 0px 0px 2px #0f1218;
-    }
-    .dpad-btn:active .arrow {
-      transform: translate(2px, 2px);
-    }
-
-    .dpad-up    { grid-column: 2; grid-row: 1; }
-    .dpad-left  { grid-column: 1; grid-row: 2; }
-    .dpad-right { grid-column: 3; grid-row: 2; }
-    .dpad-down  { grid-column: 2; grid-row: 3; }
-
+    /* 일체형 십자키 중앙 블록 */
     .dpad-center {
       grid-column: 2;
       grid-row: 2;
-      background-color: #3b4252;
-      box-shadow: 0px 0px 0px 2px #0f1218;
+      background-color: #383435;
       z-index: 1;
     }
 
-    /* 대형 도트 화살표 디자인 */
-    .arrow {
-      width: 0;
-      height: 0;
+    /* 각 방향별 외곽 검은선 + 브라운 베벨 테두리 (안쪽은 터서 일체화) */
+    .dpad-up {
+      grid-column: 2; grid-row: 1;
+      box-shadow: 
+        inset 0 4px 0 #5a5350, inset 4px 0 0 #5a5350, inset -4px 0 0 #5a5350,
+        0 -4px 0 #000, -4px 0 0 #000, 4px 0 0 #000;
+    }
+    .dpad-down {
+      grid-column: 2; grid-row: 3;
+      box-shadow: 
+        inset 0 -4px 0 #232021, inset 4px 0 0 #5a5350, inset -4px 0 0 #232021,
+        0 4px 0 #000, -4px 0 0 #000, 4px 0 0 #000;
+    }
+    .dpad-left {
+      grid-column: 1; grid-row: 2;
+      box-shadow: 
+        inset 4px 0 0 #5a5350, inset 0 4px 0 #5a5350, inset 0 -4px 0 #232021,
+        -4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;
+    }
+    .dpad-right {
+      grid-column: 3; grid-row: 2;
+      box-shadow: 
+        inset -4px 0 0 #232021, inset 0 4px 0 #5a5350, inset 0 -4px 0 #232021,
+        4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;
+    }
+
+    /* 누를 때 픽셀 눌림 피드백 */
+    .dpad-btn:active {
+      background-color: #2b2829;
+    }
+    .dpad-btn:active .pixel-arrow {
+      transform: translate(2px, 2px);
+    }
+
+    /* 계단식 픽셀 도트 화살표 (Retro Pixel Art) */
+    .pixel-arrow {
+      width: 24px;
+      height: 24px;
       display: block;
       pointer-events: none;
+      background-repeat: no-repeat;
     }
-    .dpad-up .arrow    { border-bottom: 14px solid #ffffff; border-left: 13px solid transparent; border-right: 13px solid transparent; }
-    .dpad-down .arrow  { border-top: 14px solid #ffffff; border-left: 13px solid transparent; border-right: 13px solid transparent; }
-    .dpad-left .arrow  { border-right: 14px solid #ffffff; border-top: 13px solid transparent; border-bottom: 13px solid transparent; }
-    .dpad-right .arrow { border-left: 14px solid #ffffff; border-top: 13px solid transparent; border-bottom: 13px solid transparent; }
-   
+    /* 위 화살표 ▲ */
+    .dpad-up .pixel-arrow {
+      background-image: 
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+      background-size: 4px 4px, 12px 4px, 20px 4px, 8px 6px;
+      background-position: 10px 2px, 6px 6px, 2px 10px, 8px 14px;
+    }
+    /* 아래 화살표 ▼ */
+    .dpad-down .pixel-arrow {
+      background-image: 
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+      background-size: 8px 6px, 20px 4px, 12px 4px, 4px 4px;
+      background-position: 8px 4px, 2px 10px, 6px 14px, 10px 18px;
+    }
+    /* 왼쪽 화살표 ◀ */
+    .dpad-left .pixel-arrow {
+      background-image: 
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+      background-size: 4px 4px, 4px 12px, 4px 20px, 6px 8px;
+      background-position: 2px 10px, 6px 6px, 10px 2px, 14px 8px;
+    }
+    /* 오른쪽 화살표 ▶ */
+    .dpad-right .pixel-arrow {
+      background-image: 
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+      background-size: 6px 8px, 4px 20px, 4px 12px, 4px 4px;
+      background-position: 4px 8px, 10px 2px, 14px 6px, 18px 10px;
+    }
+
+
     /* ====================================================
        3D Pseudo-Isometric 액션 버튼 (되돌리기 / 재시작)
        ==================================================== */
@@ -654,43 +699,44 @@
         display: block;
       }
 
-      /* 📱 하단 패드: 가로 100% 꽉 채우고 십자키와 버튼을 양 끝 벽으로 강제 분산 */
+      /* 📱 하단 패드: 십자키 오른쪽 버튼(Row 2)과 수평 중심선 1:1 일치 */
       .gamepad-container {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         display: flex !important;
         justify-content: space-between !important;
-        align-items: flex-end !important; /* 👈 하단 바닥에 바짝 밀착 */
-        padding: 0 8px env(safe-area-inset-bottom, 2px) 8px !important;
+        align-items: flex-end !important; /* 바닥 기준 정렬 */
+        padding: 0 10px env(safe-area-inset-bottom, 2px) 10px !important;
         margin-bottom: 0 !important;
         flex-shrink: 0 !important;
+        height: 172px !important; /* 십자키 높이(168px) + 여유 */
       }
 
-      /* 🔄 좌우 반전 시에도 양 끝 정렬 유지 */
-      .gamepad-container.swapped {
-        flex-direction: row-reverse !important;
-        justify-content: space-between !important;
-      }
-
+      /* 십자키 바닥 밀착 */
       .dpad-cross {
         grid-template-columns: repeat(3, 56px) !important;
         grid-template-rows: repeat(3, 56px) !important;
         width: 168px !important;
         height: 168px !important;
         gap: 0 !important;
-        margin-bottom: 2px !important;
-      }
-      
-      .dpad-btn {
-        font-size: 17px;
+        margin-bottom: 0 !important;
+        align-self: flex-end !important;
       }
 
-      .circle-btn {
-        width: 52px;
-        height: 52px;
+      /* ⇄ 중앙 반전 버튼: 십자키 오른쪽 버튼(Row 2) 중심에 수평 일치 */
+      .swap-ctrl-btn {
+        align-self: flex-end !important;
+        margin-bottom: 73px !important; /* 56px(Row 3) + 28px(중심) - 11px(버튼절반) */
       }
-    }
+
+      /* 🎯 우측 액션 버튼(되돌리기/재시작): 십자키 오른쪽 버튼과 수평선 일치 */
+      .action-circle-group {
+        align-self: flex-end !important;
+        margin-bottom: 56px !important; /* 십자키 Row 3 높이(56px)만큼 띄워 Row 2와 정확히 수평 정렬 */
+      }
+
+
   </style>
 </head>
 <body>
@@ -797,18 +843,18 @@
 
   <!-- 🎮 모바일 터치 컨트롤 (왼쪽 D-Pad / 오른쪽 동그란 액션 버튼) -->
   <div class="gamepad-container">
-    <!-- 좌측 D-PAD (레트로 픽셀 스타일) -->
+    <!-- 좌측 D-PAD (일체형 Retro Pixel Art) -->
     <div class="dpad-cross">
       <div></div>
-      <button class="dpad-btn dpad-up" data-dir="up" aria-label="위로"><span class="arrow"></span></button>
+      <button class="dpad-btn dpad-up" data-dir="up" aria-label="위로"><span class="pixel-arrow"></span></button>
       <div></div>
 
-      <button class="dpad-btn dpad-left" data-dir="left" aria-label="왼쪽"><span class="arrow"></span></button>
+      <button class="dpad-btn dpad-left" data-dir="left" aria-label="왼쪽"><span class="pixel-arrow"></span></button>
       <div class="dpad-center"></div>
-      <button class="dpad-btn dpad-right" data-dir="right" aria-label="오른쪽"><span class="arrow"></span></button>
+      <button class="dpad-btn dpad-right" data-dir="right" aria-label="오른쪽"><span class="pixel-arrow"></span></button>
 
       <div></div>
-      <button class="dpad-btn dpad-down" data-dir="down" aria-label="아래로"><span class="arrow"></span></button>
+      <button class="dpad-btn dpad-down" data-dir="down" aria-label="아래로"><span class="pixel-arrow"></span></button>
       <div></div>
     </div>
 
