@@ -32,7 +32,7 @@
       -webkit-user-select: none;
       margin: 0;
       padding: 0;
-      touch-action: manipulation; /* 👈 버튼 터치 지연 없이 즉시 반응 */
+      touch-action: none !important; /* 👈 사파리 더블탭 확대, 핀치 줌 완벽 차단 */
     }
 
     body body {
@@ -699,41 +699,40 @@
         display: block;
       }
 
-      /* 📱 하단 패드: 십자키 오른쪽 버튼(Row 2)과 수평 중심선 1:1 일치 */
+       /* 📱 하단 패드: 십자키 상하 중앙 정렬 + 모든 버튼 십자키 정중앙 일치 */
       .gamepad-container {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         display: flex !important;
         justify-content: space-between !important;
-        align-items: flex-end !important; /* 바닥 기준 정렬 */
-        padding: 0 10px 0 10px !important;
-        margin-bottom: 0 !important;
-        flex-shrink: 0 !important;
-        height: 172px !important; /* 십자키 높이(168px) + 여유 */
+        align-items: center !important; /* 👈 위/아래 사이 정중앙 정렬 */
+        padding: 0 12px 0 12px !important;
+        margin: 0 !important;
+        flex: 1 0 auto !important; /* 남은 하단 패널 높이 안에서 완벽한 상하 중앙 유지 */
       }
 
-      /* 십자키 150px로 축소 및 바닥 밀착 */
+      /* 십자키: 상하 중앙 정렬 */
       .dpad-cross {
         grid-template-columns: repeat(3, 50px) !important;
         grid-template-rows: repeat(3, 50px) !important;
         width: 150px !important;
         height: 150px !important;
         gap: 0 !important;
-        margin-bottom: 0 !important;
-        align-self: flex-end !important;
+        margin: 0 !important;
+        align-self: center !important;
       }
 
-      /* ⇄ 중앙 반전 버튼: 십자키 오른쪽 버튼 중심(바닥에서 75px)과 일치 */
+      /* ⇄ 중앙 반전 버튼: 십자키 중심과 1:1 수평 일치 */
       .swap-ctrl-btn {
-        align-self: flex-end !important;
-        margin-bottom: 64px !important;
+        align-self: center !important;
+        margin: 0 !important;
       }
 
-      /* 🎯 우측 액션 버튼: 십자키 오른쪽 버튼(Row 2: 50~100px)과 수평 정렬 */
+      /* 🎯 우측 액션 버튼: 십자키 중심과 1:1 수평 일치 */
       .action-circle-group {
-        align-self: flex-end !important;
-        margin-bottom: 47px !important;
+        align-self: center !important;
+        margin: 0 !important;
       }
 
 
@@ -886,6 +885,22 @@
 </div>
 
 <script>
+/* 🚫 iOS 사파리 더블탭 화면 확대(Double-tap Zoom) 완벽 방지 */
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    e.preventDefault(); // 300ms 이내 연속 2번 터치 시 줌 동작 취소
+  }
+  lastTouchEnd = now;
+}, { passive: false });
+
+/* 두 손가락 핀치 제스처 줌 방지 */
+document.addEventListener('gesturestart', function(e) {
+  e.preventDefault();
+}, { passive: false });
+
+
 /* =====================================================================
    1. 사운드 시스템 (Web Audio API)
    ===================================================================== */
