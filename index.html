@@ -375,16 +375,17 @@
       display: none !important;
     }
 
-    /* 🎮 레트로 픽셀 D-Pad 매트릭스 (3x3) */
+     /* 🎮 초대형 레트로 픽셀 D-Pad 매트릭스 (3x3 - 168px) */
     .dpad-cross {
       display: grid;
-      grid-template-columns: repeat(3, 44px);
-      grid-template-rows: repeat(3, 44px);
-      width: 132px;
-      height: 132px;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(3, 56px);
+      width: 168px;
+      height: 168px;
       position: relative;
       user-select: none;
       -webkit-user-select: none;
+      touch-action: none; /* 제스처 간섭 원천 차단 */
     }
 
     .dpad-btn {
@@ -398,22 +399,33 @@
       justify-content: center;
       align-items: center;
       box-shadow: 
-        inset 3px 3px 0px #5e687e,
-        inset -3px -3px 0px #212631,
+        inset 4px 4px 0px #5e687e,
+        inset -4px -4px 0px #212631,
         0px 0px 0px 2px #0f1218;
       z-index: 2;
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* 🎯 터치 인식률 극대화: 버튼 외곽으로 +10px 투명 히트박스 확장 */
+    .dpad-btn::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      z-index: 10;
+    }
+
     .dpad-btn:active {
       background-color: #2e3440;
       box-shadow: 
-        inset 3px 3px 0px #1e222b,
-        inset -3px -3px 0px #4c566a,
+        inset 4px 4px 0px #1e222b,
+        inset -4px -4px 0px #4c566a,
         0px 0px 0px 2px #0f1218;
     }
     .dpad-btn:active .arrow {
-      transform: translate(1px, 1px);
+      transform: translate(2px, 2px);
     }
 
     .dpad-up    { grid-column: 2; grid-row: 1; }
@@ -429,19 +441,19 @@
       z-index: 1;
     }
 
-    /* 도트 화살표 디자인 */
+    /* 대형 도트 화살표 디자인 */
     .arrow {
       width: 0;
       height: 0;
       display: block;
       pointer-events: none;
     }
-    .dpad-up .arrow    { border-bottom: 11px solid #ffffff; border-left: 10px solid transparent; border-right: 10px solid transparent; }
-    .dpad-down .arrow  { border-top: 11px solid #ffffff; border-left: 10px solid transparent; border-right: 10px solid transparent; }
-    .dpad-left .arrow  { border-right: 11px solid #ffffff; border-top: 10px solid transparent; border-bottom: 10px solid transparent; }
-    .dpad-right .arrow { border-left: 11px solid #ffffff; border-top: 10px solid transparent; border-bottom: 10px solid transparent; }
-
-   /* ====================================================
+    .dpad-up .arrow    { border-bottom: 14px solid #ffffff; border-left: 13px solid transparent; border-right: 13px solid transparent; }
+    .dpad-down .arrow  { border-top: 14px solid #ffffff; border-left: 13px solid transparent; border-right: 13px solid transparent; }
+    .dpad-left .arrow  { border-right: 14px solid #ffffff; border-top: 13px solid transparent; border-bottom: 13px solid transparent; }
+    .dpad-right .arrow { border-left: 14px solid #ffffff; border-top: 13px solid transparent; border-bottom: 13px solid transparent; }
+   
+    /* ====================================================
        3D Pseudo-Isometric 액션 버튼 (되돌리기 / 재시작)
        ==================================================== */
     .action-circle-group {
@@ -648,9 +660,9 @@
         max-width: 100% !important;
         box-sizing: border-box !important;
         display: flex !important;
-        justify-content: space-between !important; /* 👈 좌측 끝 / 우측 끝 강제 밀착 */
-        align-items: center !important;
-        padding: 0 10px 4px 10px !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important; /* 👈 하단 바닥에 바짝 밀착 */
+        padding: 0 8px env(safe-area-inset-bottom, 2px) 8px !important;
         margin-bottom: 0 !important;
         flex-shrink: 0 !important;
       }
@@ -662,10 +674,14 @@
       }
 
       .dpad-cross {
-        grid-template-columns: repeat(3, 46px);
-        grid-template-rows: repeat(3, 38px);
-        gap: 2px;
+        grid-template-columns: repeat(3, 56px) !important;
+        grid-template-rows: repeat(3, 56px) !important;
+        width: 168px !important;
+        height: 168px !important;
+        gap: 0 !important;
+        margin-bottom: 2px !important;
       }
+      
       .dpad-btn {
         font-size: 17px;
       }
