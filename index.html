@@ -2586,12 +2586,12 @@ function checkVictory() {
       if (bannerDesc) bannerDesc.innerHTML = `모든 난관을 뚫고 7년 전 기획서까지 완벽하게 찾아냈습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong><br>이제 진짜 당당하게 퇴근합니다!`;
       if (bannerBtn) bannerBtn.innerText = "🎁 특별 스테이지 도전하기 (Space / Enter)";
     } else if (currentStageIndex >= STAGES.length - 1) {
-      // 35 스테이지(특별 스테이지 최종 클리어)
+      // 35 스테이지(특별 스테이지 최종 클리어) = 박부장 퇴근 성공
       let totalSec = 0;
       for (let i = 0; i < STAGES.length; i++) totalSec += (stageClearTimes[i] || 0);
       const totalTimeStr = formatKoreanDuration(totalSec);
-      if (bannerTitle) bannerTitle.innerText = "🏆 특별 스테이지 전부 클리어!";
-      if (bannerDesc) bannerDesc.innerHTML = `퇴근 이후에도 찾아온 진짜 실력자의 도전, 완벽하게 완수했습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong>`;
+      if (bannerTitle) bannerTitle.innerText = "🎉 박부장 퇴근 성공!";
+      if (bannerDesc) bannerDesc.innerHTML = `"라떼는 말이야..." 옛 실력을 증명한 박부장, 드디어 진짜로 퇴근합니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong>`;
       if (bannerBtn) bannerBtn.innerText = "🏠 타이틀로 돌아가기 (Space / Enter)";
     } else {
       // 1~29, 31~34 스테이지
@@ -2685,7 +2685,7 @@ function drawStoryScreen() {
   ctx.restore();
 
   if (isDoorOpening) {
-    doorOpenProgress += 0.05; // 👈 0.035 -> 0.05로 빠르게 페이드
+    doorOpenProgress += 0.0083; // 👈 2초 동안 서서히 암전 (60fps 기준 120프레임)
     ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, doorOpenProgress)})`;
     ctx.fillRect(0, 0, w, h);
     if (doorOpenProgress >= 1.0) {
