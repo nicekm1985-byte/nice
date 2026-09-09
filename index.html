@@ -1402,6 +1402,45 @@ const STORY_CHAPTER_2 = [
   }
 ];
 
+// 👇 새로 추가
+const STORY_CHAPTER_3 = [
+  {
+    type: 'office',
+    speaker: '김대리',
+    speakerColor: '#38bdf8',
+    text: '“헉헉... 서류... 찾아왔습니다...”',
+    sub: '땀에 흠뻑 젖은 채 돌아온 김대리'
+  },
+  {
+    type: 'office',
+    speaker: '김대리',
+    speakerColor: '#38bdf8',
+    text: '“저 이제... 퇴근해도 되죠?”',
+    sub: '간절한 눈빛의 김대리'
+  },
+  {
+    type: 'office',
+    speaker: '박부장',
+    speakerColor: '#ef4444',
+    text: '“수고했네. 이제 퇴근해 보게.”',
+    sub: '의외로 순순한 박부장'
+  },
+  {
+    type: 'office',
+    speaker: '김대리',
+    speakerColor: '#38bdf8',
+    text: '“저 그런데 하나 궁금한 게 있는데요, 옛날엔 대체 어떻게 서류 찾으신 거예요?”',
+    sub: '문득 궁금해진 김대리'
+  },
+  {
+    type: 'office',
+    speaker: '박부장',
+    speakerColor: '#ef4444',
+    text: '“라떼는 말이야... 지금보다 더했어...................”',
+    sub: '추억에 잠기는 박부장 (먼 산 응시)'
+  }
+];
+
 /* =====================================================================
    3. 100% 알고리즘 검증 완료 15개 정통 소코반 레벨 (단계별 급상승 난이도 곡선)
    ===================================================================== */
@@ -2153,7 +2192,7 @@ function startStory(chapter = 1, mode = 'gameplay') {
     saveProgress();
   }
 
-  document.getElementById('stageName').innerText = chapter === 1 ? "스토리 1: 5년 전 기획서" : "스토리 2: 7년 전 기획서";
+  document.getElementById('stageName').innerText = chapter === 1 ? "스토리 1: 5년 전 기획서" : (chapter === 2 ? "스토리 2: 7년 전 기획서" : "스토리 3: 김부장의 옛날 이야기");
   document.getElementById('diffBadge').innerText = "스토리";
   document.getElementById('diffBadge').style.color = "#38bdf8";
   document.getElementById('hintText').innerHTML = "💬 <strong>스토리:</strong> 화면 터치나 [Space / Enter] 키를 눌러 다음 대사로 넘어가세요. (우상단 SKIP 가능)";
@@ -2161,7 +2200,7 @@ function startStory(chapter = 1, mode = 'gameplay') {
 
 function advanceStory() {
   sound.init();
-  const currentScenes = storyChapter === 1 ? STORY_CHAPTER_1 : STORY_CHAPTER_2;
+  const currentScenes = storyChapter === 1 ? STORY_CHAPTER_1 : (storyChapter === 2 ? STORY_CHAPTER_2 : STORY_CHAPTER_3);
   const currentScene = currentScenes[storyIndex];
 
   if (storyTextProgress < currentScene.text.length) {
@@ -2193,7 +2232,7 @@ function skipStory() {
   if (storyPlaybackMode === 'replay') {
     showTitleScreen();
   } else {
-    const targetStage = (storyChapter === 1) ? 0 : 15;
+    const targetStage = (storyChapter === 1) ? 0 : (storyChapter === 2 ? 15 : 30);
     startGame(targetStage);
   }
 }
@@ -2207,7 +2246,7 @@ function finishStory() {
   if (storyPlaybackMode === 'replay') {
     showTitleScreen();
   } else {
-    const targetStage = (storyChapter === 1) ? 0 : 15;
+    const targetStage = (storyChapter === 1) ? 0 : (storyChapter === 2 ? 15 : 30);
     startGame(targetStage);
   }
 }
@@ -2270,8 +2309,10 @@ function initStage(index, preserveTimer = false) {
   document.getElementById('stageName').innerText = stageData.name;
   const diffEl = document.getElementById('diffBadge');
   if (diffEl) {
-    diffEl.innerText = stageData.diff;
-    diffEl.style.color = stageData.diffColor;
+    // 31~35단계(인덱스 30~34)는 "특별 스테이지"로 고정 표시
+    const isSpecialStage = index >= 30 && index <= 34;
+    diffEl.innerText = isSpecialStage ? '⭐ 특별 스테이지' : stageData.diff;
+    diffEl.style.color = isSpecialStage ? '#f43f5e' : stageData.diffColor;
     // 🎯 스테이지 플레이 화면에서는 난이도 칸을 다시 보여줌
     if (diffEl.parentElement) {
       diffEl.parentElement.style.display = 'flex';
@@ -2536,16 +2577,24 @@ function checkVictory() {
     const bannerBtn = document.getElementById('nextStageBtn');
     const stageTimeStr = formatKoreanDuration(elapsedSec);
 
-    // 30 스테이지(최종 엔딩)
-    if (currentStageIndex >= STAGES.length - 1) {
+    // 30 스테이지 클리어 = 김대리 퇴근 엔딩 (31~35는 이후 이어지는 특별 스테이지)
+    if (currentStageIndex === 29) {
       let totalSec = 0;
-      for (let i = 0; i < STAGES.length; i++) totalSec += (stageClearTimes[i] || 0);
+      for (let i = 0; i <= 29; i++) totalSec += (stageClearTimes[i] || 0);
       const totalTimeStr = formatKoreanDuration(totalSec);
       if (bannerTitle) bannerTitle.innerText = "🎉 전설의 상자정리! 김대리 퇴근 성공!";
       if (bannerDesc) bannerDesc.innerHTML = `모든 난관을 뚫고 7년 전 기획서까지 완벽하게 찾아냈습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong><br>이제 진짜 당당하게 퇴근합니다!`;
+      if (bannerBtn) bannerBtn.innerText = "🎁 특별 스테이지 도전하기 (Space / Enter)";
+    } else if (currentStageIndex >= STAGES.length - 1) {
+      // 35 스테이지(특별 스테이지 최종 클리어)
+      let totalSec = 0;
+      for (let i = 0; i < STAGES.length; i++) totalSec += (stageClearTimes[i] || 0);
+      const totalTimeStr = formatKoreanDuration(totalSec);
+      if (bannerTitle) bannerTitle.innerText = "🏆 특별 스테이지 전부 클리어!";
+      if (bannerDesc) bannerDesc.innerHTML = `퇴근 이후에도 찾아온 진짜 실력자의 도전, 완벽하게 완수했습니다.<br><strong style="color:#fcd34d;">⏱️ 이번: ${stageTimeStr} | 🏆 총: ${totalTimeStr}</strong>`;
       if (bannerBtn) bannerBtn.innerText = "🏠 타이틀로 돌아가기 (Space / Enter)";
     } else {
-      // 1~29 스테이지
+      // 1~29, 31~34 스테이지
       if (bannerTitle) bannerTitle.innerText = "✨ 스테이지 클리어!";
       if (bannerDesc) {
         const descMsg = (currentStageIndex === 14) 
@@ -2601,7 +2650,7 @@ function draw() {
 function drawStoryScreen() {
   const w = canvas.width;
   const h = canvas.height;
-  const scenes = storyChapter === 1 ? STORY_CHAPTER_1 : STORY_CHAPTER_2;
+  const scenes = storyChapter === 1 ? STORY_CHAPTER_1 : (storyChapter === 2 ? STORY_CHAPTER_2 : STORY_CHAPTER_3);
   const scene = scenes[storyIndex];
 
   if (storyTextProgress < scene.text.length && titleTimer % 2 === 0) {
@@ -3757,10 +3806,11 @@ function drawInGame() {
 
   const playerPx = curOffsetX + player.x * curTile;
   const playerPy = curOffsetY + player.y * curTile;
+  const isBossStage = currentStageIndex >= 30 && currentStageIndex <= 34; // 31~35단계: 박부장 등장
   renderList.push({
     type: 'player',
     y: playerPy,
-    draw: () => drawPixelCharacter(playerPx, playerPy, curTile, player.facing, player.animFrame)
+    draw: () => drawPixelCharacter(playerPx, playerPy, curTile, player.facing, player.animFrame, isBossStage)
   });
 
   renderList.sort((a, b) => a.y - b.y);
@@ -3987,7 +4037,7 @@ function draw3DBox(x, y, size, onGoal) {
   }
 }
 
-function drawPixelCharacter(x, y, size, facing, frame) {
+function drawPixelCharacter(x, y, size, facing, frame, isBoss = false) {
   const cx = x + size / 2;
   const cy = y + size / 2 - 2;
   const bob = (frame % 2 === 1) ? 1.5 : 0;
@@ -4004,18 +4054,18 @@ function drawPixelCharacter(x, y, size, facing, frame) {
   const scale = size / 48;
   ctx.scale(scale, scale);
 
-  // 2. 2등신 아담한 몸체 (블루 셔츠 + 네이비 바지)
-  ctx.fillStyle = '#3b82f6';
+  // 2. 2등신 아담한 몸체 (31~35단계 박부장: 차콜 수트 / 그 외: 블루 셔츠)
+  ctx.fillStyle = isBoss ? '#1e293b' : '#3b82f6';
   ctx.beginPath();
   ctx.roundRect(-9, 1, 18, 13, 3);
   ctx.fill();
-  ctx.strokeStyle = '#1d4ed8';
+  ctx.strokeStyle = isBoss ? '#0f172a' : '#1d4ed8';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   // 레드 넥타이 & 사원증 (앞/옆모습일 때만)
-  if (facing !== 'up') {
-    ctx.fillStyle = '#ef4444';
+   if (facing !== 'up') {
+    ctx.fillStyle = isBoss ? '#dc2626' : '#ef4444'; // 박부장: 강렬한 레드 스트라이프 타이
     let tieX = (facing === 'left') ? -4 : (facing === 'right') ? 2 : -1.5;
     ctx.fillRect(tieX, 2, 3, 7);
 
@@ -4049,8 +4099,8 @@ function drawPixelCharacter(x, y, size, facing, frame) {
   ctx.roundRect(-12, -18, 24, 20, 6);
   ctx.fill();
 
-  // 5. 댄디컷 갈색 헤어 & 시선 방향 처리
-  ctx.fillStyle = '#3e2723';
+  // 5. 헤어스타일 & 시선 방향 처리 (31~35단계 박부장: 짙은 회색 2:8 가르마)
+  ctx.fillStyle = isBoss ? '#1c1917' : '#3e2723';
 
   if (facing === 'up') {
     // 🔙 뒷모습: 풍성하고 단정한 뒷머리
@@ -4389,15 +4439,19 @@ canvas.addEventListener('pointerdown', (e) => {
 
 
 function nextStage() {
-  // 1. 배너 닫기
   const banner = document.getElementById('clearBanner');
   if (banner) banner.classList.remove('active');
-
   isCleared = false;
 
   // 2. 15단계면 스토리 2로 전환
   if (currentStageIndex === 14) {
     startStory(2, 'gameplay');
+    return;
+  }
+
+  // 🆕 30단계(퇴근 성공) 클리어 후 곧바로 스토리 3(김부장과의 대화) 재생 → 31단계 진입
+  if (currentStageIndex === 29) {
+    startStory(3, 'gameplay');
     return;
   }
 
