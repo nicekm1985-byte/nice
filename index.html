@@ -2148,7 +2148,8 @@ let isTouchMode = localStorage.getItem('kimdaeri_touch_mode') === 'true'; // �
 // 스토리 선택 모달 내부 버튼 히트박스
 const modalStory1BtnRect = { x: 170, y: 170, w: 260, h: 42 };
 const modalStory2BtnRect = { x: 170, y: 226, w: 260, h: 42 };
-const modalCloseBtnRect  = { x: 235, y: 284, w: 130, h: 34 };
+const modalStory3BtnRect = { x: 170, y: 282, w: 260, h: 42 }; // 🆕 박부장 스토리 버튼
+const modalCloseBtnRect  = { x: 235, y: 340, w: 130, h: 34 };
 
 // 타이틀 화면에서 PUSH START 눌렀을 때 동작
 function onTitlePushStart() {
@@ -3481,7 +3482,7 @@ function drawTitleScreen() {
 // 🎬 스토리 1/2 선택 팝업 모달 렌더링
 function drawStorySelectModalPopup(w, h) {
   const mw = 320;
-  const mh = 220;
+  const mh = 276; // 🆕 스토리 3 버튼 추가로 높이 확장
   const mx = w / 2 - mw / 2;
   const my = h / 2 - mh / 2;
 
@@ -3545,10 +3546,30 @@ function drawStorySelectModalPopup(w, h) {
   ctx.font = 'bold 13px "Pretendard", sans-serif';
   ctx.fillText(ch2Unlocked ? '2. 스토리 2: 7년 전 기획서' : '🔒 스토리 2 (15단계 클리어 필요)', w / 2, m2.y + m2.h / 2);
 
-  // 3. 닫기 버튼
+  // 3. 스토리 3 버튼 (박부장의 옛날 이야기 - 30단계 클리어 or 개발자 모드 시 해금)
+  const m3 = modalStory3BtnRect;
+  m3.x = w / 2 - 130;
+  m3.y = my + 156;
+  m3.w = 260;
+  m3.h = 42;
+
+  const ch3Unlocked = clearedStages.has(29) || devModeActive;
+  ctx.fillStyle = ch3Unlocked ? '#1e293b' : 'rgba(15, 23, 42, 0.6)';
+  ctx.strokeStyle = ch3Unlocked ? '#ef4444' : '#334155';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(m3.x, m3.y, m3.w, m3.h, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = ch3Unlocked ? '#f87171' : '#64748b';
+  ctx.font = 'bold 13px "Pretendard", sans-serif';
+  ctx.fillText(ch3Unlocked ? '3. 스토리 3: 박부장의 옛날 이야기' : '🔒 스토리 3 (30단계 클리어 필요)', w / 2, m3.y + m3.h / 2);
+
+  // 4. 닫기 버튼
   const mc = modalCloseBtnRect;
   mc.x = w / 2 - 60;
-  mc.y = my + 160;
+  mc.y = my + 216;
   mc.w = 120;
   mc.h = 32;
 
@@ -4326,17 +4347,16 @@ window.addEventListener('pointerup', (e) => {
 function handleTitleClick(x, y) {
    // 모달 열려있을 때
   if (showStorySelectModal) {
-    const my = canvas.height / 2 - 110; // 660 / 2 - 110 = 220
-    const mx = canvas.width / 2 - 130;  // 600 / 2 - 130 = 170
+    const my = canvas.height / 2 - 138; // 🆕 모달 높이 확장(276)에 맞춰 조정
 
-    // 1. 스토리 1 버튼 (Y: 265 ~ 320)
+    // 1. 스토리 1 버튼
     if (x >= 150 && x <= 450 && y >= my + 45 && y <= my + 95) {
       sound.init(); sound.playTalk();
       showStorySelectModal = false;
       startStory(1, 'replay');
       return;
     }
-    // 2. 스토리 2 버튼 (Y: 320 ~ 375)
+    // 2. 스토리 2 버튼
     if (x >= 150 && x <= 450 && y >= my + 98 && y <= my + 150) {
       const ch2Unlocked = clearedStages.has(14) || chapter2Seen || devModeActive;
       if (ch2Unlocked) {
@@ -4348,7 +4368,19 @@ function handleTitleClick(x, y) {
       }
       return;
     }
-    // 3. 닫기 버튼 or 바깥 터치 (모달 닫기)
+    // 🆕 3. 스토리 3 버튼 (박부장의 옛날 이야기)
+    if (x >= 150 && x <= 450 && y >= my + 152 && y <= my + 204) {
+      const ch3Unlocked = clearedStages.has(29) || devModeActive;
+      if (ch3Unlocked) {
+        sound.init(); sound.playTalk();
+        showStorySelectModal = false;
+        startStory(3, 'replay');
+      } else {
+        alert('🔒 스토리 3은 30단계를 클리어하거나 개발자 모드에서 감상할 수 있습니다.');
+      }
+      return;
+    }
+    // 4. 닫기 버튼 or 바깥 터치 (모달 닫기)
     showStorySelectModal = false;
     return;
   }
