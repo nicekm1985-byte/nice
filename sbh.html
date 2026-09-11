@@ -16,6 +16,16 @@
   #bg.lake{background-image:url('night-frozen-lake.png');}
   #bg.kitchen{background-image:url('rustic-mountain-scene.png');}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
+  #bloodOverlay{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:15;overflow:hidden;}
+  #bloodOverlay.show{opacity:1;}
+  #bloodOverlay .drip{position:absolute;top:-10%;width:6%;height:0%;background:linear-gradient(180deg,#8a0000,#3d0000);
+       border-radius:0 0 50% 50%;filter:blur(1px);}
+  #bloodOverlay.show .drip{animation:dripDown 1.6s ease-in forwards;}
+  @keyframes dripDown{0%{height:0%;opacity:.95;}70%{opacity:.9;}100%{height:130%;opacity:.85;}}
+  #bloodFlash{position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, rgba(120,0,0,.55), rgba(40,0,0,.15) 60%, transparent 80%);
+       opacity:0;pointer-events:none;z-index:16;}
+  #bloodFlash.show{animation:bloodFlashPulse .5s ease-out forwards;}
+  @keyframes bloodFlashPulse{0%{opacity:0;}15%{opacity:1;}100%{opacity:0;}}
   #silhouettes{position:absolute;bottom:20%;left:0;width:100%;height:55%;display:flex;justify-content:center;align-items:flex-end;gap:6vw;}
   .sil{width:12vw;max-width:160px;height:38vh;background:linear-gradient(180deg,#3a6fb0,#1a3a66);
        clip-path:polygon(50% 0%,65% 8%,72% 25%,68% 40%,80% 55%,78% 100%,22% 100%,20% 55%,32% 40%,28% 25%,35% 8%);
@@ -76,6 +86,8 @@
 <div id="stage">
   <div id="bg" class="lounge"></div>
   <div id="flash"></div>
+  <div id="bloodFlash"></div>
+  <div id="bloodOverlay"></div>
   <div id="silhouettes">
     <div class="sil" id="sil1"></div>
     <div class="sil" id="sil2"></div>
@@ -370,8 +382,29 @@ const scenes={
     text:"\"심심한데 TV라도 볼까요.\" 수현이 리모컨을 누른다.",
     sfx:"none", next:"s7b"},
   s7b:{bg:"lounge",sil:[],speaker:"narr",
-    text:"화면은 켜지지 않는다. 정전이다.",
-    sfx:"powerout", next:"s8"},
+    text:"화면은 켜지지 않는다. 정전이다. 거실이 순식간에 완전한 어둠에 잠긴다.",
+    sfx:"powerout", next:"choice_dark"},
+
+  // ---- 어둠 구간: 전기 복구까지 ----
+  choice_dark:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"아무것도 보이지 않는다. 목소리만으로 서로의 위치를 짐작할 뿐이다. 무엇부터 해야 할까?",
+    options:[
+      {label:"동현에게 전기를 어떻게 복구하는지 묻는다", next:"s7c_ask"},
+      {label:"손전등부터 찾아본다", next:"s7c_flashlight"}
+    ]},
+  s7c_ask:{bg:"lounge",sil:[],speaker:"narr",
+    text:"어둠 속에서 동현의 목소리가 들린다. \"지하실 차단기가 내려간 걸 수도 있어요. 근데 지금은 안 보여서…\" 결국 뭔가 밝힐 게 필요하다.",
+    sfx:"none", next:"s7c_flashlight"},
+  s7c_flashlight:{bg:"lounge",sil:[],speaker:"narr",
+    text:"더듬더듬 서랍과 선반을 뒤진다. 한참을 헤맨 끝에, 겨우 손전등 하나를 찾아낸다. 불빛이 켜지자 다들 안도의 숨을 내쉰다.",
+    sfx:"none", next:"s7d"},
+  s7d:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"손전등을 든 동현이 지하실로 내려간다. 잠시 후, 정말로 차단기 하나가 내려가 있던 걸 발견하고 다시 올린다.",
+    sfx:"none", next:"s7e"},
+  s7e:{bg:"lounge",sil:[],speaker:"narr",
+    text:"불이 다시 들어온다. 거실은 아까와 다를 게 없어 보인다. 다들 각자의 자리로 돌아온다.",
+    sfx:"none", next:"s8"},
+
   s8:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
     text:"라디오 채널을 돌려봐도 잡음만 흘러나온다. \"이 근처는 원래 전파가 약해요.\" 동현이 미간을 좁힌다.",
     sfx:"none", next:"choice_phone"},
@@ -466,80 +499,89 @@ const scenes={
     text:"핏자국이 어딘가로 이어진다. 어떻게 할까?",
     options:[
       {label:"지금 바로 혼자 핏자국을 따라간다", next:"s13_alone"},
-      {label:"수현을 데리고 함께 따라간다", next:"s13_group"},
+      {label:"동현을 데리고 함께 따라간다", next:"s13_group"},
       {label:"핏자국은 됐다. 동현을 추궁한다", next:"c1"}
     ]},
   s13_alone:{bg:"room",sil:[],speaker:"narr",
     text:"혼자 핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
     sfx:"none", next:"s14"},
-  s13_group:{bg:"room",sil:["suhyun"],speaker:"narr",
-    text:"\"저도 같이 갈게요.\" 수현이 먼저 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
-    sfx:"none", flag:"수현동행", next:"s14"},
+  s13_group:{bg:"room",sil:["donghyun"],speaker:"narr",
+    text:"\"같이 가시죠.\" 동현이 손전등을 들고 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
+    sfx:"none", flag:"동현동행", next:"s14"},
 
   s14:{bg:"lake",sil:["yura"],speaker:"narr",
     text:"호수 얼음 위, 눈보라 속에 무언가 쓰러져 있다. 다가가 보니… 유라다. 이미 움직임이 없다.",
-    sfx:"heartbeat", next:"choice_reaction"},
+    sfx:"heartbeat", next:"s14_return"},
+  s14_return:{bg:"lake",sil:[],speaker:"narr",
+    text:"혼자 감당할 수 있는 일이 아니다. 일단 산장으로 돌아가 알려야 한다.",
+    sfx:"none", next:"lounge_discuss"},
 
-  // ---- 유라 발견 직후 분기: 누구를 의심할까 ----
-  choice_reaction:{type:"choice", bg:"lake", sil:["yura"], speaker:"narr",
-    text:"충격 속에서도 머리가 빠르게 돈다. 지금, 누구를 의심해야 할까?",
+  // ---- 산장으로 복귀, 남은 사람들과 거실에서 추리 ----
+  lounge_discuss:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
+    textFn:()=>flags.has("동현동행")
+      ? "거실엔 수현만 남아 있다. 소식을 전하자 다들 말을 잃는다. 잠시 후, 침묵을 깨고 대화가 시작된다."
+      : "거실엔 동현과 수현이 함께 있다. 소식을 전하자 다들 말을 잃는다. 잠시 후, 침묵을 깨고 대화가 시작된다.",
     options:[
-      {label:"동현을 의심한다 — 방에서 목걸이를 봤다", next:"s14_suspect_dh"},
-      {label:"아무도 의심하지 않고 침착하게 살핀다", next:"s14_calm"}
+      {label:"함께 상황을 정리해본다", next:"discuss1"},
+      {label:"동현을 의심하며 다그친다 — 방에서 목걸이를 봤다", next:"c1"}
     ]},
-  s14_suspect_dh:{bg:"lake",sil:["yura"],speaker:"narr",
-    text:"동현의 방에서 본 목걸이가 떠오른다. 그가 유라를 이곳으로 끌고 온 건 아닐까. 등 뒤에서 발소리가 들린다.",
-    sfx:"none", flag:"동현의심강화", next:"s15"},
-  s14_calm:{bg:"lake",sil:["yura"],speaker:"narr",
-    text:"성급히 결론짓지 않기로 한다. 등 뒤에서 발소리가 들린다.",
+  discuss1:{bg:"lounge",dynamicSil:true,speaker:"donghyun",
+    textFn:()=>flags.has("동현동행")
+      ? "\"나는 계속 상준 씨랑 같이 있었잖아요. 알리바이는 확실해요.\" 동현이 담담히 말한다."
+      : "\"나는 정전 때부터 계속 지하실에, 그 다음엔 거실에 있었어요.\" 동현이 담담히 말한다.",
+    sfx:"none", next:"discuss2"},
+  discuss2:{bg:"lounge",dynamicSil:true,speaker:"suhyun",
+    text:"\"그런데 정전됐을 때는… 다들 어두워서 서로 어디 있었는지 잘 못 봤잖아요.\" 수현이 별일 아니라는 듯 말을 얹는다. 딱히 누구를 겨냥한 말은 아닌 것 같다.",
+    sfx:"none", next:"discuss3"},
+  discuss3:{bg:"lounge",dynamicSil:true,speaker:"narr",
+    text:"틀린 말은 아니다. 정전이 된 그 어둠 속에서, 사실 누가 어디 있었는지 정확히 아는 사람은 없다.",
+    sfx:"none", next:"choice_return_lake"},
+
+  choice_return_lake:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
+    text:"이야기를 더 나눌 수도 있지만, 현장을 그대로 둘 수는 없다. 다시 호수로 가봐야 할 것 같다. 누구와 갈까?",
+    options:[
+      {label:"혼자 다시 가본다", next:"s14b_alone"},
+      {label:"동현과 함께 간다", next:"s14b_group"}
+    ]},
+  s14b_alone:{bg:"lake",sil:[],speaker:"narr",
+    text:"혼자 다시 호수로 나선다. 눈보라가 한층 거세졌다.",
     sfx:"none", next:"s15"},
+  s14b_group:{bg:"lake",sil:["donghyun"],speaker:"narr",
+    text:"동현과 함께 다시 호수로 나선다. 눈보라가 한층 거세졌다.",
+    sfx:"none", flag:"최종동행", next:"s15"},
 
   s15:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
     text:"그 뒤로 그림자 하나가 서 있다. 수현이다. \"괜찮으세요, 선배? 여기서 이러고 있을 줄은…\" 손에 든 것은 아직 보이지 않는다.",
-    sfx:"none", next:"choice_suhyun_first"},
-
-  // ---- 진짜 반전 지점: 수현을 믿을지 말지 ----
-  choice_suhyun_first:{type:"choice", bg:"lake", sil:["yura","suhyun"], speaker:"narr",
-    text:"수현의 손, 표정, 태도… 지금 이 순간 무언가 이상한 점이 있는가?",
-    options:[
-      {label:"수현의 손에 들린 것을 유심히 본다", next:"s15_check"},
-      {label:"동현이 위험하다. 얼른 돌아가야 한다고 말한다", next:"s15_rush"}
-    ]},
-  s15_check:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
-    text:"자세히 보니, 수현의 소매 끝에 마른 핏자국이 묻어 있다. 방금 묻은 것치고는 이미 굳어 있다 — 유라의 것이 아니다. 훨씬 전에 묻은 흔적이다.",
-    sfx:"reveal", flag:"수현위화감", next:"s16pre"},
-  s15_rush:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
-    text:"\"동현 씨가… 위험할지도 몰라요.\" 서둘러 돌아가려 한다. 수현이 조용히 앞을 막아선다.",
+    sfx:"none", next:"s15b"},
+  s15b:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+    text:"목에 걸려 있어야 할 카메라가, 지금 수현에게 없다.",
     sfx:"none", next:"s16pre"},
 
   s16pre:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
     text:"수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. \"…왜 따라온 거예요, 선배.\"",
-    sfx:"scream", next:"s16b"},
-  s16b:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
-    text:"\"5년 전 산행 사고, 기억 안 나세요? 이 사람… 그때 죽은 선배 동생이에요. 계속 캐고 다니길래.\" 수현의 목소리는 여전히 낮고 담담하다.",
-    sfx:"none", next:"s16"},
+    sfx:"scream", next:"s16"},
   s16:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
     text:"눈보라 속에서 수현이 칼을 고쳐 쥔다.",
-    sfx:"none", nextFn:()=> (flags.has("수현위화감") && flags.has("수현동행")) ? "s16_capture" : "s16_death"}
+    sfx:"none", nextFn:()=> flags.has("최종동행") ? "s16_capture" : "s16_death"}
 };
 
-// True End - noticed the tell AND had suhyun close enough to react in time
+// True End - Donghyun came along, together they overpower Suhyun
 Object.assign(scenes,{
-  s16_capture:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
-    text:"소매의 핏자국을 이미 눈치채고 있었다. 수현이 칼을 치켜드는 순간, 먼저 손목을 잡아 꺾는다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
+  s16_capture:{bg:"lake",sil:["yura","suhyun","donghyun"],speaker:"narr",
+    text:"혼자였다면 늦었을 것이다. 동현이 뒤에서 함께 달려들어 수현을 붙든다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
     sfx:"click", next:"endTrue"}
 });
 
-// Death End - either missed the tell, or noticed too late / alone
+// Death End - alone, no chance against an armed opponent
 Object.assign(scenes,{
   s16_death:{bg:"lake",sil:["suhyun"],speaker:"narr",
-    text:"눈치챘든 못 챘든, 몸이 반응하기엔 늦었다. 수현의 칼끝이 먼저 닿는다. 눈 위로 붉은 것이 스며든다. 아무도 상준을 찾으러 오지 않는다.",
-    sfx:"scream", next:"endDeath"}
+    text:"혼자서는 칼을 든 사람을 막을 수 없었다.",
+    sfx:"scream", blood:true, next:"endDeath"}
 });
 
 // Bad End - Donghyun wrongly bound as the culprit, everyone dies not realizing the real killer was Suhyun
 Object.assign(scenes,{
-  c1:{bg:"room",sil:["donghyun"],speaker:"donghyun",
+  c1:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
     text:"\"진짜 아니야, 나는…!\" 동현을 다그친다. 방에서 나온 목걸이를 들이대자, 그는 말을 잃는다. 믿지 않고 그대로 결박한다.",
     sfx:"none", next:"c2"},
   c2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
@@ -599,6 +641,27 @@ function setBg(cls){
 function flash(){ const f=document.getElementById("flash"); f.style.transition="none"; f.style.opacity=1;
   requestAnimationFrame(()=>{ f.style.transition="opacity .4s"; f.style.opacity=0; }); }
 
+function bloodEffect(){
+  const bf=document.getElementById("bloodFlash");
+  const ov=document.getElementById("bloodOverlay");
+  bf.classList.remove("show"); ov.classList.remove("show");
+  ov.innerHTML="";
+  const count=6;
+  for(let i=0;i<count;i++){
+    const d=document.createElement("div");
+    d.className="drip";
+    const leftPct = 8 + Math.random()*84;
+    d.style.left = leftPct+"%";
+    d.style.width = (3+Math.random()*4)+"%";
+    d.style.animationDelay = (Math.random()*0.3)+"s";
+    ov.appendChild(d);
+  }
+  requestAnimationFrame(()=>{
+    bf.classList.add("show");
+    ov.classList.add("show");
+  });
+}
+
 function typeText(str, cb){
   typing=true; bodyEl.textContent=""; let i=0;
   document.getElementById("cont").style.visibility="hidden";
@@ -615,6 +678,13 @@ function typeText(str, cb){
 }
 function skipType(){ clearInterval(typedTimer); typing=false; }
 
+function silhouettesFor(sc){
+  if(sc.dynamicSil){
+    return ["donghyun","suhyun"];
+  }
+  return sc.sil||[];
+}
+
 function renderScene(id){
   curId=id;
   if(endings[id]){ renderEnding(id); return; }
@@ -623,9 +693,10 @@ function renderScene(id){
   if(sc.flag) flags.add(sc.flag);
   if(sc.type==="choice"){ renderChoice(sc); return; }
   setBg(sc.bg);
-  showSilhouettes(sc.sil||[]);
+  showSilhouettes(silhouettesFor(sc));
   speakerEl.textContent = CHAR[sc.speaker] ? CHAR[sc.speaker].name : "";
   if(sc.sfx==="glass" || sc.sfx==="thunder" || sc.sfx==="powerout") flash();
+  if(sc.blood) bloodEffect();
   SFX[sc.sfx] && SFX[sc.sfx]();
   if(TENSION_SFX.has(sc.sfx)) raiseTension();
   choicesEl.classList.remove("show");
@@ -638,10 +709,10 @@ function renderEnding(id){
   document.getElementById("endScreen").classList.add("show");
 }
 function renderChoice(sc){
-  setBg(sc.bg); showSilhouettes(sc.sil||[]);
+  setBg(sc.bg); showSilhouettes(silhouettesFor(sc));
   speakerEl.textContent="";
   choicesEl.classList.remove("show");
-  typeText(sc.text, ()=>{
+  typeText(sc.textFn ? sc.textFn() : sc.text, ()=>{
     choicesEl.innerHTML="";
     sc.options.forEach(opt=>{
       const b=document.createElement("button");
@@ -677,6 +748,8 @@ document.getElementById("startBtn").onclick=()=>{
 };
 document.getElementById("retryBtn").onclick=()=>{
   document.getElementById("endScreen").classList.remove("show");
+  document.getElementById("bloodOverlay").classList.remove("show");
+  document.getElementById("bloodOverlay").innerHTML="";
   document.getElementById("titleScreen").style.display="flex";
 };
 </script>
