@@ -10,11 +10,13 @@
   #stage{position:relative;width:100%;height:100vh;display:flex;align-items:flex-end;justify-content:center;background:#000;}
   #bg{position:absolute;top:20%;left:20%;width:60%;height:60%;background:#05070c;background-size:cover;background-position:center;
       transition:opacity .8s;filter:contrast(1.05);}
-  #bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35);}
+  #bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35);transition:background .3s;}
+  #bg.blackout::after{background:rgba(0,0,0,.8);}
   #bg.lounge{background-image:url('night-interior-low-resolution.png');}
   #bg.room{background-image:url('dark-bedroom-photorealistic.png');}
   #bg.lake{background-image:url('night-frozen-lake.png');}
   #bg.kitchen{background-image:url('rustic-mountain-scene.png');}
+  #bg.dhroom{background-image:url('caretaker-room.png');}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
   #bloodOverlay{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:15;overflow:hidden;}
   #bloodOverlay.show{opacity:1;}
@@ -26,19 +28,47 @@
        opacity:0;pointer-events:none;z-index:16;}
   #bloodFlash.show{animation:bloodFlashPulse .5s ease-out forwards;}
   @keyframes bloodFlashPulse{0%{opacity:0;}15%{opacity:1;}100%{opacity:0;}}
-  #silhouettes{position:absolute;bottom:20%;left:0;width:100%;height:55%;display:flex;justify-content:center;align-items:flex-end;gap:6vw;}
-  .sil{width:12vw;max-width:160px;height:38vh;background:linear-gradient(180deg,#3a6fb0,#1a3a66);
-       clip-path:polygon(50% 0%,65% 8%,72% 25%,68% 40%,80% 55%,78% 100%,22% 100%,20% 55%,32% 40%,28% 25%,35% 8%);
-       opacity:0;filter:drop-shadow(0 0 12px rgba(60,120,200,.5));transition:opacity .6s;}
-  .sil.show{opacity:.85;}
+  #silhouettes{position:absolute;bottom:14%;left:0;width:100%;height:68%;display:flex;justify-content:center;align-items:flex-end;gap:5vw;}
+  .sil{width:16vw;max-width:220px;height:52vh;position:relative;opacity:0;transition:opacity .6s;
+       filter:drop-shadow(0 0 14px rgba(60,120,200,.5));}
+  .sil.show{opacity:.88;}
+  .sil::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#3a6fb0,#152c52);
+       clip-path:polygon(50% 0%,65% 8%,72% 25%,68% 40%,80% 55%,78% 100%,22% 100%,20% 55%,32% 40%,28% 25%,35% 8%);}
+  /* Male build: broader shoulders, straight torso */
+  .sil.male::before{clip-path:polygon(50% 0%,68% 7%,76% 22%,71% 38%,84% 54%,80% 100%,20% 100%,16% 54%,29% 38%,24% 22%,32% 7%);}
+  /* Female build: narrower shoulders, defined waist, wider hips */
+  .sil.female::before{clip-path:polygon(50% 0%,62% 7%,66% 22%,58% 36%,63% 46%,74% 60%,70% 100%,30% 100%,26% 60%,37% 46%,42% 36%,34% 22%,38% 7%);}
+  /* Long wavy hair silhouette overlay for female characters */
+  .sil .hairLayer{position:absolute;left:8%;right:8%;top:-6%;height:52%;display:none;pointer-events:none;}
+  .sil.female .hairLayer{display:block;
+    background:#0d1c38;
+    clip-path:polygon(50% 2%,62% 4%,72% 12%,78% 26%,74% 34%,80% 48%,72% 70%,76% 92%,66% 100%,68% 78%,60% 60%,64% 90%,54% 100%,50% 70%,46% 100%,36% 90%,40% 60%,32% 78%,34% 100%,24% 92%,28% 70%,20% 48%,26% 34%,22% 26%,28% 12%,38% 4%);}
+  /* Short side-profile hair tuft for male characters */
+  .sil.male .hairLayer{display:block;
+    background:#0d1c38;
+    clip-path:polygon(48% 4%,60% 2%,70% 8%,76% 20%,72% 30%,66% 24%,58% 20%,50% 24%,44% 20%,40% 30%,34% 22%,38% 10%);}
+
+  /* Pose variants layered via transform + alternate clip on the ::before pseudo using pose classes */
+  .sil.pose-alert::before{clip-path:polygon(50% 0%,66% 7%,80% 18%,74% 30%,90% 40%,78% 58%,78% 100%,22% 100%,22% 58%,10% 44%,26% 34%,20% 20%,34% 7%);}
+  .sil.pose-cower::before{clip-path:polygon(50% 6%,60% 14%,58% 28%,66% 40%,58% 52%,62% 100%,38% 100%,42% 52%,34% 40%,42% 28%,40% 14%);}
+  .sil.pose-weapon::before{clip-path:polygon(50% 0%,64% 7%,70% 20%,92% 26%,86% 34%,68% 32%,64% 46%,74% 60%,70% 100%,30% 100%,26% 60%,36% 46%,32% 32%,34% 22%,36% 7%);}
+  .sil.pose-defensive::before{clip-path:polygon(50% 0%,66% 7%,74% 20%,64% 30%,72% 38%,80% 46%,68% 50%,58% 40%,58% 100%,42% 100%,42% 40%,32% 50%,20% 46%,28% 38%,36% 30%,26% 20%,34% 7%);}
+  .sil.pose-collapsed{height:20vh; align-self:flex-end;}
+  .sil.pose-collapsed::before{clip-path:polygon(2% 78%,14% 70%,30% 74%,46% 68%,62% 74%,78% 68%,96% 76%,98% 92%,2% 92%);}
+  /* Bound to a chair: seated torso with a horizontal chair-back/seat block behind, arms pulled to sides */
+  .sil.pose-bound{height:40vh; align-self:flex-end;}
+  .sil.pose-bound::before{clip-path:polygon(50% 0%,64% 8%,70% 22%,64% 34%,66% 46%,66% 100%,34% 100%,34% 46%,36% 34%,30% 22%,36% 8%);}
+  .sil.pose-bound::after{content:"";position:absolute;left:8%;right:8%;bottom:0;height:46%;
+       background:linear-gradient(180deg,#152c52,#0d1c38);opacity:.9;z-index:-1;
+       clip-path:polygon(0% 0%,100% 0%,100% 100%,85% 100%,85% 30%,15% 30%,15% 100%,0% 100%);}
   #textbox{position:absolute;bottom:0;left:0;width:100%;min-height:26vh;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.92) 20%);
             box-sizing:border-box;padding:24px 8vw 30px;color:#eee;font-size:1.15rem;line-height:1.8;cursor:pointer;}
   #speaker{color:#7fd0ff;font-weight:bold;margin-bottom:6px;display:block;min-height:1.2em;}
-  #choices{position:absolute;bottom:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:none;
-            flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+  #choices{position:absolute;bottom:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);display:none;
+            flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(1px);}
   #choices.show{display:flex;}
-  .choiceBtn{background:rgba(20,40,70,.7);border:1px solid #4a7ab0;color:#dff;padding:16px 40px;font-size:1.05rem;
-             border-radius:6px;cursor:pointer;width:min(70vw,520px);transition:.2s;}
+  .choiceBtn{background:rgba(15,25,45,.82);border:1px solid #4a7ab0;color:#dff;padding:16px 40px;font-size:1.05rem;
+             border-radius:6px;cursor:pointer;width:min(70vw,520px);transition:.2s;box-shadow:0 2px 10px rgba(0,0,0,.5);}
   .choiceBtn:hover{background:rgba(60,110,170,.85);}
   #cont{position:absolute;right:20px;bottom:18px;color:#fff;font-size:.85rem;font-weight:bold;text-shadow:0 0 8px rgba(255,255,255,.8);
         animation:blinkCont 1s ease-in-out infinite;}
@@ -66,7 +96,7 @@
 
   @media (max-width:600px){
     #textbox{font-size:.95rem;min-height:30vh;padding:16px 5vw 22px;}
-    .sil{width:20vw;height:34vh;}
+    .sil{width:24vw;height:46vh;}
     #silhouettes{gap:2vw;bottom:24%;}
     .choiceBtn{width:82vw;padding:14px 20px;font-size:.95rem;}
     #volPanel{top:8px;right:8px;padding:6px 8px;gap:5px;font-size:.72rem;}
@@ -80,6 +110,35 @@
     #textbox{min-height:34vh;}
     .sil{height:28vh;}
   }
+
+  /* Dev mode */
+  #devCorner{position:absolute;top:0;left:0;width:70px;height:70px;z-index:30;cursor:default;}
+  #devPinScreen{position:absolute;inset:0;background:rgba(2,3,5,.97);z-index:41;display:none;
+                align-items:center;justify-content:center;}
+  #devPinScreen.show{display:flex;}
+  #devPinBox{display:flex;flex-direction:column;align-items:center;gap:22px;}
+  #devPinDots{display:flex;gap:14px;}
+  .pinDot{width:14px;height:14px;border-radius:50%;border:1px solid #567;background:transparent;transition:.15s;}
+  .pinDot.filled{background:#7fd0ff;border-color:#7fd0ff;}
+  #devPinPad{display:grid;grid-template-columns:repeat(3,64px);gap:10px;}
+  #devPinPad button{width:64px;height:64px;border-radius:50%;background:rgba(60,90,130,.35);border:1px solid #567;
+                     color:#dff;font-size:1.2rem;cursor:pointer;}
+  #devPinPad button:hover{background:rgba(90,130,180,.6);}
+  #devPinCancel{background:none;border:1px solid #888;color:#ccc;padding:8px 24px;border-radius:6px;cursor:pointer;}
+  #devPanel{position:absolute;inset:0;background:rgba(5,7,10,.96);z-index:40;display:none;overflow-y:auto;
+            padding:60px 20px 40px;box-sizing:border-box;}
+  #devPanel.show{display:block;}
+  #devPanel h2{color:#8fd0ff;font-size:1rem;margin:0 0 14px;text-align:center;letter-spacing:.1em;}
+  #devClose{position:absolute;top:14px;right:14px;background:none;border:1px solid #888;color:#ccc;
+            padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.8rem;}
+  #devList{display:flex;flex-direction:column;gap:6px;max-width:640px;margin:0 auto;}
+  .devItem{display:flex;align-items:baseline;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+           border-radius:6px;padding:8px 12px;cursor:pointer;transition:.15s;}
+  .devItem:hover{background:rgba(80,140,200,.18);border-color:#4a7ab0;}
+  .devItem .devId{color:#7fd0ff;font-family:monospace;font-size:.78rem;min-width:150px;flex-shrink:0;}
+  .devItem .devTxt{color:#ccc;font-size:.8rem;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .devItem.devChoice .devId{color:#ffcf7f;}
+  .devItem.devEnding .devId{color:#ff9a7f;}
 </style>
 </head>
 <body>
@@ -114,6 +173,29 @@
     <div id="volBarWrap"><div id="volBar"></div></div>
     <span id="volPct">70%</span>
     <button id="volUp">+</button>
+  </div>
+
+  <div id="devCorner"></div>
+
+  <div id="devPinScreen">
+    <div id="devPinBox">
+      <div id="devPinDots">
+        <span class="pinDot"></span><span class="pinDot"></span><span class="pinDot"></span><span class="pinDot"></span>
+      </div>
+      <div id="devPinPad">
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k="clear">C</button><button data-k="0">0</button><button data-k="back">⌫</button>
+      </div>
+      <button id="devPinCancel">닫기</button>
+    </div>
+  </div>
+
+  <div id="devPanel">
+    <button id="devClose">닫기</button>
+    <h2>개발자 모드 — 분기 이동</h2>
+    <div id="devList"></div>
   </div>
 </div>
 
@@ -247,6 +329,31 @@ function sfxReveal(){
     o.start(now+t); o.stop(now+t+0.14);
   });
 }
+function sfxDoorOpen(){
+  if(!actx) return;
+  const now=actx.currentTime;
+  // low wooden creak: slow pitch drift + filtered noise, sits quietly under the scene
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer(); src.loop=false;
+  const filt=actx.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=220; filt.Q.value=3;
+  const g=actx.createGain(); g.gain.value=0.001;
+  src.connect(filt); filt.connect(g); g.connect(master);
+  filt.frequency.setValueAtTime(180, now);
+  filt.frequency.linearRampToValueAtTime(320, now+0.9);
+  filt.frequency.linearRampToValueAtTime(150, now+1.6);
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.linearRampToValueAtTime(0.18, now+0.3);
+  g.gain.linearRampToValueAtTime(0.12, now+1.0);
+  g.gain.exponentialRampToValueAtTime(0.001, now+1.7);
+  src.start(now); src.stop(now+1.75);
+  // deep wooden body resonance underneath
+  const o=actx.createOscillator(); o.type="triangle"; o.frequency.value=70;
+  const og=actx.createGain(); og.gain.value=0.001;
+  o.connect(og); og.connect(master);
+  og.gain.setValueAtTime(0.001, now);
+  og.gain.linearRampToValueAtTime(0.1, now+0.25);
+  og.gain.exponentialRampToValueAtTime(0.001, now+1.3);
+  o.start(now); o.stop(now+1.35);
+}
 function sfxHeartbeat(){
   if(!actx) return;
   [0,0.35].forEach(t=>{
@@ -267,6 +374,32 @@ function sfxThunder(){
   g.gain.setValueAtTime(0.95,actx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+1.2);
   src.start(); src.stop(actx.currentTime+1.2);
+}
+function sfxBluntHit(){
+  if(!actx) return;
+  const now=actx.currentTime;
+  [0, 0.55].forEach((t,i)=>{
+    const strength = i===0 ? 1 : 0.7;
+    // low thud body
+    const o=actx.createOscillator(); o.type="sine"; o.frequency.value=90;
+    const g=actx.createGain(); g.gain.value=0.001;
+    o.connect(g); g.connect(master);
+    o.frequency.setValueAtTime(90, now+t);
+    o.frequency.exponentialRampToValueAtTime(40, now+t+0.15);
+    g.gain.setValueAtTime(0.001, now+t);
+    g.gain.linearRampToValueAtTime(0.8*strength, now+t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, now+t+0.28);
+    o.start(now+t); o.stop(now+t+0.3);
+    // short noise crack for impact texture
+    const src=actx.createBufferSource(); src.buffer=noiseBuffer();
+    const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=700;
+    const ng=actx.createGain(); ng.gain.value=0.001;
+    src.connect(filt); filt.connect(ng); ng.connect(master);
+    ng.gain.setValueAtTime(0.001, now+t);
+    ng.gain.linearRampToValueAtTime(0.5*strength, now+t+0.008);
+    ng.gain.exponentialRampToValueAtTime(0.001, now+t+0.15);
+    src.start(now+t); src.stop(now+t+0.16);
+  });
 }
 function sfxPowerOut(){
   if(!actx) return;
@@ -312,8 +445,8 @@ function releaseTension(){
   droneNodes.g.gain.linearRampToValueAtTime(base, now+1.2);
   if(tensionTremolo){ tensionTremolo.stop(); tensionTremolo=null; }
 }
-const SFX={click:sfxClick, glass:sfxGlass, heartbeat:sfxHeartbeat, thunder:sfxThunder, powerout:sfxPowerOut, scream:sfxScream, gust:sfxGust, reveal:sfxReveal, none:()=>{}};
-const TENSION_SFX=new Set(["glass","thunder","powerout","heartbeat","scream"]);
+const SFX={click:sfxClick, glass:sfxGlass, heartbeat:sfxHeartbeat, thunder:sfxThunder, bluntHit:sfxBluntHit, powerout:sfxPowerOut, scream:sfxScream, gust:sfxGust, reveal:sfxReveal, doorOpen:sfxDoorOpen, none:()=>{}};
+const TENSION_SFX=new Set(["glass","thunder","bluntHit","heartbeat","scream"]);
 
 function applyVolume(){
   document.getElementById("volPct").textContent=Math.round((muted?0:volume)*100)+"%";
@@ -338,7 +471,8 @@ applyVolume();
 
 /* ---------------- SCENARIO ---------------- */
 const CHAR={
-  sangjun:{name:"상준(나)"}, suhyun:{name:"수현"}, donghyun:{name:"동현"}, yura:{name:"유라"}, narr:{name:""}
+  sangjun:{name:"상준(나)", gender:"male"}, suhyun:{name:"수현", gender:"female"},
+  donghyun:{name:"동현", gender:"male"}, yura:{name:"유라", gender:"female"}, narr:{name:""}
 };
 
 const scenes={
@@ -350,8 +484,22 @@ const scenes={
     text:"수현은 상준의 회사 입사 동기다. 입사 첫날부터 카메라를 들고 다니던, 늘 먼저 말을 걸어오는 성격.",
     sfx:"none", next:"s2"},
   s2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
-    text:"\"와, 진짜 이러다 며칠은 못 나가는 거 아니에요?\" 수현이 젖은 카메라 가방을 내려놓으며 웃는다. 이런 상황에서도 재미있어하는 눈치다.",
+    text:"\"와, 진짜 이러다 며칠은 못 나가는 거 아니에요?\" 수현이 젖은 카메라 가방을 내려놓으며 웃는다. 손가락에 낀 낡은 은반지가 눈에 잠깐 스친다. 이런 상황에서도 재미있어하는 눈치다.",
+    sfx:"none", next:"choice_greet"},
+
+  choice_greet:{type:"choice", bg:"lounge", sil:["suhyun"], speaker:"narr",
+    text:"수현에게 어떻게 대답할까?",
+    options:[
+      {label:"\"그러게, 일단 몸이나 녹이자.\"", next:"s2b_warm"},
+      {label:"\"오히려 재밌겠는데?\"", next:"s2b_fun"}
+    ]},
+  s2b_warm:{bg:"lounge",sil:["suhyun"],speaker:"sangjun",
+    text:"\"그러게, 일단 몸이나 녹이자.\" 상준이 젖은 옷깃을 털어내며 벽난로 쪽으로 다가선다.",
     sfx:"none", next:"s3intro"},
+  s2b_fun:{bg:"lounge",sil:["suhyun"],speaker:"sangjun",
+    text:"\"오히려 재밌겠는데?\" 상준의 말에 수현이 소리 내어 웃는다. \"그렇게 말할 줄 알았어요.\"",
+    sfx:"none", next:"s3intro"},
+
   s3intro:{bg:"lounge",sil:["donghyun"],speaker:"narr",
     text:"현관 쪽에서 한 남자가 들어온다. 처음 보는 얼굴이다. 이 산장 관리인인가 — 체격이 다부지고, 말수가 적어 보인다.",
     sfx:"none", next:"s3"},
@@ -365,7 +513,7 @@ const scenes={
     text:"조금 늦게, 또 한 사람이 들어온다. 이쪽도 초면이다. 누구와도 시선을 오래 마주치지 않는 여자다.",
     sfx:"none", next:"s4"},
   s4:{bg:"lounge",sil:["yura"],speaker:"yura",
-    text:"\"…안녕하세요. 저는 이유라예요. 혼자 여행 중이었는데, 오늘은 여기서 묵으려고요.\" 짧은 자기소개 후, 다시 말이 없어진다.",
+    text:"\"…안녕하세요. 이유라라고 합니다. 혼자 여행 중이었는데, 오늘은 여기서 묵으려고요.\" 짧은 자기소개 후, 다시 말이 없어진다.",
     sfx:"none", next:"s5"},
   s5:{bg:"lounge",sil:["yura"],speaker:"yura",
     text:"\"저는 먼저 좀 쉴게요. 두통이 있어서.\" 유라는 그렇게 말하고 2층으로 올라간다. 곧 방문 닫히는 소리가 들린다.",
@@ -375,6 +523,70 @@ const scenes={
     sfx:"none", next:"s6"},
   s6:{bg:"lounge",sil:[],speaker:"narr",
     text:"얼마 지나지 않아 수현이 돌아와 다시 자리에 앉는다. 세 사람만 남은 거실. 창밖 눈보라 소리와 벽난로 장작 타는 소리만 나직이 흐른다.",
+    sfx:"none", next:"s6_yura_return"},
+
+  // ---- 유라, 잠깐 다시 내려와 잡담 ----
+  s6_yura_return:{bg:"lounge",sil:["yura"],speaker:"narr",
+    text:"그때, 계단에서 발소리가 들린다. 유라다. \"물 좀 마시려고요.\" 어색하게 웃으며 다시 거실로 들어선다.",
+    sfx:"none", next:"choice_smalltalk1"},
+
+  choice_smalltalk1:{type:"choice", bg:"lounge", sil:["yura"], speaker:"narr",
+    text:"유라에게 무슨 말을 걸어볼까?",
+    options:[
+      {label:"\"두통은 좀 괜찮아요?\"", next:"talk1_health"},
+      {label:"\"혼자 여행하시는 거 부럽네요.\"", next:"talk1_envy"},
+      {label:"\"이 산장, 뭔가 무섭게 생기지 않았어요?\" (농담)", next:"talk1_joke"}
+    ]},
+  talk1_health:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"조금요. 원래 예민해서… 낯선 곳에서 자주 이래요.\" 유라가 옅게 웃는다. 생각보다 담담한 태도다.",
+    sfx:"none", next:"choice_smalltalk2"},
+  talk1_envy:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"부러울 것도 없어요. 혼자면 편할 때도 있고, 불편할 때도 있고.\" 유라의 대답은 짧지만 단호하다.",
+    sfx:"none", next:"choice_smalltalk2"},
+  talk1_joke:{bg:"lounge",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"\"그러니까요! 저 벽난로 옆 그림, 계속 저만 보는 것 같아요.\" 수현이 장단을 맞춘다. 유라는 살짝 당황한 듯 웃는다. \"…그런 말씀은 좀.\"",
+    sfx:"none", next:"choice_smalltalk2"},
+
+  choice_smalltalk2:{type:"choice", bg:"lounge", sil:["yura","donghyun"], speaker:"narr",
+    text:"동현도 대화에 끼어들 낌새다. 어떻게 반응할까?",
+    options:[
+      {label:"동현에게도 말을 걸어본다", next:"talk2_donghyun"},
+      {label:"그냥 지켜본다", next:"talk2_watch"}
+    ]},
+  talk2_donghyun:{bg:"lounge",sil:["yura","donghyun"],speaker:"donghyun",
+    text:"\"저는 뭐, 딱히 할 말이…\" 동현이 머쓱하게 장작을 뒤적인다. \"눈이나 안 그쳤으면 좋겠네요.\" 무뚝뚝하지만 나름의 배려가 느껴진다.",
+    sfx:"none", next:"choice_smalltalk3"},
+  talk2_watch:{bg:"lounge",sil:["yura","donghyun"],speaker:"narr",
+    text:"동현은 별말 없이 묵묵히 장작불만 살핀다. 원래 그런 성격인 듯하다.",
+    sfx:"none", next:"choice_smalltalk3"},
+
+  choice_smalltalk3:{type:"choice", bg:"lounge", sil:["yura","suhyun"], speaker:"narr",
+    text:"수현이 분위기를 풀어보려는 듯 뭔가 말하려 한다. 어떻게 반응할까?",
+    options:[
+      {label:"\"수현 씨는 이런 상황도 재밌나 봐요.\"", next:"talk3_tease"},
+      {label:"조용히 웃어넘긴다", next:"talk3_smile"}
+    ]},
+  talk3_tease:{bg:"lounge",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"\"당연하죠! 이런 게 진짜 여행 아니에요?\" 수현이 카메라를 들어 다들 있는 쪽을 슬쩍 찍는다. \"나중에 이거 보면 완전 웃길걸요.\" 유라도 피식 웃는다.",
+    sfx:"none", next:"choice_smalltalk4"},
+  talk3_smile:{bg:"lounge",sil:["yura","suhyun"],speaker:"narr",
+    text:"굳이 대꾸하지 않고 웃어넘긴다. 수현은 신경 쓰지 않는 듯, 계속 이런저런 이야기를 늘어놓는다.",
+    sfx:"none", next:"choice_smalltalk4"},
+
+  choice_smalltalk4:{type:"choice", bg:"lounge", sil:["yura"], speaker:"narr",
+    text:"유라가 다시 관자놀이를 짚는다. 뭐라고 해줄까?",
+    options:[
+      {label:"\"괜찮으면 좀 더 있다 가요.\"", next:"talk4_stay"},
+      {label:"\"들어가서 쉬는 게 낫겠어요.\"", next:"talk4_go"}
+    ]},
+  talk4_stay:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"…고맙지만, 역시 안 되겠어요. 머리가 다시 아파오네요.\" 유라가 미안한 듯 웃으며 자리에서 일어난다.",
+    sfx:"none", next:"s6_yura_leave"},
+  talk4_go:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"그러게요. 머리가 다시 아파오네요.\" 유라가 고개를 끄덕이며 자리에서 일어난다.",
+    sfx:"none", next:"s6_yura_leave"},
+  s6_yura_leave:{bg:"lounge",sil:[],speaker:"narr",
+    text:"유라는 다시 2층으로 올라간다. 곧 방문 닫히는 소리가 들린다. 거실엔 다시 세 사람만 남는다.",
     sfx:"none", next:"s7"},
 
   // ---- 단절: TV / 라디오 / 전화 ----
@@ -383,7 +595,7 @@ const scenes={
     sfx:"none", next:"s7b"},
   s7b:{bg:"lounge",sil:[],speaker:"narr",
     text:"화면은 켜지지 않는다. 정전이다. 거실이 순식간에 완전한 어둠에 잠긴다.",
-    sfx:"powerout", next:"choice_dark"},
+    sfx:"powerout", blackout:true, next:"choice_dark"},
 
   // ---- 어둠 구간: 전기 복구까지 ----
   choice_dark:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
@@ -394,16 +606,70 @@ const scenes={
     ]},
   s7c_ask:{bg:"lounge",sil:[],speaker:"narr",
     text:"어둠 속에서 동현의 목소리가 들린다. \"지하실 차단기가 내려간 걸 수도 있어요. 근데 지금은 안 보여서…\" 결국 뭔가 밝힐 게 필요하다.",
+    sfx:"none", next:"choice_findlight"},
+
+  choice_findlight:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"손전등을 찾아야 한다. 어떻게 할까?",
+    options:[
+      {label:"동현에게 손전등이 어디 있는지 묻는다", next:"s7c_ask2"},
+      {label:"혼자 손전등을 찾아본다", next:"choice_search_where"}
+    ]},
+  s7c_ask2:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"\"TV 밑에 서랍장 안에 있을 거예요.\" 동현의 말대로 더듬어 찾으니, 금세 손전등이 손에 잡힌다.",
     sfx:"none", next:"s7c_flashlight"},
+
+  choice_search_where:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"어디부터 뒤져볼까?",
+    options:[
+      {label:"주방을 뒤져본다", next:"search_kitchen"},
+      {label:"화장실을 뒤져본다", next:"search_bathroom"}
+    ]},
+  search_kitchen:{bg:"lounge",sil:[],speaker:"narr",
+    textFn:()=>flags.has("화장실_수색")
+      ? "주방 서랍까지 더듬더듬 뒤져보지만, 역시 손전등은 없다. 이제 남은 곳은 거실뿐이다."
+      : "주방 서랍을 더듬더듬 뒤져본다. 그릇 부딪는 소리만 날 뿐, 손전등은 나오지 않는다.",
+    sfx:"none", flag:"주방_수색", next:"choice_search_next1"},
+  search_bathroom:{bg:"lounge",sil:[],speaker:"narr",
+    textFn:()=>flags.has("주방_수색")
+      ? "화장실 선반까지 더듬더듬 뒤져보지만, 역시 손전등은 없다. 이제 남은 곳은 거실뿐이다."
+      : "화장실 선반을 더듬더듬 뒤져본다. 샴푸 통 몇 개가 바닥에 떨어질 뿐, 손전등은 나오지 않는다.",
+    sfx:"none", flag:"화장실_수색", next:"choice_search_next2"},
+
+  choice_search_next1:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"다음은 어디를 뒤져볼까?",
+    options:[
+      {label:"화장실을 뒤져본다", next:"search_bathroom"},
+      {label:"거실을 뒤져본다", next:"s7c_flashlight"}
+    ]},
+  choice_search_next2:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"다음은 어디를 뒤져볼까?",
+    options:[
+      {label:"주방을 뒤져본다", next:"search_kitchen"},
+      {label:"거실을 뒤져본다", next:"s7c_flashlight"}
+    ]},
+
   s7c_flashlight:{bg:"lounge",sil:[],speaker:"narr",
     text:"더듬더듬 서랍과 선반을 뒤진다. 한참을 헤맨 끝에, 겨우 손전등 하나를 찾아낸다. 불빛이 켜지자 다들 안도의 숨을 내쉰다.",
-    sfx:"none", next:"s7d"},
-  s7d:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
-    text:"손전등을 든 동현이 지하실로 내려간다. 잠시 후, 정말로 차단기 하나가 내려가 있던 걸 발견하고 다시 올린다.",
+    sfx:"none", next:"choice_basement"},
+
+  choice_basement:{type:"choice", bg:"lounge", sil:["donghyun"], speaker:"narr",
+    text:"동현이 손전등을 들고 지하실로 내려가려 한다. 같이 갈까, 거실에서 기다릴까?",
+    options:[
+      {label:"같이 지하실로 내려간다", next:"s7c_together"},
+      {label:"거실에서 기다린다", next:"s7d"}
+    ]},
+  s7c_together:{bg:"lounge",sil:["donghyun"],speaker:"narr",
+    text:"함께 지하실로 내려간다. 좁고 낡은 계단, 곰팡이 냄새가 코를 찌른다. 차단기함이 벽 한쪽에 걸려 있다.",
+    sfx:"none", flag:"지하실동행", next:"s7d"},
+
+  s7d:{bg:"lounge",sil:["donghyun"],speaker:"narr",
+    textFn:()=>flags.has("지하실동행")
+      ? "차단기함을 살피던 동현이 손잡이 하나를 다시 위로 올린다. 정말로 내려가 있었다."
+      : "손전등을 든 동현이 지하실로 내려간다. 잠시 후, 정말로 차단기 하나가 내려가 있던 걸 발견하고 다시 올린다.",
     sfx:"none", next:"s7e"},
   s7e:{bg:"lounge",sil:[],speaker:"narr",
     text:"불이 다시 들어온다. 거실은 아까와 다를 게 없어 보인다. 다들 각자의 자리로 돌아온다.",
-    sfx:"none", next:"s8"},
+    sfx:"none", blackout:false, next:"s8"},
 
   s8:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
     text:"라디오 채널을 돌려봐도 잡음만 흘러나온다. \"이 근처는 원래 전파가 약해요.\" 동현이 미간을 좁힌다.",
@@ -439,7 +705,18 @@ const scenes={
 
   s11_stay:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
     text:"\"내가 가볼게.\" 동현이 먼저 나선다. 발소리가 계단 위로 사라진다.",
+    sfx:"none", next:"choice_wait_suhyun"},
+
+  choice_wait_suhyun:{type:"choice", bg:"lounge", sil:[{name:"suhyun",pose:"alert"}], speaker:"narr",
+    text:"수현과 단둘이 거실에 남았다. 무슨 말이라도 할까, 조용히 기다릴까?",
+    options:[
+      {label:"수현에게 말을 건다", next:"s11_talk"},
+      {label:"말없이 기다린다", next:"s11_stay2"}
+    ]},
+  s11_talk:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+    text:"\"괜찮을 거예요, 별일 아니겠죠.\" 수현이 애써 웃어 보인다. 평소와 다를 바 없는 태도다.",
     sfx:"none", next:"s11_stay2"},
+
   s11_stay2:{bg:"lounge",sil:[],speaker:"narr",
     text:"한참을 기다려도 아무 기척이 없다. 무거운 정적만 흐른다.",
     sfx:"heartbeat", next:"choice_stay2"},
@@ -484,6 +761,9 @@ const scenes={
       : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다. 언제부터 없었는지는 알 수 없다.",
     sfx:"none", flag:"부엌_확인", next:"hub_investigate"},
   loc_donghyun_room:{bg:"lounge",sil:[],speaker:"narr",
+    text:"동현의 방문 앞에 선다. 손잡이를 돌려 문을 연다.",
+    sfx:"doorOpen", next:"loc_donghyun_room2"},
+  loc_donghyun_room2:{bg:"dhroom",sil:[],speaker:"narr",
     textFn:()=>flags.has("동현방_확인")
       ? "더 살펴봐도 눈에 걸리는 건 없다."
       : "지하실 옆 동현의 방, 낡은 서랍 속에서 유라의 것으로 보이는 목걸이가 나온다. 왜 여기 있는 걸까.",
@@ -505,7 +785,7 @@ const scenes={
     text:"핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
     sfx:"none", next:"s14"},
 
-  s14:{bg:"lake",sil:["yura"],speaker:"narr",
+  s14:{bg:"lake",sil:[{name:"yura",pose:"collapsed"}],speaker:"narr",
     text:"호수 얼음 위, 눈보라 속에 무언가 쓰러져 있다. 다가가 보니… 유라다. 이미 움직임이 없다.",
     sfx:"heartbeat", next:"s14_return"},
   s14_return:{bg:"lake",sil:[],speaker:"narr",
@@ -527,6 +807,16 @@ const scenes={
     sfx:"none", next:"discuss3"},
   discuss3:{bg:"lounge",dynamicSil:true,speaker:"narr",
     text:"틀린 말은 아니다. 정전이 된 그 어둠 속에서, 사실 누가 어디 있었는지 정확히 아는 사람은 없다.",
+    sfx:"none", next:"choice_discuss4"},
+
+  choice_discuss4:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
+    text:"더 물어볼 게 있을까?",
+    options:[
+      {label:"사라진 식칼에 대해 묻는다", next:"discuss4_knife"},
+      {label:"더 물을 것 없다. 넘어간다", next:"choice_return_lake"}
+    ]},
+  discuss4_knife:{bg:"lounge",dynamicSil:true,speaker:"donghyun",
+    text:"\"식칼이 없어졌다고요?\" 동현이 눈살을 찌푸린다. \"부엌은 누구나 드나들 수 있는 곳인데.\" 틀린 말은 아니지만, 딱히 도움이 되는 대답도 아니다.",
     sfx:"none", next:"choice_return_lake"},
 
   choice_return_lake:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
@@ -542,68 +832,131 @@ const scenes={
     text:"동현과 함께 다시 호수로 나선다. 눈보라가 한층 거세졌다.",
     sfx:"none", flag:"최종동행", next:"s15"},
 
-  s15:{bg:"lake",dynamicSil2:true,speaker:"suhyun",
+  s15:{bg:"lake",dynamicSil2:true,speaker:"narr",
     textFn:()=>flags.has("최종동행")
       ? "그 뒤로 그림자 하나가 다가온다. 수현이다. \"두 분이 같이 오셨네요…\" 손에 든 것은 아직 보이지 않는다."
-      : "그 뒤로 그림자 하나가 서 있다. 수현이다. \"괜찮으세요, 선배? 여기서 이러고 있을 줄은…\" 손에 든 것은 아직 보이지 않는다.",
-    sfx:"none", next:"s15b"},
-  s15b:{bg:"lake",dynamicSil2:true,speaker:"narr",
-    text:"목에 걸려 있어야 할 카메라가, 지금 수현에게 없다.",
+      : "그 뒤로 인기척이 느껴진다. 돌아볼 틈도 없이, 눈보라 속 그림자 하나가 훌쩍 다가선다.",
     sfx:"none", next:"s16pre"},
 
-  s16pre:{bg:"lake",dynamicSil2:true,speaker:"suhyun",
+  s16pre:{bg:"lake",dynamicSil2:true,speaker:"narr",
     textFn:()=>flags.has("최종동행")
       ? "수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. 둘을 번갈아 보는 눈빛이 흔들린다. \"…이렇게 될 줄은 몰랐는데.\""
-      : "수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. \"…왜 따라온 거예요, 선배.\"",
+      : "그림자의 손에 무언가 번뜩인다. 피 묻은 칼이다. 얼굴을 확인할 새도 없이, 눈보라가 시야를 가린다.",
     sfx:"scream", next:"s16"},
   s16:{bg:"lake",dynamicSil2:true,speaker:"narr",
     textFn:()=>flags.has("최종동행")
       ? "궁지에 몰린 수현이 칼을 쥔 채 무작정 달려든다."
-      : "눈보라 속에서 수현이 칼을 고쳐 쥔다.",
+      : "그림자가 칼을 고쳐 쥐고 다가선다.",
     sfx:"none", nextFn:()=> flags.has("최종동행") ? "s16_capture" : "s16_death"}
 };
 
 // True End - Donghyun came along, together they overpower Suhyun
 Object.assign(scenes,{
-  s16_capture:{bg:"lake",sil:["yura","suhyun","donghyun"],speaker:"narr",
+  s16_capture:{bg:"lake",sil:[{name:"yura",pose:"collapsed"},{name:"suhyun",pose:"cower"},{name:"donghyun",pose:"alert"}],speaker:"narr",
     text:"혼자였다면 늦었을 것이다. 동현이 뒤에서 함께 달려들어 수현을 붙든다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
     sfx:"click", next:"endTrue"}
 });
 
 // Death End - alone, no chance against an armed opponent
 Object.assign(scenes,{
-  s16_death:{bg:"lake",sil:["suhyun"],speaker:"narr",
-    text:"혼자서는 칼을 든 사람을 막을 수 없었다.",
+  s16_death:{bg:"lake",sil:[],speaker:"narr",
+    text:"혼자서는 칼을 든 사람을 막을 수 없었다. 쓰러지는 순간, 눈밭을 움켜쥔 손 위로 낡은 은반지가 스쳐 지나간다. '아… 저건…' 더 이상 생각은 이어지지 않는다.",
     sfx:"scream", blood:true, next:"endDeath"}
 });
 
-// Bad End - Donghyun wrongly bound as the culprit, everyone dies not realizing the real killer was Suhyun
+// Bad End - Donghyun wrongly bound as the culprit, everyone dies without ever learning who the real killer was
 Object.assign(scenes,{
-  c1:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+  c1:{bg:"lounge",sil:[{name:"donghyun",pose:"bound"}],speaker:"donghyun",
     text:"\"진짜 아니야, 나는…!\" 동현을 다그친다. 방에서 나온 목걸이를 들이대자, 그는 말을 잃는다. 믿지 않고 그대로 결박한다.",
     sfx:"none", next:"c2"},
-  c2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+  c2:{bg:"lounge",sil:[{name:"suhyun",pose:"cower"},{name:"donghyun",pose:"bound"}],speaker:"suhyun",
     text:"\"이제 안전한 거죠?\" 수현이 안도한 듯 옆에 앉는다. 동현을 묶어두었으니, 남은 밤은 무사히 넘길 수 있을 것 같았다.",
-    sfx:"none", next:"c3"},
+    sfx:"none", next:"choice_reassure"},
+
+  choice_reassure:{type:"choice", bg:"lounge", sil:[{name:"suhyun",pose:"cower"},{name:"donghyun",pose:"bound"}], speaker:"narr",
+    text:"불안해하는 수현에게 무슨 말을 해줄까?",
+    options:[
+      {label:"\"이제 괜찮아. 내가 지키고 있을게.\"", next:"c2b_watch"},
+      {label:"\"다 끝났어. 좀 쉬어.\"", next:"c2b_rest"}
+    ]},
+  c2b_watch:{bg:"lounge",sil:[{name:"suhyun",pose:"cower"},{name:"donghyun",pose:"bound"}],speaker:"sangjun",
+    text:"\"이제 괜찮아. 내가 지키고 있을게.\" 상준의 말에 수현이 옅게 웃는다. \"…고마워요, 선배.\" 그 말이 진심인지는, 알 수 없었다.",
+    sfx:"none", flag:"경계다짐", next:"c2c"},
+  c2b_rest:{bg:"lounge",sil:[{name:"suhyun",pose:"cower"},{name:"donghyun",pose:"bound"}],speaker:"sangjun",
+    text:"\"다 끝났어. 좀 쉬어.\" 수현이 고개를 끄덕인다. \"…그래야겠어요. 너무 피곤해서.\" 어깨의 긴장이 스르르 풀린다.",
+    sfx:"none", next:"c2c"},
+  c2c:{bg:"lounge",sil:[{name:"donghyun",pose:"bound"}],speaker:"narr",
+    text:"수현은 지쳤는지 방으로 들어가 눕는다. 거실엔 상준과, 결박된 동현만 남는다.",
+    sfx:"none", next:"c2d"},
+  c2d:{bg:"lounge",sil:[{name:"donghyun",pose:"bound"}],speaker:"narr",
+    textFn:()=>flags.has("경계다짐")
+      ? "졸지 않겠다고 다짐하며 동현을 지켜본다. 하지만 몸은 마음처럼 되지 않는다. 창밖 눈보라 소리가 점점 아득해지고, 다짐도 함께 흐려진다."
+      : "이제 다 끝났다는 안도감이 몰려온다. 동현을 지켜야 한다는 생각도 잠시, 눈꺼풀이 무겁게 내려앉는다.",
+    sfx:"none", next:"c2e"},
+
+  c2e:{bg:"lounge",sil:[],speaker:"narr",
+    text:"새벽의 추운 공기에 잠시 잠이 깼다. 그런데 이상하다. 앞에 묶여 있던 동현이 보이지 않는다.",
+    sfx:"none", next:"c2f"},
+  c2f:{bg:"lounge",sil:[],speaker:"narr",
+    text:"눈을 비비고 다시 살펴봐도 없다.",
+    sfx:"heartbeat", next:"c3"},
+
   c3:{bg:"lounge",sil:[],speaker:"narr",
-    text:"새벽, 벽난로 굴뚝을 타고 매캐한 연기가 스며든다. 환기구가 밖에서 막혀 있다. 문손잡이엔 쇠사슬이 감겨 있다.",
-    sfx:"none", next:"c4"},
-  c4:{bg:"lounge",sil:["suhyun"],speaker:"narr",
-    text:"의식이 흐려지는 순간, 연기 너머로 누군가의 그림자가 침착하게 창밖을 살피는 게 보인다. 수현이다. 결박은 처음부터 동현이 아니라, 모두를 가둔 것이었다.",
-    sfx:"thunder", next:"endB"}
+    text:"새벽, 등 뒤에서 둔탁한 충격이 느껴진다. 돌아볼 새도 없이 두 번째 타격이 이어진다.",
+    sfx:"bluntHit", next:"c4"},
+  c4:{bg:"lounge",sil:[],speaker:"narr",
+    textFn:()=>flags.has("경계다짐")
+      ? "지키겠다고 했는데. 그 다짐이 무색하게, 바닥이 차갑다. 눈이 잘 떠지지 않는다. 누군가의 발소리가 천천히 멀어진다. 그게 누구인지는, 끝내 알 수 없었다."
+      : "바닥이 차갑다. 눈이 잘 떠지지 않는다. 누군가의 발소리가 천천히 멀어진다. 그게 누구인지는, 끝내 알 수 없었다.",
+    sfx:"none", next:"endB"}
 });
 
 // Comic End - ramen
 Object.assign(scenes,{
   d1:{bg:"kitchen",sil:[],speaker:"narr",
     text:"위층은 나중에 신경 쓰기로 하고, 일단 주방으로 가서 라면 냄비를 올린다.",
-    sfx:"click", next:"d2"},
+    sfx:"click", next:"choice_ramen"},
+
+  choice_ramen:{type:"choice", bg:"kitchen", sil:[], speaker:"narr",
+    text:"찬장을 열어보니 라면이 몇 개 남아 있다. 어떤 걸로 끓일까?",
+    options:[
+      {label:"신라면", next:"d2"},
+      {label:"짜파게티", next:"d2"},
+      {label:"너구리", next:"ramen_raccoon1"}
+    ]},
+
   d2:{bg:"kitchen",sil:["donghyun"],speaker:"donghyun",
     text:"\"위층은 신경 쓰지 말고 먹자.\" 라면 냄새가 거실까지 퍼진다. 다들 긴장이 조금 풀린다.",
     sfx:"none", next:"d3"},
   d3:{bg:"kitchen",sil:["donghyun","suhyun"],speaker:"suhyun",
     text:"수현도 마침 내려와 자연스럽게 자리에 앉는다. \"유라 씨는 원래 잘 안 나와요.\" 그날 밤, 셋은 라면을 나눠 먹으며 밤을 지새운다. 유라의 몫은 끝내 식어갔다.",
-    sfx:"none", next:"endD"}
+    sfx:"none", next:"endD"},
+
+  // ---- 너구리 선택: 별도의 기묘한 죽음 엔딩 ----
+  ramen_raccoon1:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"너구리 봉지를 뜯고 냄비에 넣는다. \"손 좀 씻고 올게요.\" 잠시 자리를 비운다.",
+    sfx:"none", next:"ramen_raccoon2"},
+  ramen_raccoon2:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"돌아와 보니 냄비는 이미 다 끓어 있다. 그런데 아무도 없다. 거실도, 부엌도 조용하다.",
+    sfx:"none", next:"ramen_raccoon3"},
+  ramen_raccoon3:{bg:"kitchen",sil:[],speaker:"sangjun",
+    text:"\"먼저 먹을게요!\" 혼잣말처럼 중얼거리며 그릇에 라면을 담는다. 아무도 대답하지 않는다.",
+    sfx:"none", next:"ramen_raccoon4"},
+  ramen_raccoon4:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"한입, 두입. 오랜만에 먹는 라면이 꽤 맛있다. 국물까지 싹 비워간다.",
+    sfx:"none", next:"ramen_raccoon5"},
+  ramen_raccoon5:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"그런데 속이 갑자기 메스껍다. 뭔가 잘못 삼킨 것처럼, 명치 아래가 뒤틀린다.",
+    sfx:"none", next:"ramen_raccoon6"},
+  ramen_raccoon6:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"손끝이 저리기 시작한다. 젓가락을 쥔 손에 힘이 들어가지 않는다. 몸이 점점 뻣뻣해진다.",
+    sfx:"heartbeat", next:"ramen_raccoon7"},
+  ramen_raccoon7:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"숨이 잘 들이켜지지 않는다. 목구멍이 좁아진 것 같다. 그릇을 놓친다.",
+    sfx:"none", next:"ramen_raccoon8"},
+  ramen_raccoon8:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"바닥에 쓰러진다. 시야가 흐려진다. 마지막으로 눈에 들어온 건, 조리대 위에 놓인 낯선 빈 봉지였다.",
+    sfx:"scream", blood:false, next:"endRaccoon"}
 });
 
 const endings={
@@ -611,10 +964,12 @@ const endings={
     text:"진범 수현을 붙든 채 아침을 맞는다. 유라를 지키지는 못했지만, 더 이상의 희생은 없었다."},
   endDeath:{title:"【엔딩 - 얼음 위의 그림자】 Death End",
     text:"혼자서는 칼을 든 사람을 이길 수 없었다. 상준은 끝내 산장으로 돌아오지 못했다."},
-  endB:{title:"【엔딩 - 얼어붙은 밀실의 연기】 Bad End",
-    text:"무고한 동현을 범인으로 몰아 결박한 채 안심했지만, 진범은 처음부터 곁에 있었다. 진실은 모두가 숨이 끊어진 뒤에야 드러났다."},
+  endB:{title:"【엔딩 - 붙잡히지 않은 그림자】 Bad End",
+    text:"무고한 동현을 범인으로 몰아 결박한 채 안심했지만, 결국 아무도 진범의 얼굴을 보지 못한 채 목숨을 잃었다."},
   endD:{title:"【엔딩 - 라면이 진짜 무서웠다】 Comic End",
-    text:"아무 일도 없었다는 듯, 셋은 무사히 아침을 맞는다. 다만 유라는 끝내 돌아오지 않았다."}
+    text:"아무 일도 없었다는 듯, 셋은 무사히 아침을 맞는다. 다만 유라는 끝내 돌아오지 않았다."},
+  endRaccoon:{title:"【엔딩 - 혼자 먹은 라면】 Death End",
+    text:"누구의 것인지 모를 냄비를, 혼자 다 비웠다. 다음 날 아침, 부엌 바닥에서 차갑게 식은 상준이 발견되었다."}
 };
 
 /* ---------------- ENGINE ---------------- */
@@ -626,15 +981,27 @@ const sils=[document.getElementById("sil1"),document.getElementById("sil2"),docu
 const CHAR_ORDER=["sangjun","suhyun","donghyun","yura"];
 
 function showSilhouettes(list){
-  sils.forEach(s=>s.classList.remove("show"));
-  list.forEach((name,i)=>{ if(sils[i]){ sils[i].classList.add("show"); } });
+  sils.forEach(s=>{ s.className="sil"; });
+  list.forEach((entry,i)=>{
+    const el=sils[i];
+    if(!el) return;
+    const name = typeof entry==="string" ? entry : entry.name;
+    const pose = typeof entry==="string" ? "neutral" : (entry.pose||"neutral");
+    const gender = (CHAR[name] && CHAR[name].gender) || "male";
+    el.classList.add("show", gender);
+    if(pose && pose!=="neutral") el.classList.add("pose-"+pose);
+  });
 }
 function setBg(cls){
-  if(bgEl.className !== cls){
+  if(bgEl.className.replace(" blackout","") !== cls){
     releaseTension();
     setWindIntensity(cls==="lake");
   }
-  bgEl.className=cls;
+  const wasBlackout = bgEl.classList.contains("blackout");
+  bgEl.className=cls + (wasBlackout ? " blackout" : "");
+}
+function setBlackout(on){
+  bgEl.classList.toggle("blackout", on);
 }
 function flash(){ const f=document.getElementById("flash"); f.style.transition="none"; f.style.opacity=1;
   requestAnimationFrame(()=>{ f.style.transition="opacity .4s"; f.style.opacity=0; }); }
@@ -681,7 +1048,14 @@ function silhouettesFor(sc){
     return ["donghyun","suhyun"];
   }
   if(sc.dynamicSil2){
-    return flags.has("최종동행") ? ["yura","suhyun","donghyun"] : ["yura","suhyun"];
+    const withDH = flags.has("최종동행");
+    if(curId==="s16pre" || curId==="s16"){
+      const suhyunPose = flags.has("최종동행") ? "defensive" : "weapon";
+      return withDH
+        ? [{name:"yura",pose:"cower"}, {name:"suhyun",pose:suhyunPose}, {name:"donghyun",pose:"alert"}]
+        : [{name:"yura",pose:"cower"}, {name:"suhyun",pose:suhyunPose}];
+    }
+    return withDH ? ["yura","suhyun","donghyun"] : ["yura","suhyun"];
   }
   return sc.sil||[];
 }
@@ -694,6 +1068,8 @@ function renderScene(id){
   if(sc.flag) flags.add(sc.flag);
   if(sc.type==="choice"){ renderChoice(sc); return; }
   setBg(sc.bg);
+  if(sc.blackout===true) setBlackout(true);
+  if(sc.blackout===false) setBlackout(false);
   showSilhouettes(silhouettesFor(sc));
   speakerEl.textContent = CHAR[sc.speaker] ? CHAR[sc.speaker].name : "";
   if(sc.sfx==="glass" || sc.sfx==="thunder" || sc.sfx==="powerout") flash();
@@ -710,7 +1086,10 @@ function renderEnding(id){
   document.getElementById("endScreen").classList.add("show");
 }
 function renderChoice(sc){
-  setBg(sc.bg); showSilhouettes(silhouettesFor(sc));
+  setBg(sc.bg);
+  if(sc.blackout===true) setBlackout(true);
+  if(sc.blackout===false) setBlackout(false);
+  showSilhouettes(silhouettesFor(sc));
   speakerEl.textContent="";
   choicesEl.classList.remove("show");
   typeText(sc.textFn ? sc.textFn() : sc.text, ()=>{
@@ -736,6 +1115,7 @@ function advance(){
 textbox.addEventListener("click", advance);
 document.getElementById("stage").addEventListener("click", e=>{
   if(e.target.closest("#choices") || e.target.closest("#volPanel") ||
+     e.target.closest("#devCorner") || e.target.closest("#devPinScreen") || e.target.closest("#devPanel") ||
      e.target.closest("#titleScreen") || e.target.closest("#endScreen")) return;
   advance();
 });
@@ -753,6 +1133,111 @@ document.getElementById("retryBtn").onclick=()=>{
   document.getElementById("bloodOverlay").innerHTML="";
   document.getElementById("titleScreen").style.display="flex";
 };
+
+/* ---------------- DEV MODE ---------------- */
+const DEV_PIN="1100";
+let devPinInput="";
+
+function updatePinDots(){
+  const dots=document.querySelectorAll("#devPinDots .pinDot");
+  dots.forEach((d,i)=>d.classList.toggle("filled", i<devPinInput.length));
+}
+function openPinScreen(){
+  devPinInput="";
+  updatePinDots();
+  document.getElementById("devPinScreen").classList.add("show");
+}
+function closePinScreen(){
+  devPinInput="";
+  updatePinDots();
+  document.getElementById("devPinScreen").classList.remove("show");
+}
+document.getElementById("devCorner").addEventListener("click", openPinScreen);
+document.getElementById("devPinCancel").addEventListener("click", closePinScreen);
+document.getElementById("devPinPad").addEventListener("click", e=>{
+  const btn=e.target.closest("button");
+  if(!btn) return;
+  const k=btn.dataset.k;
+  if(k==="clear"){ devPinInput=""; }
+  else if(k==="back"){ devPinInput=devPinInput.slice(0,-1); }
+  else if(devPinInput.length<4){ devPinInput+=k; }
+  updatePinDots();
+  if(devPinInput.length===4){
+    if(devPinInput===DEV_PIN){
+      closePinScreen();
+      openDevPanel();
+    } else {
+      const box=document.getElementById("devPinBox");
+      box.style.transition="none"; box.style.transform="translateX(-8px)";
+      requestAnimationFrame(()=>{
+        box.style.transition="transform .08s ease"; 
+        let n=0; const shake=setInterval(()=>{
+          n++; box.style.transform = n%2===0 ? "translateX(-8px)" : "translateX(8px)";
+          if(n>=6){ clearInterval(shake); box.style.transform="translateX(0)"; }
+        },60);
+      });
+      setTimeout(()=>{ devPinInput=""; updatePinDots(); }, 400);
+    }
+  }
+});
+
+function sceneLabel(id, sc){
+  if(sc.type==="choice") return "choice";
+  return "";
+}
+function buildDevList(){
+  const list=document.getElementById("devList");
+  list.innerHTML="";
+  const allIds=Object.keys(scenes);
+  allIds.forEach(id=>{
+    const sc=scenes[id];
+    const row=document.createElement("div");
+    row.className="devItem"+(sc.type==="choice" ? " devChoice" : "");
+    const idEl=document.createElement("span");
+    idEl.className="devId";
+    idEl.textContent=id+(sc.type==="choice" ? " [선택]" : "");
+    const txtEl=document.createElement("span");
+    txtEl.className="devTxt";
+    txtEl.textContent = sc.text || (sc.textFn ? "(동적 텍스트)" : "");
+    row.appendChild(idEl); row.appendChild(txtEl);
+    row.onclick=()=>{
+      closeDevPanel();
+      document.getElementById("titleScreen").style.display="none";
+      document.getElementById("endScreen").classList.remove("show");
+      initAudio();
+      renderScene(id);
+    };
+    list.appendChild(row);
+  });
+  Object.keys(endings).forEach(id=>{
+    const e=endings[id];
+    const row=document.createElement("div");
+    row.className="devItem devEnding";
+    const idEl=document.createElement("span");
+    idEl.className="devId";
+    idEl.textContent=id+" [엔딩]";
+    const txtEl=document.createElement("span");
+    txtEl.className="devTxt";
+    txtEl.textContent=e.title;
+    row.appendChild(idEl); row.appendChild(txtEl);
+    row.onclick=()=>{
+      closeDevPanel();
+      document.getElementById("titleScreen").style.display="none";
+      initAudio();
+      renderScene(id);
+    };
+    list.appendChild(row);
+  });
+}
+function openDevPanel(){
+  buildDevList();
+  document.getElementById("devPanel").classList.add("show");
+}
+function closeDevPanel(){
+  document.getElementById("devPanel").classList.remove("show");
+}
+document.getElementById("devClose").addEventListener("click", closeDevPanel);
+
 </script>
 </body>
 </html>
