@@ -471,20 +471,20 @@ applyVolume();
 
 /* ---------------- SCENARIO ---------------- */
 const CHAR={
-  sangjun:{name:"상준", gender:"male"}, suhyun:{name:"수현", gender:"female"},
+  sangjun:{name:"나", gender:"male"}, suhyun:{name:"수현", gender:"female"},
   donghyun:{name:"동현", gender:"male"}, yura:{name:"유라", gender:"female"}, narr:{name:""}
 };
 
 const scenes={
   // ---- 프롤로그: 도착 & 인물 소개 ----
   s1:{bg:"lounge",sil:[],speaker:"narr",
-    text:"폭설이 그칠 줄 모르고 쏟아지던 밤. 산길이 끊긴 끝에 만난 산장 '백설장'. 상준과 일행은 하나둘 거실로 모여든다.",
+    text:"폭설이 그칠 줄 모르고 쏟아지던 밤. 산길이 끊긴 끝에 만난 산장 '백설장'. 나와 일행은 하나둘 거실로 모여든다.",
     sfx:"none", next:"s1b"},
   s1b:{bg:"lounge",sil:["suhyun"],speaker:"narr",
-    text:"수현은 상준의 회사 입사 동기다. 입사 첫날부터 카메라를 들고 다니던, 늘 먼저 말을 걸어오는 성격.",
+    text:"수현은 나의 회사 입사 동기다. 입사 첫날부터 카메라를 들고 다니던, 늘 먼저 말을 걸어오는 성격.",
     sfx:"none", next:"s2"},
   s2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
-    text:"\"와, 진짜 이러다 며칠은 못 나가는 거 아니에요?\" 수현이 젖은 카메라 가방을 내려놓으며 웃는다. 손가락에 낀 낡은 은반지가 눈에 잠깐 스친다. 이런 상황에서도 재미있어하는 눈치다.",
+    text:"\"와,진짜 이러다 며칠은 못 나가는 거 아니에요 상준씨?\" 수현이 젖은 카메라 가방을 내려놓으며 웃는다. 손가락에 낀 낡은 은반지가 눈에 잠깐 스친다. 이런 상황에서도 재미있어하는 눈치다.",
     sfx:"none", next:"choice_greet"},
 
   choice_greet:{type:"choice", bg:"lounge", sil:["suhyun"], speaker:"narr",
