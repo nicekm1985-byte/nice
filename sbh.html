@@ -344,19 +344,22 @@ const scenes={
     text:"현관 쪽에서 한 남자가 들어온다. 처음 보는 얼굴이다. 이 산장 관리인인가 — 체격이 다부지고, 말수가 적어 보인다.",
     sfx:"none", next:"s3"},
   s3:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
-    text:"\"이 산장 관리인입니다. 이 정도 눈이면… 오늘은 다들 여기서 묵으셔야 할 겁니다.\" 동현이 무뚝뚝하게 인사를 건넨다. 짧은 한마디였지만, 손은 이미 능숙하게 벽난로 장작을 정리하고 있다.",
+    text:"\"이 산장 관리인 최동현입니다. 이 정도 눈이면… 오늘은 다들 여기서 묵으셔야 할 겁니다.\" 동현이 무뚝뚝하게 인사를 건넨다. 짧은 한마디였지만, 손은 이미 능숙하게 벽난로 장작을 정리하고 있다.",
     sfx:"none", next:"s4intro"},
   s4intro:{bg:"lounge",sil:["yura"],speaker:"narr",
     text:"조금 늦게, 또 한 사람이 들어온다. 이쪽도 초면이다. 누구와도 시선을 오래 마주치지 않는 여자다.",
     sfx:"none", next:"s4"},
   s4:{bg:"lounge",sil:["yura"],speaker:"yura",
-    text:"\"…안녕하세요. 저는 유라예요. 혼자 여행 중이었는데, 오늘은 여기서 묵으려고요.\" 짧은 자기소개 후, 다시 말이 없어진다.",
+    text:"\"…안녕하세요. 저는 이유라예요. 혼자 여행 중이었는데, 오늘은 여기서 묵으려고요.\" 짧은 자기소개 후, 다시 말이 없어진다.",
     sfx:"none", next:"s5"},
   s5:{bg:"lounge",sil:["yura"],speaker:"yura",
     text:"\"저는 먼저 좀 쉴게요. 두통이 있어서.\" 유라는 그렇게 말하고 2층으로 올라간다. 곧 방문 닫히는 소리가 들린다.",
+    sfx:"none", next:"s5b"},
+  s5b:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+    text:"\"저도 화장실 좀 다녀올게요.\" 수현이 자리에서 일어나 잠시 자리를 비운다.",
     sfx:"none", next:"s6"},
   s6:{bg:"lounge",sil:[],speaker:"narr",
-    text:"세 사람만 남은 거실. 창밖 눈보라 소리와 벽난로 장작 타는 소리만 나직이 흐른다.",
+    text:"얼마 지나지 않아 수현이 돌아와 다시 자리에 앉는다. 세 사람만 남은 거실. 창밖 눈보라 소리와 벽난로 장작 타는 소리만 나직이 흐른다.",
     sfx:"none", next:"s7"},
 
   // ---- 단절: TV / 라디오 / 전화 ----
@@ -442,18 +445,18 @@ const scenes={
   loc_kitchen:{bg:"kitchen",sil:[],speaker:"narr",
     textFn:()=>flags.has("부엌_확인")
       ? "부엌은 아까와 다를 게 없다. 더 살필 것이 없어 보인다."
-      : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다.",
+      : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다. 언제부터 없었는지는 알 수 없다.",
     sfx:"none", flag:"부엌_확인", next:"hub_investigate"},
   loc_lounge:{bg:"lounge",sil:[],speaker:"narr",
     textFn:()=>flags.has("거실_확인")
       ? "거실도 별다를 게 없다. 벽난로 장작만 타고 있다."
-      : "거실 탁자 위, 발전기 점검 기록표에 동현의 필체로 시간이 적혀 있다. 정전 시각과 겹친다 — 적어도 그 시간, 동현은 지하실에 있었다.",
-    sfx:"none", flag:"거실_확인", next:"hub_investigate"},
+      : "거실 탁자 위, 발전기 점검 기록표에 시간이 적혀 있다 — 동현의 필체를 흉내 낸 듯 어딘가 딱딱하고 부자연스럽다. 정전이 나기도 전 시각이 이미 적혀 있다.",
+    sfx:"reveal", flag:"거실_확인", next:"hub_investigate"},
   loc_room:{bg:"room",sil:[],speaker:"narr",
     textFn:()=>flags.has("방_확인")
       ? "더 둘러봐도 눈에 걸리는 건 없다."
-      : "창틀 근처, 낯익은 머리끈 하나가 떨어져 있다. 수현이 늘 쓰던 것과 같은 색이다.",
-    sfx:"none", flag:"방_확인", next:"hub_investigate"},
+      : "창틀 근처가 아니라, 방문 바로 안쪽에 낯익은 머리끈 하나가 떨어져 있다. 수현이 늘 쓰던 것과 같은 색이다. 핏자국도 창문이 아니라 이 문 쪽에서부터 시작되고 있다.",
+    sfx:"reveal", flag:"방_확인", next:"hub_investigate"},
 
   // ---- 핏자국 추적 ----
   choice_follow:{type:"choice", bg:"room", sil:[], speaker:"narr",
@@ -475,7 +478,10 @@ const scenes={
     sfx:"heartbeat", next:"s15"},
   s15:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
     text:"그 뒤로 그림자 하나가 서 있다. 수현이다. 손에는 피 묻은 칼이 들려 있다. \"…왜 따라온 거예요, 선배.\"",
-    sfx:"scream", next:"s16"},
+    sfx:"scream", next:"s15b"},
+  s15b:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"\"5년 전 산행 사고, 기억 안 나세요? 이 사람… 그때 죽은 선배 동생이에요. 계속 캐고 다니길래.\" 수현의 목소리는 여전히 낮고 담담하다.",
+    sfx:"none", next:"s16"},
   s16:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
     text:"눈보라 속에서 수현이 칼을 고쳐 쥔다.",
     sfx:"none", nextFn:()=> flags.has("동행확보") ? "s16_capture" : "s16_death"}
