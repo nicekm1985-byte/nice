@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>침묵의 설백호(雪白湖)</title>
+<style>
+  html{-webkit-text-size-adjust:none;text-size-adjust:none;}
+  html,body{margin:0;padding:0;height:100%;background:#05070c;overflow:hidden;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
+  #stage{position:relative;width:100%;height:100vh;display:flex;align-items:flex-end;justify-content:center;}
+  #bg{position:absolute;top:20%;left:20%;width:60%;height:60%;background:#05070c;background-size:cover;background-position:center;
+      transition:opacity .8s;filter:contrast(1.05);}
+  #stage{background:#000;}
+  #bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35);}
+  #bg.lounge{background-image:url('night-interior-low-resolution.png');}
+  #bg.room{background-image:url('dark-bedroom-photorealistic.png');}
+  #bg.lake{background-image:url('night-frozen-lake.png');}
+  #bg.kitchen{background-image:url('rustic-mountain-scene.png');}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
+  #silhouettes{position:absolute;bottom:20%;left:0;width:100%;height:55%;display:flex;justify-content:center;align-items:flex-end;gap:6vw;}
+  .sil{width:12vw;max-width:160px;height:38vh;background:linear-gradient(180deg,#3a6fb0,#1a3a66);
+       clip-path:polygon(50% 0%,65% 8%,72% 25%,68% 40%,80% 55%,78% 100%,22% 100%,20% 55%,32% 40%,28% 25%,35% 8%);
+       opacity:0;filter:drop-shadow(0 0 12px rgba(60,120,200,.5));transition:opacity .6s;}
+  .sil.show{opacity:.85;}
+  #textbox{position:absolute;bottom:0;left:0;width:100%;min-height:26vh;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.92) 20%);
+            box-sizing:border-box;padding:24px 8vw 30px;color:#eee;font-size:1.15rem;line-height:1.8;cursor:pointer;}
+  #speaker{color:#7fd0ff;font-weight:bold;margin-bottom:6px;display:block;min-height:1.2em;}
+  #choices{position:absolute;bottom:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:none;
+            flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+  #choices.show{display:flex;}
+  .choiceBtn{background:rgba(20,40,70,.7);border:1px solid #4a7ab0;color:#dff;padding:16px 40px;font-size:1.05rem;
+             border-radius:6px;cursor:pointer;width:min(70vw,520px);transition:.2s;}
+  .choiceBtn:hover{background:rgba(60,110,170,.85);}
+  #cont{position:absolute;right:20px;bottom:18px;color:#fff;font-size:.85rem;font-weight:bold;text-shadow:0 0 8px rgba(255,255,255,.8);
+        animation:blinkCont 1s ease-in-out infinite;}
+  @keyframes blinkCont{0%,100%{opacity:1;}50%{opacity:.25;}}
+  #titleScreen{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;}
+  #titleScreen h1{color:#8fd0ff;letter-spacing:.3em;font-size:1.8rem;margin-bottom:40px;text-shadow:0 0 20px #2a6fb0;}
+  #startBtn{background:none;border:1px solid #8fd0ff;color:#8fd0ff;padding:14px 44px;font-size:1rem;cursor:pointer;letter-spacing:.2em;}
+  #startBtn:hover{background:rgba(143,208,255,.15);}
+  #endScreen{position:absolute;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;text-align:center;padding:0 10vw;}
+  #endScreen.show{display:flex;}
+  #endScreen h2{color:#ffcf7f;font-size:1.6rem;margin-bottom:20px;letter-spacing:.15em;}
+  #endScreen p{color:#ccc;line-height:1.8;font-size:1.05rem;}
+  #retryBtn{margin-top:30px;background:none;border:1px solid #888;color:#ccc;padding:10px 30px;cursor:pointer;}
+
+  /* volume control */
+  #volPanel{position:absolute;top:14px;right:14px;z-index:30;background:rgba(10,15,25,.75);border:1px solid #345;
+             border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;color:#cde;font-size:.85rem;
+             font-family:monospace;user-select:none;}
+  #volPanel button{background:rgba(60,90,130,.5);border:1px solid #567;color:#dff;width:30px;height:30px;border-radius:6px;
+                    cursor:pointer;font-size:1rem;line-height:1;}
+  #volPanel button:hover{background:rgba(90,130,180,.7);}
+  #volBarWrap{width:80px;height:8px;background:#223;border-radius:4px;overflow:hidden;}
+  #volBar{height:100%;width:70%;background:linear-gradient(90deg,#3a7abf,#7fd0ff);transition:width .15s;}
+  #volPct{width:34px;text-align:right;}
+
+  @media (max-width:600px){
+    #textbox{font-size:.95rem;min-height:30vh;padding:16px 5vw 22px;}
+    .sil{width:20vw;height:34vh;}
+    #silhouettes{gap:2vw;bottom:24%;}
+    .choiceBtn{width:82vw;padding:14px 20px;font-size:.95rem;}
+    #volPanel{top:8px;right:8px;padding:6px 8px;gap:5px;font-size:.72rem;}
+    #volPanel button{width:24px;height:24px;font-size:.8rem;}
+    #volBarWrap{width:44px;}
+    #titleScreen h1{font-size:1.2rem;letter-spacing:.15em;text-align:center;padding:0 6vw;}
+    #endScreen h2{font-size:1.2rem;}
+    #endScreen p{font-size:.95rem;}
+  }
+  @media (max-height:500px) and (orientation:landscape){
+    #textbox{min-height:34vh;}
+    .sil{height:28vh;}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg" class="lounge"></div>
+  <div id="flash"></div>
+  <div id="silhouettes">
+    <div class="sil" id="sil1"></div>
+    <div class="sil" id="sil2"></div>
+    <div class="sil" id="sil3"></div>
+  </div>
+  <div id="textbox"><span id="speaker"></span><span id="body"></span></div>
+  <div id="cont" style="visibility:hidden;">다음 ▶</div>
+  <div id="choices"></div>
+
+  <div id="titleScreen">
+    <h1>침묵의 설백호 (雪白湖)</h1>
+    <button id="startBtn">시작하기</button>
+  </div>
+
+  <div id="endScreen">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <button id="retryBtn">처음으로</button>
+  </div>
+
+  <div id="volPanel">
+    <button id="muteBtn">🔊</button>
+    <button id="volDown">-</button>
+    <div id="volBarWrap"><div id="volBar"></div></div>
+    <span id="volPct">70%</span>
+    <button id="volUp">+</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- AUDIO ---------------- */
+let actx=null, master=null, muted=false, volume=0.7, lastVolume=0.7;
+let windNodes=null, droneNodes=null;
+
+function initAudio(){
+  if(actx) return;
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  master=actx.createGain();
+  master.gain.value=volume;
+  master.connect(actx.destination);
+  startWind();
+  startDrone();
+}
+function noiseBuffer(){
+  const b=actx.createBuffer(1, actx.sampleRate*2, actx.sampleRate);
+  const d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  return b;
+}
+function startWind(){
+  const src=actx.createBufferSource();
+  src.buffer=noiseBuffer(); src.loop=true;
+  const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=500;
+  const g=actx.createGain(); g.gain.value=0.35;
+  src.connect(filt); filt.connect(g); g.connect(master);
+  src.start();
+  windNodes={src,filt,g};
+  // slow LFO on filter freq for gust effect
+  const lfo=actx.createOscillator(); lfo.frequency.value=0.07;
+  const lfoGain=actx.createGain(); lfoGain.gain.value=250;
+  lfo.connect(lfoGain); lfoGain.connect(filt.frequency); lfo.start();
+}
+function startDrone(){
+  const o1=actx.createOscillator(); o1.type="sine"; o1.frequency.value=55;
+  const o2=actx.createOscillator(); o2.type="sine"; o2.frequency.value=58;
+  const g=actx.createGain(); g.gain.value=0.05;
+  o1.connect(g); o2.connect(g); g.connect(master);
+  o1.start(); o2.start();
+  droneNodes={o1,o2,g};
+}
+function sfxClick(){
+  if(!actx) return;
+  const o=actx.createOscillator(); o.type="square"; o.frequency.value=800;
+  const g=actx.createGain(); g.gain.value=0.06;
+  o.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.06,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.05);
+  o.start(); o.stop(actx.currentTime+0.06);
+}
+function sfxGlass(){
+  if(!actx) return;
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer();
+  const filt=actx.createBiquadFilter(); filt.type="highpass"; filt.frequency.value=2500;
+  const g=actx.createGain(); g.gain.value=0.85;
+  src.connect(filt); filt.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.85,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.4);
+  src.start(); src.stop(actx.currentTime+0.4);
+}
+function sfxScream(){
+  if(!actx) return;
+  const now=actx.currentTime;
+  const o=actx.createOscillator(); o.type="sawtooth";
+  const g=actx.createGain(); g.gain.value=0.001;
+  const filt=actx.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=1200; filt.Q.value=6;
+  o.connect(filt); filt.connect(g); g.connect(master);
+  o.frequency.setValueAtTime(600, now);
+  o.frequency.exponentialRampToValueAtTime(1500, now+0.15);
+  o.frequency.exponentialRampToValueAtTime(900, now+0.6);
+  o.frequency.exponentialRampToValueAtTime(400, now+1.0);
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.exponentialRampToValueAtTime(0.7, now+0.1);
+  g.gain.exponentialRampToValueAtTime(0.5, now+0.6);
+  g.gain.exponentialRampToValueAtTime(0.001, now+1.1);
+  o.start(now); o.stop(now+1.15);
+  // breathy noise layer for realism
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer();
+  const nf=actx.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=2000; nf.Q.value=2;
+  const ng=actx.createGain(); ng.gain.value=0.15;
+  src.connect(nf); nf.connect(ng); ng.connect(master);
+  ng.gain.setValueAtTime(0.15, now);
+  ng.gain.exponentialRampToValueAtTime(0.001, now+1.0);
+  src.start(now); src.stop(now+1.0);
+}
+function sfxHeartbeat(){
+  if(!actx) return;
+  [0,0.35].forEach(t=>{
+    const o=actx.createOscillator(); o.type="sine"; o.frequency.value=60;
+    const g=actx.createGain(); g.gain.value=0.3;
+    o.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0.3,actx.currentTime+t);
+    g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+t+0.25);
+    o.start(actx.currentTime+t); o.stop(actx.currentTime+t+0.3);
+  });
+}
+function sfxThunder(){
+  if(!actx) return;
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer();
+  const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=200;
+  const g=actx.createGain(); g.gain.value=0.95;
+  src.connect(filt); filt.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.95,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+1.2);
+  src.start(); src.stop(actx.currentTime+1.2);
+}
+function sfxPowerOut(){
+  if(!actx) return;
+  // low thud
+  const o=actx.createOscillator(); o.type="sine"; o.frequency.value=50;
+  const g=actx.createGain(); g.gain.value=0.85;
+  o.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.85,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.5);
+  o.start(); o.stop(actx.currentTime+0.5);
+  // brief electrical crackle
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer();
+  const filt=actx.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=1800; filt.Q.value=4;
+  const g2=actx.createGain(); g2.gain.value=0.4;
+  src.connect(filt); filt.connect(g2); g2.connect(master);
+  g2.gain.setValueAtTime(0.4,actx.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.25);
+  src.start(); src.stop(actx.currentTime+0.25);
+}
+let tensionHeld=false;
+function raiseTension(){
+  if(!actx || !droneNodes) return;
+  const now=actx.currentTime;
+  const peak=0.26;
+  tensionHeld=true;
+  droneNodes.g.gain.cancelScheduledValues(now);
+  droneNodes.g.gain.setValueAtTime(droneNodes.g.gain.value, now);
+  droneNodes.g.gain.linearRampToValueAtTime(peak, now+0.3);
+  if(tensionTremolo){ tensionTremolo.stop(); tensionTremolo=null; }
+  const o=actx.createOscillator(); o.type="sine"; o.frequency.value=61.5;
+  const og=actx.createGain(); og.gain.value=0;
+  o.connect(og); og.connect(master);
+  og.gain.setValueAtTime(0, now);
+  og.gain.linearRampToValueAtTime(0.1, now+0.3);
+  o.start(now);
+  tensionTremolo={osc:o, gain:og, stop:()=>{ try{ og.gain.cancelScheduledValues(actx.currentTime); og.gain.linearRampToValueAtTime(0, actx.currentTime+1); o.stop(actx.currentTime+1.1); }catch(e){} }};
+}
+function releaseTension(){
+  if(!actx || !droneNodes || !tensionHeld) return;
+  const now=actx.currentTime;
+  const base=0.05;
+  tensionHeld=false;
+  droneNodes.g.gain.cancelScheduledValues(now);
+  droneNodes.g.gain.setValueAtTime(droneNodes.g.gain.value, now);
+  droneNodes.g.gain.linearRampToValueAtTime(base, now+1.2);
+  if(tensionTremolo){ tensionTremolo.stop(); tensionTremolo=null; }
+}
+let tensionTremolo=null;
+const SFX={click:sfxClick, glass:sfxGlass, heartbeat:sfxHeartbeat, thunder:sfxThunder, powerout:sfxPowerOut, scream:sfxScream, none:()=>{}};
+const TENSION_SFX=new Set(["glass","thunder","powerout","heartbeat","scream"]);
+
+function applyVolume(){
+  document.getElementById("volPct").textContent=Math.round((muted?0:volume)*100)+"%";
+  document.getElementById("volBar").style.width=(muted?0:volume*100)+"%";
+  document.getElementById("muteBtn").textContent=muted?"🔇":"🔊";
+  if(master) master.gain.value = muted?0:volume;
+}
+document.getElementById("volUp").onclick=()=>{ initAudio(); volume=Math.min(1,+(volume+0.1).toFixed(2)); if(muted){muted=false;} applyVolume(); };
+document.getElementById("volDown").onclick=()=>{ initAudio(); volume=Math.max(0,+(volume-0.1).toFixed(2)); applyVolume(); };
+document.getElementById("muteBtn").onclick=()=>{
+  initAudio();
+  if(!muted){ lastVolume=volume; muted=true; }
+  else { muted=false; volume=lastVolume; }
+  applyVolume();
+};
+window.addEventListener("keydown",e=>{
+  if(e.key==="m"||e.key==="M") document.getElementById("muteBtn").click();
+  if(e.key==="[") document.getElementById("volDown").click();
+  if(e.key==="]") document.getElementById("volUp").click();
+});
+applyVolume();
+
+/* ---------------- SCENARIO ---------------- */
+const CHAR={
+  sangjun:{name:"상준(나)"}, suhyun:{name:"수현"}, donghyun:{name:"동현"}, yura:{name:"유라"}, narr:{name:""}
+};
+
+const scenes={
+  s1:{bg:"lounge",sil:[],speaker:"narr",
+    text:"한겨울, 산사태로 외길이 끊긴 호숫가 별장 '백설장'. 거실 난로 앞에 넷이 모여 있다.",
+    sfx:"none", next:"s2"},
+  s2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+    text:"\"선배, 얼어붙은 호수 한가운데… 얼음 밑에 뭔가 검고 큰 그림자가 비치지 않아요?\"",
+    sfx:"none", next:"choice_shadow"},
+
+  choice_shadow:{type:"choice", bg:"lounge", sil:["suhyun"], speaker:"narr",
+    text:"창밖을 좀 더 자세히 살펴볼까, 동현 말대로 무시할까?",
+    options:[
+      {label:"창밖을 살펴본다", next:"s2b"},
+      {label:"무시한다", next:"s3"}
+    ]},
+  s2b:{bg:"lounge",sil:[],speaker:"narr",
+    text:"손전등을 창에 비춰본다. 그림자 윤곽이 자연물치고는 각이 너무 진 것이 눈에 걸린다.",
+    sfx:"none", flag:"그림자_이상", next:"s3"},
+
+  s3:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"\"헛소리 말고 이리 와서 앉아. 날 밝으면 내가 가서 보고 올게.\" 동현이 발전기를 점검하러 지하실로 내려간다.",
+    sfx:"none", next:"s4"},
+  s4:{bg:"lounge",sil:[],speaker:"narr",
+    text:"그 순간, 별장 전체에 정전이 발생한다. 칠흑 같은 어둠이 거실을 뒤덮는다.",
+    sfx:"powerout", next:"s4b"},
+  s4b:{bg:"lounge",sil:[],speaker:"narr",
+    text:"곧이어 2층에서 유라의 날카로운 비명과 유리창 깨지는 굉음이 울려 퍼진다!",
+    sfx:"scream", next:"choice_scream"},
+
+  choice_scream:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"혼자 바로 문을 부수고 들어갈까, 수현을 불러 같이 갈까?",
+    options:[
+      {label:"혼자 바로 진입한다", next:"s5_solo"},
+      {label:"수현을 불러 같이 간다", next:"s5_duo"}
+    ]},
+  s5_solo:{bg:"room",sil:[],speaker:"narr",
+    text:"혼자 문을 부수고 들어간다. 누구의 손도 타지 않은 현장을 그대로 목격한다.",
+    sfx:"glass", flag:"현장_원본", next:"s6"},
+  s5_duo:{bg:"room",sil:["suhyun"],speaker:"narr",
+    text:"수현을 불러 함께 문을 부순다. 안전하지만, 수현이 먼저 뛰어들며 유리 파편을 밟아 현장 일부가 흐트러진다.",
+    sfx:"glass", flag:"수현_신뢰", next:"s6"},
+
+  s6:{bg:"room",sil:[],speaker:"narr",
+    text:"손전등을 들고 2층으로. 문은 안에서 잠겨 있었으나 발로 차서 연다. 방 안에 유라는 없다.",
+    sfx:"heartbeat", next:"choice_clue"},
+
+  choice_clue:{type:"choice", bg:"room", sil:[], speaker:"narr",
+    text:"호수 쪽 대형 유리창이 완전히 깨져 있다. 시간은 많지 않다 — 무엇을 먼저 조사할까?",
+    options:[
+      {label:"발자국 깊이를 측정한다", next:"s7_footprint"},
+      {label:"핏자국 방향을 확인한다", next:"s7_blood"},
+      {label:"옷장 안을 확인한다", next:"s7_closet"}
+    ]},
+  s7_footprint:{bg:"room",sil:[],speaker:"narr",
+    text:"눈밭의 발자국은 유라의 부츠 자국이지만, 깊이가 비정상적으로 얕고 보폭도 일정하지 않다.",
+    sfx:"none", flag:"발자국_조작", next:"choice_lake"},
+  s7_blood:{bg:"room",sil:[],speaker:"narr",
+    text:"핏자국을 살핀다. 창문에서 떨어졌다면 핏자국이 바깥쪽으로 튀어야 하는데, 방향이 반대로 안쪽을 향해 있다.",
+    sfx:"none", flag:"핏자국_역방향", next:"choice_lake"},
+  s7_closet:{bg:"room",sil:[],speaker:"narr",
+    text:"옷장 안을 살핀다. 뒤편에 숨겨진 낡은 덤웨이터 통로를 발견한다. 조사는 빨랐지만, 결정적인 증거는 놓친 듯하다.",
+    sfx:"none", flag:"덤웨이터_발견", next:"choice_lake"},
+
+  choice_lake:{type:"choice", bg:"room", sil:[], speaker:"narr",
+    text:"창밖 저 멀리, 호수 얼음 위에 뭔가 뚫린 구멍이 어렴풋이 보인다. 방 안에서는 여기까지가 한계다 — 지금 나가서 확인할까?",
+    options:[
+      {label:"지금 눈보라를 뚫고 호수로 나간다", next:"s7_lake_go"},
+      {label:"지금은 위험하다. 나중으로 미룬다", next:"s9"}
+    ]},
+  s7_lake_go:{bg:"lake",sil:[],speaker:"narr",
+    text:"외투를 걸치고 눈보라를 헤치며 호수까지 내려간다. 가까이서 확인한다 — 얼음판엔 둥근 구멍이 뚫려 있고, 그 속에서 피가 스며 나온다.",
+    sfx:"none", flag:"호수_직접확인", next:"s9"},
+
+  s9:{bg:"room",sil:["donghyun","suhyun"],speaker:"suhyun",
+    text:"지하실에서 올라온 동현의 손엔 피 묻은 렌치. 수현이 패닉에 빠져 소리친다. \"동현 씨가 유라 씨를 호수에 빠뜨린 거 아니에요?!\"",
+    sfx:"none", next:"choice_donghyun"},
+
+  choice_donghyun:{type:"choice", bg:"room", sil:["donghyun","suhyun"], speaker:"narr",
+    text:"동현을 정면으로 추궁할까, 조용히 관찰만 할까, 수현을 진정시킬까?",
+    options:[
+      {label:"정면으로 추궁한다", next:"s9_confront"},
+      {label:"조용히 관찰만 한다", next:"s9_observe"},
+      {label:"수현을 진정시킨다", next:"s9_calm"}
+    ]},
+  s9_confront:{bg:"room",sil:["donghyun"],speaker:"donghyun",
+    text:"\"발전기 벨트에 손이 찢어진 거라니까! 저 방 창문은 밖에서 깰 수가 없어!\" 절규하지만 감정적 대립만 심해진다.",
+    sfx:"none", flag:"동현_의심", next:"finalChoice"},
+  s9_observe:{bg:"room",sil:["donghyun"],speaker:"narr",
+    text:"조용히 동현의 표정을 살핀다. 두려움이 아닌 짜증만 보인다 — 거짓말하는 사람 특유의 동요가 없다.",
+    sfx:"none", flag:"동현_무고_인상", next:"finalChoice"},
+  s9_calm:{bg:"room",sil:["suhyun"],speaker:"suhyun",
+    text:"수현을 다독여 진정시킨다. 침착해진 수현이 다시 증언한다. \"그 유리… 파편이 방 안쪽으로 튀어 있었어요. 안에서 깨진 것처럼.\"",
+    sfx:"none", flag:"유리_내부파손", next:"finalChoice"},
+
+  finalChoice:{type:"choice", dynamicText:true, bg:"room", sil:[], speaker:"narr",
+    text:"", options:[
+      {label:"눈밭의 발자국을 자세히 확인한다.", next:"a1"},
+      {label:"손에 피가 묻은 동현을 추궁하고 결박한다.", next:"b1", checkTruth:true},
+      {label:"위험하다. 수현과 함께 설상차로 탈출한다.", next:"c1", checkTruth:true},
+      {label:"다들 진정. 일단 라면부터 끓여 먹자.", next:"d1", checkTruth:true}
+    ]}
+};
+
+const TRUTH_FLAGS=["그림자_이상","현장_원본","발자국_조작","핏자국_역방향","덤웨이터_발견","호수_직접확인","동현_무고_인상","유리_내부파손"];
+function clueScore(){ return TRUTH_FLAGS.filter(f=>flags.has(f)).length; }
+
+function buildFinalText(){
+  const clues=[];
+  if(flags.has("그림자_이상")) clues.push("호수의 그림자는 자연물이 아니었다");
+  if(flags.has("현장_원본")) clues.push("현장은 훼손되지 않은 그대로였다");
+  if(flags.has("수현_신뢰")) clues.push("수현의 증언은 믿을 만하다");
+  if(flags.has("발자국_조작")) clues.push("발자국은 누군가 조작한 가짜 흔적이다");
+  if(flags.has("핏자국_역방향")) clues.push("핏자국의 방향이 창밖 탈출과 맞지 않는다");
+  if(flags.has("덤웨이터_발견")) clues.push("방 안엔 숨겨진 통로가 있다");
+  if(flags.has("호수_직접확인")) clues.push("호수의 구멍을 직접 눈으로 확인했다");
+  if(flags.has("동현_의심")) clues.push("동현은 필사적으로 자신을 변호했다");
+  if(flags.has("동현_무고_인상")) clues.push("동현에게는 거짓말의 동요가 없었다");
+  if(flags.has("유리_내부파손")) clues.push("유리는 밖이 아니라 안에서 깨졌다");
+  let lead = clues.length
+    ? "지금까지 확인한 것들: " + clues.join(", ") + "."
+    : "손에 잡히는 단서가 아직 없다.";
+  return lead + " 발자국, 정전, 깨진 유리창, 사람들의 태도… 무엇에 집중할 것인가?";
+}
+
+// Route A - True End
+Object.assign(scenes,{
+  a1:{bg:"room",sil:[],speaker:"narr",
+    text:"발자국의 깊이가 비정상적으로 얕고 보폭도 일정하지 않다. 누군가 장대로 신발만 꿰어 찍은 가짜 흔적이다.",
+    sfx:"none", next:"a2"},
+  a2:{bg:"room",sil:[],speaker:"narr",
+    text:"옷장 뒤편, 숨겨진 낡은 덤웨이터 통로가 열려 있다. 아래쪽에서 숨소리가 들린다.",
+    sfx:"heartbeat", next:"a3"},
+  a3:{bg:"room",sil:["yura"],speaker:"narr",
+    text:"뒤에서 흉기를 든 누군가 덮쳐온다 — 호수에 빠진 척 위장한 유라였다!",
+    sfx:"glass", next:"a4"},
+  a4:{bg:"room",sil:["yura","suhyun","donghyun"],speaker:"suhyun",
+    text:"수현의 플래시 세례로 시야를 방해하고, 동현과 함께 유라를 제압한다.",
+    sfx:"click", next:"endA"}
+});
+
+// Route B - Bad End 1
+Object.assign(scenes,{
+  b1:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"\"발전기 벨트에 손이 찢어진 거라니까! 저 방 창문은 밖에서 깰 수가 없어!\" 절규하지만 듣지 않고 결박한다.",
+    sfx:"none", next:"b2"},
+  b2:{bg:"lounge",sil:[],speaker:"narr",
+    text:"새벽 3시, 벽난로 굴뚝을 타고 매캐한 유독 연기가 방 안을 가득 채운다. 환기 댐퍼가 밖에서 닫힌 것이다.",
+    sfx:"none", next:"b3"},
+  b3:{bg:"lounge",sil:[],speaker:"narr",
+    text:"문손잡이는 밖에서 쇠사슬로 감겨 있다. 연기 너머 유리창 밖으로 비웃는 그림자가 스쳐 지나간다.",
+    sfx:"thunder", next:"endB"}
+});
+
+// Route C - Bad End 2
+Object.assign(scenes,{
+  c1:{bg:"lake",sil:["suhyun"],speaker:"narr",
+    text:"창고의 낡은 스노모빌 시동을 걸고, 수현과 함께 얼어붙은 호수 위 지름길을 질주한다.",
+    sfx:"none", next:"c2"},
+  c2:{bg:"lake",sil:[],speaker:"narr",
+    text:"호수 한가운데, 엔진이 굉음과 함께 꺼진다. 헤드라이트가 비춘 얼음 밑에 수십 개의 하얀 손이 얼음을 두드리고 있다.",
+    sfx:"heartbeat", next:"c3"},
+  c3:{bg:"lake",sil:["suhyun"],speaker:"suhyun",
+    text:"\"선배… 왜 나만 데리고 나왔어요? …진짜 수현이는 아직 산장 지하실에 있는데.\"",
+    sfx:"glass", next:"endC"}
+});
+
+// Route D - Comic End
+Object.assign(scenes,{
+  d1:{bg:"kitchen",sil:[],speaker:"narr",
+    text:"긴장이 최고조인데 주인공 배에서 큰 소리가 난다. 모두 얼어붙는다. 주방으로 가서 라면 냄비를 올린다.",
+    sfx:"click", next:"d2"},
+  d2:{bg:"kitchen",sil:["donghyun"],speaker:"donghyun",
+    text:"동현 손의 상처는 렌치 자국이 아니라 라면 봉지 뜯다 베인 상처였다. 유라의 비명은 거미 때문. 유리창은 강풍에 깨진 것.",
+    sfx:"none", next:"d3"},
+  d3:{bg:"kitchen",sil:["yura","donghyun"],speaker:"yura",
+    text:"\"그, 그래도 무서웠단 말이에요!\" 동현: \"라면이나 먹어.\" 얼음 밑 그림자는 여름에 관리인이 빠뜨린 냉장고였다.",
+    sfx:"none", next:"endD"}
+});
+
+const endings={
+  endA:{title:"【엔딩 A - 백설의 진실】 True End",
+    text:"폭설이 잦아들고 아침이 밝아올 때까지 범인을 포박한 채 생존. 진실을 밝혀낸 승리."},
+  endB:{title:"【엔딩 B - 얼어붙은 밀실의 연기】 Bad End 1",
+    text:"진범을 눈앞에 두고 무고한 자를 범인으로 몰아 탈출구를 잃은 채 전멸."},
+  endC:{title:"【엔딩 C - 설백호의 망령】 Bad End 2",
+    text:"믿었던 이의 정체마저 알 수 없게 된 채, 얼음 아래로 끌려 들어간다."},
+  endD:{title:"【엔딩 D - 라면이 진짜 무서웠다】 Comic End",
+    text:"살인사건은 없었다. 넷은 라면을 나눠 먹으며 밤을 새운다. 아침, 제설차가 도착한다."}
+};
+
+/* ---------------- ENGINE ---------------- */
+let curId="s1", typing=false, typedTimer=null;
+let flags=new Set();
+const bgEl=document.getElementById("bg"), speakerEl=document.getElementById("speaker"), bodyEl=document.getElementById("body");
+const choicesEl=document.getElementById("choices"), textbox=document.getElementById("textbox");
+const sils=[document.getElementById("sil1"),document.getElementById("sil2"),document.getElementById("sil3")];
+const CHAR_ORDER=["sangjun","suhyun","donghyun","yura"];
+
+function showSilhouettes(list){
+  sils.forEach(s=>s.classList.remove("show"));
+  list.forEach((name,i)=>{ if(sils[i]){ sils[i].classList.add("show"); } });
+}
+function setBg(cls){
+  if(bgEl.className !== cls) releaseTension();
+  bgEl.className=cls;
+}
+function flash(){ const f=document.getElementById("flash"); f.style.transition="none"; f.style.opacity=1;
+  requestAnimationFrame(()=>{ f.style.transition="opacity .4s"; f.style.opacity=0; }); }
+
+function typeText(str, cb){
+  typing=true; bodyEl.textContent=""; let i=0;
+  document.getElementById("cont").style.visibility="hidden";
+  clearInterval(typedTimer);
+  typedTimer=setInterval(()=>{
+    bodyEl.textContent+=str[i]; i++;
+    if(i>=str.length){
+      clearInterval(typedTimer); typing=false;
+      document.getElementById("cont").textContent="다음 ▶";
+      document.getElementById("cont").style.visibility="visible";
+      if(cb) cb();
+    }
+  },28);
+}
+function skipType(){ clearInterval(typedTimer); typing=false; }
+
+function renderScene(id){
+  curId=id;
+  if(endings[id]){ renderEnding(id); return; }
+  const sc=scenes[id];
+  if(!sc) return;
+  if(sc.flag) flags.add(sc.flag);
+  if(sc.type==="choice"){ renderChoice(sc); return; }
+  setBg(sc.bg);
+  showSilhouettes(sc.sil||[]);
+  speakerEl.textContent = CHAR[sc.speaker] ? CHAR[sc.speaker].name : "";
+  if(sc.sfx==="glass" || sc.sfx==="thunder" || sc.sfx==="powerout") flash();
+  SFX[sc.sfx] && SFX[sc.sfx]();
+  if(TENSION_SFX.has(sc.sfx)) raiseTension();
+  choicesEl.classList.remove("show");
+  typeText(sc.textFn ? sc.textFn() : sc.text);
+}
+function renderEnding(id){
+  const e=endings[id];
+  document.getElementById("endTitle").textContent=e.title;
+  document.getElementById("endText").textContent=e.text;
+  document.getElementById("endScreen").classList.add("show");
+}
+function renderChoice(sc){
+  setBg(sc.bg); showSilhouettes(sc.sil||[]);
+  speakerEl.textContent="";
+  choicesEl.classList.remove("show");
+  const text = sc.dynamicText ? buildFinalText() : sc.text;
+  typeText(text, ()=>{
+    choicesEl.innerHTML="";
+    sc.options.forEach(opt=>{
+      const b=document.createElement("button");
+      b.className="choiceBtn"; b.textContent=opt.label;
+      b.onclick=()=>{ SFX.click(); choicesEl.classList.remove("show"); renderScene(opt.next); };
+      choicesEl.appendChild(b);
+    });
+    choicesEl.classList.add("show");
+  });
+}
+
+function advance(){
+  if(typing) return;
+  const sc=scenes[curId];
+  if(!sc || sc.type==="choice") return;
+  if(sc.next) renderScene(sc.next);
+}
+
+textbox.addEventListener("click", advance);
+document.getElementById("stage").addEventListener("click", e=>{
+  if(e.target.closest("#choices") || e.target.closest("#volPanel") ||
+     e.target.closest("#titleScreen") || e.target.closest("#endScreen")) return;
+  advance();
+});
+window.addEventListener("keydown", e=>{ if(e.code==="Space") advance(); });
+
+document.getElementById("startBtn").onclick=()=>{
+  initAudio();
+  flags=new Set();
+  document.getElementById("titleScreen").style.display="none";
+  renderScene("s1");
+};
+document.getElementById("retryBtn").onclick=()=>{
+  document.getElementById("endScreen").classList.remove("show");
+  document.getElementById("titleScreen").style.display="flex";
+};
+</script>
+</body>
+</html>
