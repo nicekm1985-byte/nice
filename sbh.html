@@ -345,6 +345,9 @@ const scenes={
     sfx:"none", next:"s3"},
   s3:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
     text:"\"이 산장 관리인 최동현입니다. 이 정도 눈이면… 오늘은 다들 여기서 묵으셔야 할 겁니다.\" 동현이 무뚝뚝하게 인사를 건넨다. 짧은 한마디였지만, 손은 이미 능숙하게 벽난로 장작을 정리하고 있다.",
+    sfx:"none", next:"s3b"},
+  s3b:{bg:"lounge",sil:["donghyun"],speaker:"sangjun",
+    text:"\"안녕하세요, 한상준입니다. 신세 좀 지겠습니다.\" 상준이 먼저 손을 내밀며 인사를 건넨다.",
     sfx:"none", next:"s4intro"},
   s4intro:{bg:"lounge",sil:["yura"],speaker:"narr",
     text:"조금 늦게, 또 한 사람이 들어온다. 이쪽도 초면이다. 누구와도 시선을 오래 마주치지 않는 여자다.",
@@ -438,7 +441,7 @@ const scenes={
     text:"어디를 먼저 살펴볼까?",
     options:[
       {label:"부엌으로 가본다", next:"loc_kitchen"},
-      {label:"거실을 다시 살핀다", next:"loc_lounge"},
+      {label:"동현의 방을 살핀다", next:"loc_donghyun_room"},
       {label:"유라의 방을 한 번 더 살핀다", next:"loc_room"},
       {label:"그만 됐다. 핏자국을 쫓는다", next:"choice_follow"}
     ]},
@@ -447,15 +450,15 @@ const scenes={
       ? "부엌은 아까와 다를 게 없다. 더 살필 것이 없어 보인다."
       : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다. 언제부터 없었는지는 알 수 없다.",
     sfx:"none", flag:"부엌_확인", next:"hub_investigate"},
-  loc_lounge:{bg:"lounge",sil:[],speaker:"narr",
-    textFn:()=>flags.has("거실_확인")
-      ? "거실도 별다를 게 없다. 벽난로 장작만 타고 있다."
-      : "거실 탁자 위, 발전기 점검 기록표에 시간이 적혀 있다 — 동현의 필체를 흉내 낸 듯 어딘가 딱딱하고 부자연스럽다. 정전이 나기도 전 시각이 이미 적혀 있다.",
-    sfx:"reveal", flag:"거실_확인", next:"hub_investigate"},
+  loc_donghyun_room:{bg:"lounge",sil:[],speaker:"narr",
+    textFn:()=>flags.has("동현방_확인")
+      ? "더 살펴봐도 눈에 걸리는 건 없다."
+      : "지하실 옆 동현의 방, 낡은 서랍 속에서 유라의 것으로 보이는 목걸이가 나온다. 왜 여기 있는 걸까.",
+    sfx:"reveal", flag:"동현방_확인", next:"hub_investigate"},
   loc_room:{bg:"room",sil:[],speaker:"narr",
     textFn:()=>flags.has("방_확인")
       ? "더 둘러봐도 눈에 걸리는 건 없다."
-      : "창틀 근처가 아니라, 방문 바로 안쪽에 낯익은 머리끈 하나가 떨어져 있다. 수현이 늘 쓰던 것과 같은 색이다. 핏자국도 창문이 아니라 이 문 쪽에서부터 시작되고 있다.",
+      : "창틀 쪽에 낡은 렌치 하나가 떨어져 있다. 동현이 발전기 점검 때 쓰던 것과 같아 보인다.",
     sfx:"reveal", flag:"방_확인", next:"hub_investigate"},
 
   // ---- 핏자국 추적 ----
@@ -463,54 +466,90 @@ const scenes={
     text:"핏자국이 어딘가로 이어진다. 어떻게 할까?",
     options:[
       {label:"지금 바로 혼자 핏자국을 따라간다", next:"s13_alone"},
-      {label:"동현을 데리고 함께 따라간다", next:"s13_group"},
-      {label:"핏자국은 됐다. 동현을 추궁한다", next:"b1"}
+      {label:"수현을 데리고 함께 따라간다", next:"s13_group"},
+      {label:"핏자국은 됐다. 동현을 추궁한다", next:"c1"}
     ]},
   s13_alone:{bg:"room",sil:[],speaker:"narr",
     text:"혼자 핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
     sfx:"none", next:"s14"},
-  s13_group:{bg:"room",sil:["donghyun"],speaker:"narr",
-    text:"\"같이 가시죠.\" 동현이 손전등을 들고 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
-    sfx:"none", flag:"동행확보", next:"s14"},
+  s13_group:{bg:"room",sil:["suhyun"],speaker:"narr",
+    text:"\"저도 같이 갈게요.\" 수현이 먼저 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
+    sfx:"none", flag:"수현동행", next:"s14"},
 
   s14:{bg:"lake",sil:["yura"],speaker:"narr",
     text:"호수 얼음 위, 눈보라 속에 무언가 쓰러져 있다. 다가가 보니… 유라다. 이미 움직임이 없다.",
-    sfx:"heartbeat", next:"s15"},
+    sfx:"heartbeat", next:"choice_reaction"},
+
+  // ---- 유라 발견 직후 분기: 누구를 의심할까 ----
+  choice_reaction:{type:"choice", bg:"lake", sil:["yura"], speaker:"narr",
+    text:"충격 속에서도 머리가 빠르게 돈다. 지금, 누구를 의심해야 할까?",
+    options:[
+      {label:"동현을 의심한다 — 방에서 목걸이를 봤다", next:"s14_suspect_dh"},
+      {label:"아무도 의심하지 않고 침착하게 살핀다", next:"s14_calm"}
+    ]},
+  s14_suspect_dh:{bg:"lake",sil:["yura"],speaker:"narr",
+    text:"동현의 방에서 본 목걸이가 떠오른다. 그가 유라를 이곳으로 끌고 온 건 아닐까. 등 뒤에서 발소리가 들린다.",
+    sfx:"none", flag:"동현의심강화", next:"s15"},
+  s14_calm:{bg:"lake",sil:["yura"],speaker:"narr",
+    text:"성급히 결론짓지 않기로 한다. 등 뒤에서 발소리가 들린다.",
+    sfx:"none", next:"s15"},
+
   s15:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
-    text:"그 뒤로 그림자 하나가 서 있다. 수현이다. 손에는 피 묻은 칼이 들려 있다. \"…왜 따라온 거예요, 선배.\"",
-    sfx:"scream", next:"s15b"},
-  s15b:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"그 뒤로 그림자 하나가 서 있다. 수현이다. \"괜찮으세요, 선배? 여기서 이러고 있을 줄은…\" 손에 든 것은 아직 보이지 않는다.",
+    sfx:"none", next:"choice_suhyun_first"},
+
+  // ---- 진짜 반전 지점: 수현을 믿을지 말지 ----
+  choice_suhyun_first:{type:"choice", bg:"lake", sil:["yura","suhyun"], speaker:"narr",
+    text:"수현의 손, 표정, 태도… 지금 이 순간 무언가 이상한 점이 있는가?",
+    options:[
+      {label:"수현의 손에 들린 것을 유심히 본다", next:"s15_check"},
+      {label:"동현이 위험하다. 얼른 돌아가야 한다고 말한다", next:"s15_rush"}
+    ]},
+  s15_check:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+    text:"자세히 보니, 수현의 소매 끝에 마른 핏자국이 묻어 있다. 방금 묻은 것치고는 이미 굳어 있다 — 유라의 것이 아니다. 훨씬 전에 묻은 흔적이다.",
+    sfx:"reveal", flag:"수현위화감", next:"s16pre"},
+  s15_rush:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+    text:"\"동현 씨가… 위험할지도 몰라요.\" 서둘러 돌아가려 한다. 수현이 조용히 앞을 막아선다.",
+    sfx:"none", next:"s16pre"},
+
+  s16pre:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. \"…왜 따라온 거예요, 선배.\"",
+    sfx:"scream", next:"s16b"},
+  s16b:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
     text:"\"5년 전 산행 사고, 기억 안 나세요? 이 사람… 그때 죽은 선배 동생이에요. 계속 캐고 다니길래.\" 수현의 목소리는 여전히 낮고 담담하다.",
     sfx:"none", next:"s16"},
   s16:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
     text:"눈보라 속에서 수현이 칼을 고쳐 쥔다.",
-    sfx:"none", nextFn:()=> flags.has("동행확보") ? "s16_capture" : "s16_death"}
+    sfx:"none", nextFn:()=> (flags.has("수현위화감") && flags.has("수현동행")) ? "s16_capture" : "s16_death"}
 };
 
-// True End - captured (had donghyun as backup)
+// True End - noticed the tell AND had suhyun close enough to react in time
 Object.assign(scenes,{
-  s16_capture:{bg:"lake",sil:["yura","suhyun","donghyun"],speaker:"narr",
-    text:"동행이 있었기에, 수현이 덤벼드는 순간 동현과 함께 붙잡을 수 있었다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
+  s16_capture:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+    text:"소매의 핏자국을 이미 눈치채고 있었다. 수현이 칼을 치켜드는 순간, 먼저 손목을 잡아 꺾는다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
     sfx:"click", next:"endTrue"}
 });
 
-// Death End - alone, no backup
+// Death End - either missed the tell, or noticed too late / alone
 Object.assign(scenes,{
   s16_death:{bg:"lake",sil:["suhyun"],speaker:"narr",
-    text:"혼자였다. 수현의 칼끝이 먼저 닿았다. 눈 위로 붉은 것이 스며든다. 아무도 상준을 찾으러 오지 않는다.",
+    text:"눈치챘든 못 챘든, 몸이 반응하기엔 늦었다. 수현의 칼끝이 먼저 닿는다. 눈 위로 붉은 것이 스며든다. 아무도 상준을 찾으러 오지 않는다.",
     sfx:"scream", next:"endDeath"}
 });
 
-// Bad End - misdirected Donghyun, real killer left free
+// Bad End - Donghyun wrongly bound as the culprit, everyone dies not realizing the real killer was Suhyun
 Object.assign(scenes,{
-  b1:{bg:"room",sil:["donghyun"],speaker:"donghyun",
-    text:"\"진짜 아니야, 나는…!\" 동현을 다그친다. 믿지 않고 그대로 결박한다.",
-    sfx:"none", next:"b2"},
-  b2:{bg:"lounge",sil:[],speaker:"narr",
-    text:"새벽, 벽난로 굴뚝을 타고 매캐한 연기가 스며든다. 환기구가 밖에서 막혀 있다.",
-    sfx:"none", next:"b3"},
-  b3:{bg:"lounge",sil:["suhyun"],speaker:"narr",
-    text:"문손잡이엔 밖에서 쇠사슬이 감겨 있다. 연기 너머로, 창밖에 우두커니 서 있는 수현의 그림자가 보인다.",
+  c1:{bg:"room",sil:["donghyun"],speaker:"donghyun",
+    text:"\"진짜 아니야, 나는…!\" 동현을 다그친다. 방에서 나온 목걸이를 들이대자, 그는 말을 잃는다. 믿지 않고 그대로 결박한다.",
+    sfx:"none", next:"c2"},
+  c2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+    text:"\"이제 안전한 거죠?\" 수현이 안도한 듯 옆에 앉는다. 동현을 묶어두었으니, 남은 밤은 무사히 넘길 수 있을 것 같았다.",
+    sfx:"none", next:"c3"},
+  c3:{bg:"lounge",sil:[],speaker:"narr",
+    text:"새벽, 벽난로 굴뚝을 타고 매캐한 연기가 스며든다. 환기구가 밖에서 막혀 있다. 문손잡이엔 쇠사슬이 감겨 있다.",
+    sfx:"none", next:"c4"},
+  c4:{bg:"lounge",sil:["suhyun"],speaker:"narr",
+    text:"의식이 흐려지는 순간, 연기 너머로 누군가의 그림자가 침착하게 창밖을 살피는 게 보인다. 수현이다. 결박은 처음부터 동현이 아니라, 모두를 가둔 것이었다.",
     sfx:"thunder", next:"endB"}
 });
 
@@ -531,9 +570,9 @@ const endings={
   endTrue:{title:"【엔딩 - 백설호의 진실】 True End",
     text:"진범 수현을 붙든 채 아침을 맞는다. 유라를 지키지는 못했지만, 더 이상의 희생은 없었다."},
   endDeath:{title:"【엔딩 - 얼음 위의 그림자】 Death End",
-    text:"혼자 나선 대가는 컸다. 상준은 끝내 산장으로 돌아오지 못했다."},
+    text:"혼자, 혹은 너무 늦게 알아챈 대가는 컸다. 상준은 끝내 산장으로 돌아오지 못했다."},
   endB:{title:"【엔딩 - 얼어붙은 밀실의 연기】 Bad End",
-    text:"진범을 눈앞에 두고 무고한 자를 범인으로 몰아, 탈출구를 잃은 채 전멸했다."},
+    text:"무고한 동현을 범인으로 몰아 결박한 채 안심했지만, 진범은 처음부터 곁에 있었다. 진실은 모두가 숨이 끊어진 뒤에야 드러났다."},
   endD:{title:"【엔딩 - 라면이 진짜 무서웠다】 Comic End",
     text:"아무 일도 없었다는 듯, 셋은 무사히 아침을 맞는다. 다만 유라는 끝내 돌아오지 않았다."}
 };
