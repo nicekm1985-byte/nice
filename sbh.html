@@ -7,10 +7,9 @@
 <style>
   html{-webkit-text-size-adjust:none;text-size-adjust:none;}
   html,body{margin:0;padding:0;height:100%;background:#05070c;overflow:hidden;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
-  #stage{position:relative;width:100%;height:100vh;display:flex;align-items:flex-end;justify-content:center;}
+  #stage{position:relative;width:100%;height:100vh;display:flex;align-items:flex-end;justify-content:center;background:#000;}
   #bg{position:absolute;top:20%;left:20%;width:60%;height:60%;background:#05070c;background-size:cover;background-position:center;
       transition:opacity .8s;filter:contrast(1.05);}
-  #stage{background:#000;}
   #bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35);}
   #bg.lounge{background-image:url('night-interior-low-resolution.png');}
   #bg.room{background-image:url('dark-bedroom-photorealistic.png');}
@@ -44,7 +43,7 @@
   #endScreen p{color:#ccc;line-height:1.8;font-size:1.05rem;}
   #retryBtn{margin-top:30px;background:none;border:1px solid #888;color:#ccc;padding:10px 30px;cursor:pointer;}
 
-  /* volume control */
+  /* volume control (applies to ALL background sound + all SFX via master gain) */
   #volPanel{position:absolute;top:14px;right:14px;z-index:30;background:rgba(10,15,25,.75);border:1px solid #345;
              border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;color:#cde;font-size:.85rem;
              font-family:monospace;user-select:none;}
@@ -107,9 +106,9 @@
 </div>
 
 <script>
-/* ---------------- AUDIO ---------------- */
+/* ---------------- AUDIO (all routed through master gain -> volume control affects everything) ---------------- */
 let actx=null, master=null, muted=false, volume=0.7, lastVolume=0.7;
-let windNodes=null, droneNodes=null;
+let windNodes=null, droneNodes=null, windIndoor=0.35, windOutdoor=0.85;
 
 function initAudio(){
   if(actx) return;
@@ -130,14 +129,45 @@ function startWind(){
   const src=actx.createBufferSource();
   src.buffer=noiseBuffer(); src.loop=true;
   const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=500;
-  const g=actx.createGain(); g.gain.value=0.35;
+  const g=actx.createGain(); g.gain.value=windIndoor;
   src.connect(filt); filt.connect(g); g.connect(master);
   src.start();
   windNodes={src,filt,g};
-  // slow LFO on filter freq for gust effect
-  const lfo=actx.createOscillator(); lfo.frequency.value=0.07;
-  const lfoGain=actx.createGain(); lfoGain.gain.value=250;
+  // slow LFO on filter freq for blizzard gust effect
+  const lfo=actx.createOscillator(); lfo.frequency.value=0.09;
+  const lfoGain=actx.createGain(); lfoGain.gain.value=280;
   lfo.connect(lfoGain); lfoGain.connect(filt.frequency); lfo.start();
+}
+function setWindIntensity(outdoor){
+  if(!actx || !windNodes) return;
+  const now=actx.currentTime;
+  const target = outdoor ? windOutdoor : windIndoor;
+  windNodes.g.gain.cancelScheduledValues(now);
+  windNodes.g.gain.setValueAtTime(windNodes.g.gain.value, now);
+  windNodes.g.gain.linearRampToValueAtTime(target, now+1.0);
+}
+function sfxGust(){
+  if(!actx) return;
+  const now=actx.currentTime;
+  const src=actx.createBufferSource(); src.buffer=noiseBuffer(); src.loop=false;
+  const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=350;
+  const g=actx.createGain(); g.gain.value=0.001;
+  src.connect(filt); filt.connect(g); g.connect(master);
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.linearRampToValueAtTime(0.6, now+0.4);
+  g.gain.linearRampToValueAtTime(0.001, now+1.8);
+  src.start(now); src.stop(now+1.8);
+  // sharp whistle overlay
+  const o=actx.createOscillator(); o.type="sine";
+  const og=actx.createGain(); og.gain.value=0.001;
+  o.connect(og); og.connect(master);
+  o.frequency.setValueAtTime(900, now);
+  o.frequency.linearRampToValueAtTime(1400, now+0.6);
+  o.frequency.linearRampToValueAtTime(700, now+1.4);
+  og.gain.setValueAtTime(0.001, now);
+  og.gain.linearRampToValueAtTime(0.12, now+0.4);
+  og.gain.linearRampToValueAtTime(0.001, now+1.6);
+  o.start(now); o.stop(now+1.7);
 }
 function startDrone(){
   const o1=actx.createOscillator(); o1.type="sine"; o1.frequency.value=55;
@@ -174,22 +204,36 @@ function sfxScream(){
   const filt=actx.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=1200; filt.Q.value=6;
   o.connect(filt); filt.connect(g); g.connect(master);
   o.frequency.setValueAtTime(600, now);
-  o.frequency.exponentialRampToValueAtTime(1500, now+0.15);
-  o.frequency.exponentialRampToValueAtTime(900, now+0.6);
-  o.frequency.exponentialRampToValueAtTime(400, now+1.0);
+  o.frequency.exponentialRampToValueAtTime(1500, now+0.5);
+  o.frequency.exponentialRampToValueAtTime(2000, now+0.85);
   g.gain.setValueAtTime(0.001, now);
-  g.gain.exponentialRampToValueAtTime(0.7, now+0.1);
-  g.gain.exponentialRampToValueAtTime(0.5, now+0.6);
-  g.gain.exponentialRampToValueAtTime(0.001, now+1.1);
-  o.start(now); o.stop(now+1.15);
-  // breathy noise layer for realism
+  g.gain.exponentialRampToValueAtTime(0.75, now+0.5);
+  g.gain.exponentialRampToValueAtTime(0.9, now+0.85);
+  g.gain.setValueAtTime(0.0001, now+0.86); // cut off abruptly at the peak, no fade-down
+  o.start(now); o.stop(now+0.9);
   const src=actx.createBufferSource(); src.buffer=noiseBuffer();
   const nf=actx.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=2000; nf.Q.value=2;
   const ng=actx.createGain(); ng.gain.value=0.15;
   src.connect(nf); nf.connect(ng); ng.connect(master);
-  ng.gain.setValueAtTime(0.15, now);
-  ng.gain.exponentialRampToValueAtTime(0.001, now+1.0);
-  src.start(now); src.stop(now+1.0);
+  ng.gain.setValueAtTime(0.001, now);
+  ng.gain.linearRampToValueAtTime(0.25, now+0.85);
+  ng.gain.setValueAtTime(0.0001, now+0.86);
+  src.start(now); src.stop(now+0.9);
+}
+function sfxReveal(){
+  if(!actx) return;
+  const now=actx.currentTime;
+  // two soft, muted taps — "타탁" — not sharp or startling
+  [0, 0.12].forEach((t,i)=>{
+    const o=actx.createOscillator(); o.type="sine"; o.frequency.value= i===0 ? 180 : 150;
+    const g=actx.createGain(); g.gain.value=0.001;
+    const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=900;
+    o.connect(filt); filt.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0.001, now+t);
+    g.gain.linearRampToValueAtTime(0.22, now+t+0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, now+t+0.13);
+    o.start(now+t); o.stop(now+t+0.14);
+  });
 }
 function sfxHeartbeat(){
   if(!actx) return;
@@ -214,14 +258,12 @@ function sfxThunder(){
 }
 function sfxPowerOut(){
   if(!actx) return;
-  // low thud
   const o=actx.createOscillator(); o.type="sine"; o.frequency.value=50;
   const g=actx.createGain(); g.gain.value=0.85;
   o.connect(g); g.connect(master);
   g.gain.setValueAtTime(0.85,actx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.5);
   o.start(); o.stop(actx.currentTime+0.5);
-  // brief electrical crackle
   const src=actx.createBufferSource(); src.buffer=noiseBuffer();
   const filt=actx.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=1800; filt.Q.value=4;
   const g2=actx.createGain(); g2.gain.value=0.4;
@@ -230,7 +272,7 @@ function sfxPowerOut(){
   g2.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+0.25);
   src.start(); src.stop(actx.currentTime+0.25);
 }
-let tensionHeld=false;
+let tensionHeld=false, tensionTremolo=null;
 function raiseTension(){
   if(!actx || !droneNodes) return;
   const now=actx.currentTime;
@@ -246,7 +288,7 @@ function raiseTension(){
   og.gain.setValueAtTime(0, now);
   og.gain.linearRampToValueAtTime(0.1, now+0.3);
   o.start(now);
-  tensionTremolo={osc:o, gain:og, stop:()=>{ try{ og.gain.cancelScheduledValues(actx.currentTime); og.gain.linearRampToValueAtTime(0, actx.currentTime+1); o.stop(actx.currentTime+1.1); }catch(e){} }};
+  tensionTremolo={stop:()=>{ try{ og.gain.cancelScheduledValues(actx.currentTime); og.gain.linearRampToValueAtTime(0, actx.currentTime+1); o.stop(actx.currentTime+1.1); }catch(e){} }};
 }
 function releaseTension(){
   if(!actx || !droneNodes || !tensionHeld) return;
@@ -258,15 +300,14 @@ function releaseTension(){
   droneNodes.g.gain.linearRampToValueAtTime(base, now+1.2);
   if(tensionTremolo){ tensionTremolo.stop(); tensionTremolo=null; }
 }
-let tensionTremolo=null;
-const SFX={click:sfxClick, glass:sfxGlass, heartbeat:sfxHeartbeat, thunder:sfxThunder, powerout:sfxPowerOut, scream:sfxScream, none:()=>{}};
+const SFX={click:sfxClick, glass:sfxGlass, heartbeat:sfxHeartbeat, thunder:sfxThunder, powerout:sfxPowerOut, scream:sfxScream, gust:sfxGust, reveal:sfxReveal, none:()=>{}};
 const TENSION_SFX=new Set(["glass","thunder","powerout","heartbeat","scream"]);
 
 function applyVolume(){
   document.getElementById("volPct").textContent=Math.round((muted?0:volume)*100)+"%";
   document.getElementById("volBar").style.width=(muted?0:volume*100)+"%";
   document.getElementById("muteBtn").textContent=muted?"🔇":"🔊";
-  if(master) master.gain.value = muted?0:volume;
+  if(master) master.gain.value = muted?0:volume; // single master bus: covers wind, drone, and every SFX
 }
 document.getElementById("volUp").onclick=()=>{ initAudio(); volume=Math.min(1,+(volume+0.1).toFixed(2)); if(muted){muted=false;} applyVolume(); };
 document.getElementById("volDown").onclick=()=>{ initAudio(); volume=Math.max(0,+(volume-0.1).toFixed(2)); applyVolume(); };
@@ -289,192 +330,197 @@ const CHAR={
 };
 
 const scenes={
+  // ---- 프롤로그: 도착 & 인물 소개 ----
   s1:{bg:"lounge",sil:[],speaker:"narr",
-    text:"한겨울, 산사태로 외길이 끊긴 호숫가 별장 '백설장'. 거실 난로 앞에 넷이 모여 있다.",
+    text:"폭설이 그칠 줄 모르고 쏟아지던 밤. 산길이 끊긴 끝에 만난 산장 '백설장'. 상준과 일행은 하나둘 거실로 모여든다.",
     sfx:"none", next:"s2"},
   s2:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
-    text:"\"선배, 얼어붙은 호수 한가운데… 얼음 밑에 뭔가 검고 큰 그림자가 비치지 않아요?\"",
-    sfx:"none", next:"choice_shadow"},
-
-  choice_shadow:{type:"choice", bg:"lounge", sil:["suhyun"], speaker:"narr",
-    text:"창밖을 좀 더 자세히 살펴볼까, 동현 말대로 무시할까?",
-    options:[
-      {label:"창밖을 살펴본다", next:"s2b"},
-      {label:"무시한다", next:"s3"}
-    ]},
-  s2b:{bg:"lounge",sil:[],speaker:"narr",
-    text:"손전등을 창에 비춰본다. 그림자 윤곽이 자연물치고는 각이 너무 진 것이 눈에 걸린다.",
-    sfx:"none", flag:"그림자_이상", next:"s3"},
-
+    text:"\"와, 진짜 이러다 며칠은 못 나가는 거 아니에요?\" 수현이 젖은 카메라 가방을 내려놓으며 웃는다.",
+    sfx:"none", next:"s3"},
   s3:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
-    text:"\"헛소리 말고 이리 와서 앉아. 날 밝으면 내가 가서 보고 올게.\" 동현이 발전기를 점검하러 지하실로 내려간다.",
+    text:"\"이 산장 관리인입니다. 이 정도 눈이면… 오늘은 다들 여기서 묵으셔야 할 겁니다.\" 동현이 무뚝뚝하게 인사를 건넨다.",
     sfx:"none", next:"s4"},
-  s4:{bg:"lounge",sil:[],speaker:"narr",
-    text:"그 순간, 별장 전체에 정전이 발생한다. 칠흑 같은 어둠이 거실을 뒤덮는다.",
-    sfx:"powerout", next:"s4b"},
-  s4b:{bg:"lounge",sil:[],speaker:"narr",
-    text:"곧이어 2층에서 유라의 날카로운 비명과 유리창 깨지는 굉음이 울려 퍼진다!",
-    sfx:"scream", next:"choice_scream"},
+  s4:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"…안녕하세요.\" 유라가 짧게 고개를 숙인다. 다른 사람들과 눈을 잘 마주치지 않는다.",
+    sfx:"none", next:"s5"},
+  s5:{bg:"lounge",sil:["yura"],speaker:"yura",
+    text:"\"저는 먼저 좀 쉴게요. 두통이 있어서.\" 유라는 그렇게 말하고 2층으로 올라간다. 곧 방문 닫히는 소리가 들린다.",
+    sfx:"none", next:"s6"},
+  s6:{bg:"lounge",sil:[],speaker:"narr",
+    text:"세 사람만 남은 거실. 창밖 눈보라 소리와 벽난로 장작 타는 소리만 나직이 흐른다.",
+    sfx:"none", next:"s7"},
 
-  choice_scream:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
-    text:"혼자 바로 문을 부수고 들어갈까, 수현을 불러 같이 갈까?",
+  // ---- 단절: TV / 라디오 / 전화 ----
+  s7:{bg:"lounge",sil:["suhyun"],speaker:"suhyun",
+    text:"\"심심한데 TV라도 볼까요.\" 수현이 리모컨을 누른다.",
+    sfx:"none", next:"s7b"},
+  s7b:{bg:"lounge",sil:[],speaker:"narr",
+    text:"화면은 켜지지 않는다. 정전이다.",
+    sfx:"powerout", next:"s8"},
+  s8:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"라디오 채널을 돌려봐도 잡음만 흘러나온다. \"이 근처는 원래 전파가 약해요.\" 동현이 미간을 좁힌다.",
+    sfx:"none", next:"choice_phone"},
+  choice_phone:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"상준이 휴대폰을 꺼내 든다. 신호가 한 칸도 잡히지 않는다. 창가로 가서 다시 시도해볼까, 포기할까?",
     options:[
-      {label:"혼자 바로 진입한다", next:"s5_solo"},
-      {label:"수현을 불러 같이 간다", next:"s5_duo"}
+      {label:"창가로 가서 다시 시도한다", next:"s9_window"},
+      {label:"포기하고 자리에 앉는다", next:"s9_giveup"}
     ]},
-  s5_solo:{bg:"room",sil:[],speaker:"narr",
-    text:"혼자 문을 부수고 들어간다. 누구의 손도 타지 않은 현장을 그대로 목격한다.",
-    sfx:"glass", flag:"현장_원본", next:"s6"},
-  s5_duo:{bg:"room",sil:["suhyun"],speaker:"narr",
-    text:"수현을 불러 함께 문을 부순다. 안전하지만, 수현이 먼저 뛰어들며 유리 파편을 밟아 현장 일부가 흐트러진다.",
-    sfx:"glass", flag:"수현_신뢰", next:"s6"},
+  s9_window:{bg:"lounge",sil:[],speaker:"narr",
+    text:"창가에 붙어 안테나를 찾듯 휴대폰을 이리저리 움직인다. 문득 눈발 사이, 호수 쪽에서 희미하게 움직이는 무언가가 스친다. 신호는 끝내 잡히지 않는다.",
+    sfx:"none", flag:"신호_확인", next:"s10"},
+  s9_giveup:{bg:"lounge",sil:[],speaker:"narr",
+    text:"\"어차피 안 될 거 같은데요.\" 포기하고 소파에 주저앉는다.",
+    sfx:"none", next:"s10"},
 
-  s6:{bg:"room",sil:[],speaker:"narr",
-    text:"손전등을 들고 2층으로. 문은 안에서 잠겨 있었으나 발로 차서 연다. 방 안에 유라는 없다.",
-    sfx:"heartbeat", next:"choice_clue"},
-
-  choice_clue:{type:"choice", bg:"room", sil:[], speaker:"narr",
-    text:"호수 쪽 대형 유리창이 완전히 깨져 있다. 시간은 많지 않다 — 무엇을 먼저 조사할까?",
+  // ---- 유리창 파열 ----
+  s10:{bg:"lounge",sil:[],speaker:"narr",
+    text:"쾅! 그때, 위층에서 무언가 깨지는 굉음이 울려 퍼진다. 유라의 방 쪽이다!",
+    sfx:"glass", next:"choice_response"},
+  choice_response:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"방으로 가볼까, 거실에 남을까, 아니면…",
     options:[
-      {label:"발자국 깊이를 측정한다", next:"s7_footprint"},
-      {label:"핏자국 방향을 확인한다", next:"s7_blood"},
-      {label:"옷장 안을 확인한다", next:"s7_closet"}
+      {label:"방으로 가본다", next:"s11_go"},
+      {label:"거실에 남는다", next:"s11_stay"},
+      {label:"라면부터 끓여 먹는다", next:"d1"}
     ]},
-  s7_footprint:{bg:"room",sil:[],speaker:"narr",
-    text:"눈밭의 발자국은 유라의 부츠 자국이지만, 깊이가 비정상적으로 얕고 보폭도 일정하지 않다.",
-    sfx:"none", flag:"발자국_조작", next:"choice_lake"},
-  s7_blood:{bg:"room",sil:[],speaker:"narr",
-    text:"핏자국을 살핀다. 창문에서 떨어졌다면 핏자국이 바깥쪽으로 튀어야 하는데, 방향이 반대로 안쪽을 향해 있다.",
-    sfx:"none", flag:"핏자국_역방향", next:"choice_lake"},
-  s7_closet:{bg:"room",sil:[],speaker:"narr",
-    text:"옷장 안을 살핀다. 뒤편에 숨겨진 낡은 덤웨이터 통로를 발견한다. 조사는 빨랐지만, 결정적인 증거는 놓친 듯하다.",
-    sfx:"none", flag:"덤웨이터_발견", next:"choice_lake"},
 
-  choice_lake:{type:"choice", bg:"room", sil:[], speaker:"narr",
-    text:"창밖 저 멀리, 호수 얼음 위에 뭔가 뚫린 구멍이 어렴풋이 보인다. 방 안에서는 여기까지가 한계다 — 지금 나가서 확인할까?",
+  s11_go:{bg:"lounge",sil:[],speaker:"narr",
+    text:"상준이 먼저 계단을 뛰어오른다.",
+    sfx:"none", next:"s12"},
+
+  s11_stay:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
+    text:"\"내가 가볼게.\" 동현이 먼저 나선다. 발소리가 계단 위로 사라진다.",
+    sfx:"none", next:"s11_stay2"},
+  s11_stay2:{bg:"lounge",sil:[],speaker:"narr",
+    text:"한참을 기다려도 아무 기척이 없다. 무거운 정적만 흐른다.",
+    sfx:"heartbeat", next:"choice_stay2"},
+  choice_stay2:{type:"choice", bg:"lounge", sil:[], speaker:"narr",
+    text:"직접 올라가볼까, 좀 더 기다려볼까?",
     options:[
-      {label:"지금 눈보라를 뚫고 호수로 나간다", next:"s7_lake_go"},
-      {label:"지금은 위험하다. 나중으로 미룬다", next:"s9"}
+      {label:"직접 올라가본다", next:"s11_up"},
+      {label:"좀 더 기다린다", next:"s11_wait2"}
     ]},
-  s7_lake_go:{bg:"lake",sil:[],speaker:"narr",
-    text:"외투를 걸치고 눈보라를 헤치며 호수까지 내려간다. 가까이서 확인한다 — 얼음판엔 둥근 구멍이 뚫려 있고, 그 속에서 피가 스며 나온다.",
-    sfx:"none", flag:"호수_직접확인", next:"s9"},
+  s11_wait2:{bg:"lounge",sil:[],speaker:"narr",
+    text:"더는 견딜 수 없다. 결국 자리에서 일어난다.",
+    sfx:"none", flag:"지연", next:"s11_up"},
+  s11_up:{bg:"lounge",sil:[],speaker:"narr",
+    text:"조심스레 계단을 오른다.",
+    sfx:"none", flag:"지연", next:"s12"},
 
-  s9:{bg:"room",sil:["donghyun","suhyun"],speaker:"suhyun",
-    text:"지하실에서 올라온 동현의 손엔 피 묻은 렌치. 수현이 패닉에 빠져 소리친다. \"동현 씨가 유라 씨를 호수에 빠뜨린 거 아니에요?!\"",
-    sfx:"none", next:"choice_donghyun"},
+  // ---- 현장 발견 ----
+  s12:{bg:"room",sil:[],speaker:"narr",
+    textFn:()=>flags.has("지연")
+      ? "2층에 다다르자 동현이 벽에 기대 주저앉아 있다. \"뒤에서 갑자기… 누가 쳤어.\" 이마에서 피가 흐른다. 그 너머, 유라의 방문은 활짝 열려 있고 창문이 완전히 깨져 있다. 방은 텅 비었고, 바닥의 핏자국이 복도 쪽으로 길게 이어져 있다."
+      : "2층 유라의 방. 문은 열려 있고, 창문이 완전히 깨져 있다. 방은 텅 비었고, 바닥의 핏자국이 복도 쪽으로 길게 이어져 있다.",
+    sfx:"heartbeat", next:"choice_investigate_intro"},
 
-  choice_donghyun:{type:"choice", bg:"room", sil:["donghyun","suhyun"], speaker:"narr",
-    text:"동현을 정면으로 추궁할까, 조용히 관찰만 할까, 수현을 진정시킬까?",
+  // ---- 장소 이동 조사 분기 (허브) ----
+  choice_investigate_intro:{type:"choice", bg:"room", sil:[], speaker:"narr",
+    text:"핏자국을 당장 쫓을 수도 있지만, 다른 곳들을 먼저 둘러볼 시간은 있을까?",
     options:[
-      {label:"정면으로 추궁한다", next:"s9_confront"},
-      {label:"조용히 관찰만 한다", next:"s9_observe"},
-      {label:"수현을 진정시킨다", next:"s9_calm"}
+      {label:"다른 장소를 둘러본다", next:"hub_investigate"},
+      {label:"곧장 핏자국을 쫓는다", next:"choice_follow"}
     ]},
-  s9_confront:{bg:"room",sil:["donghyun"],speaker:"donghyun",
-    text:"\"발전기 벨트에 손이 찢어진 거라니까! 저 방 창문은 밖에서 깰 수가 없어!\" 절규하지만 감정적 대립만 심해진다.",
-    sfx:"none", flag:"동현_의심", next:"finalChoice"},
-  s9_observe:{bg:"room",sil:["donghyun"],speaker:"narr",
-    text:"조용히 동현의 표정을 살핀다. 두려움이 아닌 짜증만 보인다 — 거짓말하는 사람 특유의 동요가 없다.",
-    sfx:"none", flag:"동현_무고_인상", next:"finalChoice"},
-  s9_calm:{bg:"room",sil:["suhyun"],speaker:"suhyun",
-    text:"수현을 다독여 진정시킨다. 침착해진 수현이 다시 증언한다. \"그 유리… 파편이 방 안쪽으로 튀어 있었어요. 안에서 깨진 것처럼.\"",
-    sfx:"none", flag:"유리_내부파손", next:"finalChoice"},
+  hub_investigate:{type:"choice", bg:"room", sil:[], speaker:"narr",
+    text:"어디를 먼저 살펴볼까?",
+    options:[
+      {label:"부엌으로 가본다", next:"loc_kitchen"},
+      {label:"거실을 다시 살핀다", next:"loc_lounge"},
+      {label:"유라의 방을 한 번 더 살핀다", next:"loc_room"},
+      {label:"그만 됐다. 핏자국을 쫓는다", next:"choice_follow"}
+    ]},
+  loc_kitchen:{bg:"kitchen",sil:[],speaker:"narr",
+    textFn:()=>flags.has("부엌_확인")
+      ? "부엌은 아까와 다를 게 없다. 더 살필 것이 없어 보인다."
+      : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다.",
+    sfx:"none", flag:"부엌_확인", next:"hub_investigate"},
+  loc_lounge:{bg:"lounge",sil:[],speaker:"narr",
+    textFn:()=>flags.has("거실_확인")
+      ? "거실도 별다를 게 없다. 벽난로 장작만 타고 있다."
+      : "거실 탁자 위, 발전기 점검 기록표에 동현의 필체로 시간이 적혀 있다. 정전 시각과 겹친다 — 적어도 그 시간, 동현은 지하실에 있었다.",
+    sfx:"none", flag:"거실_확인", next:"hub_investigate"},
+  loc_room:{bg:"room",sil:[],speaker:"narr",
+    textFn:()=>flags.has("방_확인")
+      ? "더 둘러봐도 눈에 걸리는 건 없다."
+      : "창틀 근처, 낯익은 머리끈 하나가 떨어져 있다. 수현이 늘 쓰던 것과 같은 색이다.",
+    sfx:"none", flag:"방_확인", next:"hub_investigate"},
 
-  finalChoice:{type:"choice", dynamicText:true, bg:"room", sil:[], speaker:"narr",
-    text:"", options:[
-      {label:"눈밭의 발자국을 자세히 확인한다.", next:"a1"},
-      {label:"손에 피가 묻은 동현을 추궁하고 결박한다.", next:"b1", checkTruth:true},
-      {label:"위험하다. 수현과 함께 설상차로 탈출한다.", next:"c1", checkTruth:true},
-      {label:"다들 진정. 일단 라면부터 끓여 먹자.", next:"d1", checkTruth:true}
-    ]}
+  // ---- 핏자국 추적 ----
+  choice_follow:{type:"choice", bg:"room", sil:[], speaker:"narr",
+    text:"핏자국이 어딘가로 이어진다. 어떻게 할까?",
+    options:[
+      {label:"지금 바로 혼자 핏자국을 따라간다", next:"s13_alone"},
+      {label:"동현을 데리고 함께 따라간다", next:"s13_group"},
+      {label:"핏자국은 됐다. 동현을 추궁한다", next:"b1"}
+    ]},
+  s13_alone:{bg:"room",sil:[],speaker:"narr",
+    text:"혼자 핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
+    sfx:"none", next:"s14"},
+  s13_group:{bg:"room",sil:["donghyun"],speaker:"narr",
+    text:"\"같이 가시죠.\" 동현이 손전등을 들고 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
+    sfx:"none", flag:"동행확보", next:"s14"},
+
+  s14:{bg:"lake",sil:["yura"],speaker:"narr",
+    text:"호수 얼음 위, 눈보라 속에 무언가 쓰러져 있다. 다가가 보니… 유라다. 이미 움직임이 없다.",
+    sfx:"heartbeat", next:"s15"},
+  s15:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
+    text:"그 뒤로 그림자 하나가 서 있다. 수현이다. 손에는 피 묻은 칼이 들려 있다. \"…왜 따라온 거예요, 선배.\"",
+    sfx:"scream", next:"s16"},
+  s16:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+    text:"눈보라 속에서 수현이 칼을 고쳐 쥔다.",
+    sfx:"none", nextFn:()=> flags.has("동행확보") ? "s16_capture" : "s16_death"}
 };
 
-const TRUTH_FLAGS=["그림자_이상","현장_원본","발자국_조작","핏자국_역방향","덤웨이터_발견","호수_직접확인","동현_무고_인상","유리_내부파손"];
-function clueScore(){ return TRUTH_FLAGS.filter(f=>flags.has(f)).length; }
-
-function buildFinalText(){
-  const clues=[];
-  if(flags.has("그림자_이상")) clues.push("호수의 그림자는 자연물이 아니었다");
-  if(flags.has("현장_원본")) clues.push("현장은 훼손되지 않은 그대로였다");
-  if(flags.has("수현_신뢰")) clues.push("수현의 증언은 믿을 만하다");
-  if(flags.has("발자국_조작")) clues.push("발자국은 누군가 조작한 가짜 흔적이다");
-  if(flags.has("핏자국_역방향")) clues.push("핏자국의 방향이 창밖 탈출과 맞지 않는다");
-  if(flags.has("덤웨이터_발견")) clues.push("방 안엔 숨겨진 통로가 있다");
-  if(flags.has("호수_직접확인")) clues.push("호수의 구멍을 직접 눈으로 확인했다");
-  if(flags.has("동현_의심")) clues.push("동현은 필사적으로 자신을 변호했다");
-  if(flags.has("동현_무고_인상")) clues.push("동현에게는 거짓말의 동요가 없었다");
-  if(flags.has("유리_내부파손")) clues.push("유리는 밖이 아니라 안에서 깨졌다");
-  let lead = clues.length
-    ? "지금까지 확인한 것들: " + clues.join(", ") + "."
-    : "손에 잡히는 단서가 아직 없다.";
-  return lead + " 발자국, 정전, 깨진 유리창, 사람들의 태도… 무엇에 집중할 것인가?";
-}
-
-// Route A - True End
+// True End - captured (had donghyun as backup)
 Object.assign(scenes,{
-  a1:{bg:"room",sil:[],speaker:"narr",
-    text:"발자국의 깊이가 비정상적으로 얕고 보폭도 일정하지 않다. 누군가 장대로 신발만 꿰어 찍은 가짜 흔적이다.",
-    sfx:"none", next:"a2"},
-  a2:{bg:"room",sil:[],speaker:"narr",
-    text:"옷장 뒤편, 숨겨진 낡은 덤웨이터 통로가 열려 있다. 아래쪽에서 숨소리가 들린다.",
-    sfx:"heartbeat", next:"a3"},
-  a3:{bg:"room",sil:["yura"],speaker:"narr",
-    text:"뒤에서 흉기를 든 누군가 덮쳐온다 — 호수에 빠진 척 위장한 유라였다!",
-    sfx:"glass", next:"a4"},
-  a4:{bg:"room",sil:["yura","suhyun","donghyun"],speaker:"suhyun",
-    text:"수현의 플래시 세례로 시야를 방해하고, 동현과 함께 유라를 제압한다.",
-    sfx:"click", next:"endA"}
+  s16_capture:{bg:"lake",sil:["yura","suhyun","donghyun"],speaker:"narr",
+    text:"동행이 있었기에, 수현이 덤벼드는 순간 동현과 함께 붙잡을 수 있었다. 발버둥 치는 수현을 붙든 채, 폭설이 걷힐 아침을 기다린다.",
+    sfx:"click", next:"endTrue"}
 });
 
-// Route B - Bad End 1
+// Death End - alone, no backup
 Object.assign(scenes,{
-  b1:{bg:"lounge",sil:["donghyun"],speaker:"donghyun",
-    text:"\"발전기 벨트에 손이 찢어진 거라니까! 저 방 창문은 밖에서 깰 수가 없어!\" 절규하지만 듣지 않고 결박한다.",
+  s16_death:{bg:"lake",sil:["suhyun"],speaker:"narr",
+    text:"혼자였다. 수현의 칼끝이 먼저 닿았다. 눈 위로 붉은 것이 스며든다. 아무도 상준을 찾으러 오지 않는다.",
+    sfx:"scream", next:"endDeath"}
+});
+
+// Bad End - misdirected Donghyun, real killer left free
+Object.assign(scenes,{
+  b1:{bg:"room",sil:["donghyun"],speaker:"donghyun",
+    text:"\"진짜 아니야, 나는…!\" 동현을 다그친다. 믿지 않고 그대로 결박한다.",
     sfx:"none", next:"b2"},
   b2:{bg:"lounge",sil:[],speaker:"narr",
-    text:"새벽 3시, 벽난로 굴뚝을 타고 매캐한 유독 연기가 방 안을 가득 채운다. 환기 댐퍼가 밖에서 닫힌 것이다.",
+    text:"새벽, 벽난로 굴뚝을 타고 매캐한 연기가 스며든다. 환기구가 밖에서 막혀 있다.",
     sfx:"none", next:"b3"},
-  b3:{bg:"lounge",sil:[],speaker:"narr",
-    text:"문손잡이는 밖에서 쇠사슬로 감겨 있다. 연기 너머 유리창 밖으로 비웃는 그림자가 스쳐 지나간다.",
+  b3:{bg:"lounge",sil:["suhyun"],speaker:"narr",
+    text:"문손잡이엔 밖에서 쇠사슬이 감겨 있다. 연기 너머로, 창밖에 우두커니 서 있는 수현의 그림자가 보인다.",
     sfx:"thunder", next:"endB"}
 });
 
-// Route C - Bad End 2
-Object.assign(scenes,{
-  c1:{bg:"lake",sil:["suhyun"],speaker:"narr",
-    text:"창고의 낡은 스노모빌 시동을 걸고, 수현과 함께 얼어붙은 호수 위 지름길을 질주한다.",
-    sfx:"none", next:"c2"},
-  c2:{bg:"lake",sil:[],speaker:"narr",
-    text:"호수 한가운데, 엔진이 굉음과 함께 꺼진다. 헤드라이트가 비춘 얼음 밑에 수십 개의 하얀 손이 얼음을 두드리고 있다.",
-    sfx:"heartbeat", next:"c3"},
-  c3:{bg:"lake",sil:["suhyun"],speaker:"suhyun",
-    text:"\"선배… 왜 나만 데리고 나왔어요? …진짜 수현이는 아직 산장 지하실에 있는데.\"",
-    sfx:"glass", next:"endC"}
-});
-
-// Route D - Comic End
+// Comic End - ramen
 Object.assign(scenes,{
   d1:{bg:"kitchen",sil:[],speaker:"narr",
-    text:"긴장이 최고조인데 주인공 배에서 큰 소리가 난다. 모두 얼어붙는다. 주방으로 가서 라면 냄비를 올린다.",
+    text:"위층은 나중에 신경 쓰기로 하고, 일단 주방으로 가서 라면 냄비를 올린다.",
     sfx:"click", next:"d2"},
   d2:{bg:"kitchen",sil:["donghyun"],speaker:"donghyun",
-    text:"동현 손의 상처는 렌치 자국이 아니라 라면 봉지 뜯다 베인 상처였다. 유라의 비명은 거미 때문. 유리창은 강풍에 깨진 것.",
+    text:"\"위층은 신경 쓰지 말고 먹자.\" 라면 냄새가 거실까지 퍼진다. 다들 긴장이 조금 풀린다.",
     sfx:"none", next:"d3"},
-  d3:{bg:"kitchen",sil:["yura","donghyun"],speaker:"yura",
-    text:"\"그, 그래도 무서웠단 말이에요!\" 동현: \"라면이나 먹어.\" 얼음 밑 그림자는 여름에 관리인이 빠뜨린 냉장고였다.",
+  d3:{bg:"kitchen",sil:["donghyun","suhyun"],speaker:"suhyun",
+    text:"수현도 마침 내려와 자연스럽게 자리에 앉는다. \"유라 씨는 원래 잘 안 나와요.\" 그날 밤, 셋은 라면을 나눠 먹으며 밤을 지새운다. 유라의 몫은 끝내 식어갔다.",
     sfx:"none", next:"endD"}
 });
 
 const endings={
-  endA:{title:"【엔딩 A - 백설의 진실】 True End",
-    text:"폭설이 잦아들고 아침이 밝아올 때까지 범인을 포박한 채 생존. 진실을 밝혀낸 승리."},
-  endB:{title:"【엔딩 B - 얼어붙은 밀실의 연기】 Bad End 1",
-    text:"진범을 눈앞에 두고 무고한 자를 범인으로 몰아 탈출구를 잃은 채 전멸."},
-  endC:{title:"【엔딩 C - 설백호의 망령】 Bad End 2",
-    text:"믿었던 이의 정체마저 알 수 없게 된 채, 얼음 아래로 끌려 들어간다."},
-  endD:{title:"【엔딩 D - 라면이 진짜 무서웠다】 Comic End",
-    text:"살인사건은 없었다. 넷은 라면을 나눠 먹으며 밤을 새운다. 아침, 제설차가 도착한다."}
+  endTrue:{title:"【엔딩 - 백설호의 진실】 True End",
+    text:"진범 수현을 붙든 채 아침을 맞는다. 유라를 지키지는 못했지만, 더 이상의 희생은 없었다."},
+  endDeath:{title:"【엔딩 - 얼음 위의 그림자】 Death End",
+    text:"혼자 나선 대가는 컸다. 상준은 끝내 산장으로 돌아오지 못했다."},
+  endB:{title:"【엔딩 - 얼어붙은 밀실의 연기】 Bad End",
+    text:"진범을 눈앞에 두고 무고한 자를 범인으로 몰아, 탈출구를 잃은 채 전멸했다."},
+  endD:{title:"【엔딩 - 라면이 진짜 무서웠다】 Comic End",
+    text:"아무 일도 없었다는 듯, 셋은 무사히 아침을 맞는다. 다만 유라는 끝내 돌아오지 않았다."}
 };
 
 /* ---------------- ENGINE ---------------- */
@@ -490,7 +536,10 @@ function showSilhouettes(list){
   list.forEach((name,i)=>{ if(sils[i]){ sils[i].classList.add("show"); } });
 }
 function setBg(cls){
-  if(bgEl.className !== cls) releaseTension();
+  if(bgEl.className !== cls){
+    releaseTension();
+    setWindIntensity(cls==="lake");
+  }
   bgEl.className=cls;
 }
 function flash(){ const f=document.getElementById("flash"); f.style.transition="none"; f.style.opacity=1;
@@ -538,8 +587,7 @@ function renderChoice(sc){
   setBg(sc.bg); showSilhouettes(sc.sil||[]);
   speakerEl.textContent="";
   choicesEl.classList.remove("show");
-  const text = sc.dynamicText ? buildFinalText() : sc.text;
-  typeText(text, ()=>{
+  typeText(sc.text, ()=>{
     choicesEl.innerHTML="";
     sc.options.forEach(opt=>{
       const b=document.createElement("button");
@@ -555,6 +603,7 @@ function advance(){
   if(typing) return;
   const sc=scenes[curId];
   if(!sc || sc.type==="choice") return;
+  if(sc.nextFn){ renderScene(sc.nextFn()); return; }
   if(sc.next) renderScene(sc.next);
 }
 
