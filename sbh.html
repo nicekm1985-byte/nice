@@ -498,16 +498,12 @@ const scenes={
   choice_follow:{type:"choice", bg:"room", sil:[], speaker:"narr",
     text:"핏자국이 어딘가로 이어진다. 어떻게 할까?",
     options:[
-      {label:"지금 바로 혼자 핏자국을 따라간다", next:"s13_alone"},
-      {label:"동현을 데리고 함께 따라간다", next:"s13_group"},
+      {label:"핏자국을 따라간다", next:"s13_alone"},
       {label:"핏자국은 됐다. 동현을 추궁한다", next:"c1"}
     ]},
   s13_alone:{bg:"room",sil:[],speaker:"narr",
-    text:"혼자 핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
+    text:"핏자국을 따라 나선다. 눈 위에 길게 흩뿌려진 흔적이 현관을 지나 마당으로, 그리고 호수 쪽으로 이어진다.",
     sfx:"none", next:"s14"},
-  s13_group:{bg:"room",sil:["donghyun"],speaker:"narr",
-    text:"\"같이 가시죠.\" 동현이 손전등을 들고 나선다. 함께 핏자국을 따라 나선다. 흩뿌려진 흔적이 현관을 지나 마당으로, 호수 쪽으로 이어진다.",
-    sfx:"none", flag:"동현동행", next:"s14"},
 
   s14:{bg:"lake",sil:["yura"],speaker:"narr",
     text:"호수 얼음 위, 눈보라 속에 무언가 쓰러져 있다. 다가가 보니… 유라다. 이미 움직임이 없다.",
@@ -518,17 +514,13 @@ const scenes={
 
   // ---- 산장으로 복귀, 남은 사람들과 거실에서 추리 ----
   lounge_discuss:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
-    textFn:()=>flags.has("동현동행")
-      ? "거실엔 수현만 남아 있다. 소식을 전하자 다들 말을 잃는다. 잠시 후, 침묵을 깨고 대화가 시작된다."
-      : "거실엔 동현과 수현이 함께 있다. 소식을 전하자 다들 말을 잃는다. 잠시 후, 침묵을 깨고 대화가 시작된다.",
+    text:"거실엔 동현과 수현이 함께 있다. 소식을 전하자 다들 말을 잃는다. 잠시 후, 침묵을 깨고 대화가 시작된다.",
     options:[
       {label:"함께 상황을 정리해본다", next:"discuss1"},
       {label:"동현을 의심하며 다그친다 — 방에서 목걸이를 봤다", next:"c1"}
     ]},
   discuss1:{bg:"lounge",dynamicSil:true,speaker:"donghyun",
-    textFn:()=>flags.has("동현동행")
-      ? "\"나는 계속 상준 씨랑 같이 있었잖아요. 알리바이는 확실해요.\" 동현이 담담히 말한다."
-      : "\"나는 정전 때부터 계속 지하실에, 그 다음엔 거실에 있었어요.\" 동현이 담담히 말한다.",
+    text:"\"나는 정전 때부터 계속 지하실에, 그 다음엔 거실에 있었어요.\" 동현이 담담히 말한다.",
     sfx:"none", next:"discuss2"},
   discuss2:{bg:"lounge",dynamicSil:true,speaker:"suhyun",
     text:"\"그런데 정전됐을 때는… 다들 어두워서 서로 어디 있었는지 잘 못 봤잖아요.\" 수현이 별일 아니라는 듯 말을 얹는다. 딱히 누구를 겨냥한 말은 아닌 것 같다.",
@@ -550,18 +542,24 @@ const scenes={
     text:"동현과 함께 다시 호수로 나선다. 눈보라가 한층 거세졌다.",
     sfx:"none", flag:"최종동행", next:"s15"},
 
-  s15:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
-    text:"그 뒤로 그림자 하나가 서 있다. 수현이다. \"괜찮으세요, 선배? 여기서 이러고 있을 줄은…\" 손에 든 것은 아직 보이지 않는다.",
+  s15:{bg:"lake",dynamicSil2:true,speaker:"suhyun",
+    textFn:()=>flags.has("최종동행")
+      ? "그 뒤로 그림자 하나가 다가온다. 수현이다. \"두 분이 같이 오셨네요…\" 손에 든 것은 아직 보이지 않는다."
+      : "그 뒤로 그림자 하나가 서 있다. 수현이다. \"괜찮으세요, 선배? 여기서 이러고 있을 줄은…\" 손에 든 것은 아직 보이지 않는다.",
     sfx:"none", next:"s15b"},
-  s15b:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
+  s15b:{bg:"lake",dynamicSil2:true,speaker:"narr",
     text:"목에 걸려 있어야 할 카메라가, 지금 수현에게 없다.",
     sfx:"none", next:"s16pre"},
 
-  s16pre:{bg:"lake",sil:["yura","suhyun"],speaker:"suhyun",
-    text:"수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. \"…왜 따라온 거예요, 선배.\"",
+  s16pre:{bg:"lake",dynamicSil2:true,speaker:"suhyun",
+    textFn:()=>flags.has("최종동행")
+      ? "수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. 둘을 번갈아 보는 눈빛이 흔들린다. \"…이렇게 될 줄은 몰랐는데.\""
+      : "수현이 등 뒤에서 무언가를 꺼내 든다. 피 묻은 칼이다. \"…왜 따라온 거예요, 선배.\"",
     sfx:"scream", next:"s16"},
-  s16:{bg:"lake",sil:["yura","suhyun"],speaker:"narr",
-    text:"눈보라 속에서 수현이 칼을 고쳐 쥔다.",
+  s16:{bg:"lake",dynamicSil2:true,speaker:"narr",
+    textFn:()=>flags.has("최종동행")
+      ? "궁지에 몰린 수현이 칼을 쥔 채 무작정 달려든다."
+      : "눈보라 속에서 수현이 칼을 고쳐 쥔다.",
     sfx:"none", nextFn:()=> flags.has("최종동행") ? "s16_capture" : "s16_death"}
 };
 
@@ -612,7 +610,7 @@ const endings={
   endTrue:{title:"【엔딩 - 백설호의 진실】 True End",
     text:"진범 수현을 붙든 채 아침을 맞는다. 유라를 지키지는 못했지만, 더 이상의 희생은 없었다."},
   endDeath:{title:"【엔딩 - 얼음 위의 그림자】 Death End",
-    text:"혼자, 혹은 너무 늦게 알아챈 대가는 컸다. 상준은 끝내 산장으로 돌아오지 못했다."},
+    text:"혼자서는 칼을 든 사람을 이길 수 없었다. 상준은 끝내 산장으로 돌아오지 못했다."},
   endB:{title:"【엔딩 - 얼어붙은 밀실의 연기】 Bad End",
     text:"무고한 동현을 범인으로 몰아 결박한 채 안심했지만, 진범은 처음부터 곁에 있었다. 진실은 모두가 숨이 끊어진 뒤에야 드러났다."},
   endD:{title:"【엔딩 - 라면이 진짜 무서웠다】 Comic End",
@@ -681,6 +679,9 @@ function skipType(){ clearInterval(typedTimer); typing=false; }
 function silhouettesFor(sc){
   if(sc.dynamicSil){
     return ["donghyun","suhyun"];
+  }
+  if(sc.dynamicSil2){
+    return flags.has("최종동행") ? ["yura","suhyun","donghyun"] : ["yura","suhyun"];
   }
   return sc.sil||[];
 }
