@@ -197,7 +197,7 @@
 <script>
 /* ---------------- AUDIO (all routed through master gain -> volume control affects everything) ---------------- */
 let actx=null, master=null, muted=false, volume=0.7, lastVolume=0.7;
-let windNodes=null, droneNodes=null, windIndoor=0.35, windOutdoor=0.85;
+let windNodes=null, droneNodes=null, windIndoor=0.06, windOutdoor=0.35;
 
 function initAudio(){
   if(actx) return;
@@ -217,23 +217,27 @@ function noiseBuffer(){
 function startWind(){
   const src=actx.createBufferSource();
   src.buffer=noiseBuffer(); src.loop=true;
-  const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=500;
+  const filt=actx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=220;
   const g=actx.createGain(); g.gain.value=windIndoor;
   src.connect(filt); filt.connect(g); g.connect(master);
   src.start();
   windNodes={src,filt,g};
   // slow LFO on filter freq for blizzard gust effect
-  const lfo=actx.createOscillator(); lfo.frequency.value=0.09;
-  const lfoGain=actx.createGain(); lfoGain.gain.value=280;
+  const lfo=actx.createOscillator(); lfo.frequency.value=0.08;
+  const lfoGain=actx.createGain(); lfoGain.gain.value=80;
   lfo.connect(lfoGain); lfoGain.connect(filt.frequency); lfo.start();
 }
 function setWindIntensity(outdoor){
   if(!actx || !windNodes) return;
   const now=actx.currentTime;
-  const target = outdoor ? windOutdoor : windIndoor;
+  const targetGain = outdoor ? windOutdoor : windIndoor;
+  const targetFreq = outdoor ? 500 : 220;
   windNodes.g.gain.cancelScheduledValues(now);
   windNodes.g.gain.setValueAtTime(windNodes.g.gain.value, now);
-  windNodes.g.gain.linearRampToValueAtTime(target, now+1.0);
+  windNodes.g.gain.linearRampToValueAtTime(targetGain, now+1.0);
+  windNodes.filt.frequency.cancelScheduledValues(now);
+  windNodes.filt.frequency.setValueAtTime(windNodes.filt.frequency.value, now);
+  windNodes.filt.frequency.linearRampToValueAtTime(targetFreq, now+1.0);
 }
 function sfxGust(){
   if(!actx) return;
@@ -265,6 +269,39 @@ function startDrone(){
   o1.connect(g); o2.connect(g); g.connect(master);
   o1.start(); o2.start();
   droneNodes={o1,o2,g};
+}
+function sfxType(){
+  if(!actx) return;
+  const now = actx.currentTime;
+  // 1. High crisp key strike: clicky noise
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer();
+  src.loop = false;
+  const filt = actx.createBiquadFilter();
+  filt.type = "bandpass";
+  filt.frequency.value = 2400 + (Math.random() * 600 - 300);
+  filt.Q.value = 4;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.08, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+  src.connect(filt);
+  filt.connect(g);
+  g.connect(master);
+  src.start(now);
+  src.stop(now + 0.036);
+
+  // 2. Body thud: subtle typewriter chassis resonance
+  const o = actx.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(320 + (Math.random() * 40 - 20), now);
+  o.frequency.exponentialRampToValueAtTime(140, now + 0.04);
+  const og = actx.createGain();
+  og.gain.setValueAtTime(0.06, now);
+  og.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+  o.connect(og);
+  og.connect(master);
+  o.start(now);
+  o.stop(now + 0.042);
 }
 function sfxClick(){
   if(!actx) return;
@@ -752,9 +789,9 @@ const scenes={
     ]},
   loc_kitchen:{bg:"kitchen",sil:[],speaker:"narr",
     textFn:()=>flags.has("부엌_확인")
-      ? "부엌은 아까와 다를 게 없다. 더 살필 것이 없어 보인다."
-      : "부엌 칼꽂이 한 자리가 비어 있다. 가장 큰 식칼이 사라졌다. 언제부터 없었는지는 알 수 없다.",
-    sfx:"none", flag:"부엌_확인", next:"hub_investigate"},
+      ? "부엌 칼꽂이엔 여전히 식칼 한 자루가 비어 있다."
+      : "부엌 칼꽂이를 살핀다. 있어야 할 가장 큰 식칼 한 자루가 사라져 있다.",
+    sfx:"reveal", flag:"부엌_확인", next:"hub_investigate"},
   loc_donghyun_room:{bg:"lounge",sil:[],speaker:"narr",
     text:"동현의 방문 앞에 선다. 손잡이를 돌려 문을 연다.",
     sfx:"doorOpen", next:"loc_donghyun_room2"},
@@ -806,8 +843,9 @@ const scenes={
 
   choice_discuss4:{type:"choice", bg:"lounge", dynamicSil:true, speaker:"narr",
     text:"더 물어볼 게 있을까?",
+    dynamicOptions: true,
     options:[
-      {label:"사라진 식칼에 대해 묻는다", next:"discuss4_knife"},
+      {label:"사라진 식칼에 대해 묻는다", next:"discuss4_knife", cond:"부엌_확인"},
       {label:"더 물을 것 없다. 넘어간다", next:"choice_return_lake"}
     ]},
   discuss4_knife:{bg:"lounge",dynamicSil:true,speaker:"donghyun",
@@ -1032,7 +1070,10 @@ function typeText(str, cb){
   document.getElementById("cont").style.visibility="hidden";
   clearInterval(typedTimer);
   typedTimer=setInterval(()=>{
-    bodyEl.textContent+=str[i]; i++;
+    const ch = str[i];
+    bodyEl.textContent+=ch;
+    if(ch && ch!==" " && ch!=="\n") sfxType();
+    i++;
     if(i>=str.length){
       clearInterval(typedTimer); typing=false;
       document.getElementById("cont").textContent="다음 ▶";
@@ -1094,7 +1135,8 @@ function renderChoice(sc){
   choicesEl.classList.remove("show");
   typeText(sc.textFn ? sc.textFn() : sc.text, ()=>{
     choicesEl.innerHTML="";
-    sc.options.forEach(opt=>{
+    const opts = sc.options.filter(opt => !opt.cond || flags.has(opt.cond));
+    opts.forEach(opt=>{
       const b=document.createElement("button");
       b.className="choiceBtn"; b.textContent=opt.label;
       b.onclick=()=>{ SFX.click(); choicesEl.classList.remove("show"); renderScene(opt.next); };
