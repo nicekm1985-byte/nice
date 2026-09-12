@@ -36,6 +36,11 @@
        clip-path:polygon(50% 0%,65% 8%,72% 25%,68% 40%,80% 55%,78% 100%,22% 100%,20% 55%,32% 40%,28% 25%,35% 8%);}
   /* Male build: broader shoulders, straight torso */
   .sil.male::before{clip-path:polygon(50% 0%,68% 7%,76% 22%,71% 38%,84% 54%,80% 100%,20% 100%,16% 54%,29% 38%,24% 22%,32% 7%);}
+  /* Donghyun: stockier side-profile build, jowly */
+  .sil.donghyun::before{clip-path:polygon(46% 0%,64% 4%,74% 14%,80% 28%,72% 34%,86% 46%,90% 62%,82% 100%,18% 100%,14% 60%,24% 40%,20% 26%,28% 12%,36% 4%);}
+  .sil.donghyun .hairLayer{display:block;
+    background:#0d1c38;
+    clip-path:polygon(44% 2%,58% 0%,70% 6%,76% 16%,70% 24%,62% 16%,52% 14%,42% 18%,36% 26%,30% 16%,34% 6%);}
   /* Female build: narrower shoulders, defined waist, wider hips */
   .sil.female::before{clip-path:polygon(50% 0%,62% 7%,66% 22%,58% 36%,63% 46%,74% 60%,70% 100%,30% 100%,26% 60%,37% 46%,42% 36%,34% 22%,38% 7%);}
   /* Long wavy hair silhouette overlay for female characters */
@@ -148,9 +153,9 @@
   <div id="bloodFlash"></div>
   <div id="bloodOverlay"></div>
   <div id="silhouettes">
-    <div class="sil" id="sil1"></div>
-    <div class="sil" id="sil2"></div>
-    <div class="sil" id="sil3"></div>
+    <div class="sil" id="sil1"><div class="hairLayer"></div></div>
+    <div class="sil" id="sil2"><div class="hairLayer"></div></div>
+    <div class="sil" id="sil3"><div class="hairLayer"></div></div>
   </div>
   <div id="textbox"><span id="speaker"></span><span id="body"></span></div>
   <div id="cont" style="visibility:hidden;">다음 ▶</div>
@@ -988,7 +993,7 @@ function showSilhouettes(list){
     const name = typeof entry==="string" ? entry : entry.name;
     const pose = typeof entry==="string" ? "neutral" : (entry.pose||"neutral");
     const gender = (CHAR[name] && CHAR[name].gender) || "male";
-    el.classList.add("show", gender);
+    el.classList.add("show", gender, name);
     if(pose && pose!=="neutral") el.classList.add("pose-"+pose);
   });
 }
