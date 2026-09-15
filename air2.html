@@ -98,9 +98,9 @@
     }
     .bombs-display {
       position: absolute;
-      top: 52px;
-      left: 18px;
       bottom: auto;
+      left: 18px;
+      top: 52px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -1332,7 +1332,8 @@
     let continueTimer = 10;
     let continueInterval = null;
 
-    let playerInvulnerable = 0; // 피격 후 무적 시간 (프레임)
+    let playerInvulnerable = 0;
+    let hitProcessedThisFrame = false; // 피격 후 무적 시간 (프레임)
     let autoShootTimer = 0; // 플레이어 자동 발사 타이머
     let rapidBoost = 0;     // R 아이템 획득 시 총알 속도 증가치 (5%씩 최대 60%)
     let items = [];         // R 아이템 목록
@@ -1625,29 +1626,17 @@
     function hitPlayer() {
       if (playerInvulnerable > 0 || isGameOver || isContinueState) return;
 
-      // 피격 처리는 게임 상태를 먼저 확정하고, 사운드/이펙트 오류가 게임 루프를 중단시키지 않도록 분리
+      // 상태를 먼저 변경하여 피격 효과나 사운드 오류가 게임을 멈추지 않게 함
       playerInvulnerable = 120;
-      try {
-        createExplosion(playerX, playerY, 50, '#ef4444', 35);
-      } catch (err) {
-        console.warn('hit explosion skipped:', err);
-      }
-      try {
-        playExplosionSound(false);
-      } catch (err) {
-        console.warn('hit sound skipped:', err);
-      } // 1차 피격 시 폭발음 출력
+      lives = Math.max(0, lives - 1);
+      updateLivesDisplay();
+      enemyBullets = enemyBullets.filter(b => Math.hypot(b.x - playerX, b.y - playerY) > 200);
 
-      if (lives > 0) {
-        // 잔기 소진
-        lives--;
-        updateLivesDisplay();
-        playerInvulnerable = 120; // 2초간 무적 (깜빡임 효과)
-        // 적 총알 화면 주변 제거 (회복 시간 제공)
-        enemyBullets = enemyBullets.filter(b => Math.hypot(b.x - playerX, b.y - playerY) > 200);
-      } else {
-        // 잔기가 0인 상태에서 한번 더 맞음 -> 기체 완전 대폭발 사운드 재생 후 컨티뉴/게임오버 진입
-        playExplosionSound(true); // 잔기 소진 대폭발 사운드
+      try { createExplosion(playerX, playerY, 50, '#ef4444', 35); } catch (e) { console.warn('hit explosion skipped', e); }
+      try { playExplosionSound(false); } catch (e) { console.warn('hit sound skipped', e); }
+
+      if (lives <= 0) {
+        try { playExplosionSound(true); } catch (e) { console.warn('game over sound skipped', e); }
         triggerContinueOrGameOver();
       }
     }
@@ -1684,101 +1673,23 @@
     }
 
     function triggerGameOver() {
-      // 중복 GAME OVER 진입 방지
-      if (isGameOver) return;
-
       isContinueState = false;
       isGameOver = true;
-      if (continueInterval) {
-        clearInterval(continueInterval);
-        continueInterval = null;
-      }
+      if (continueInterval) clearInterval(continueInterval);
 
       overlayTitle.className = 'overlay-title gameover-text';
       overlayTitle.innerText = 'GAME OVER';
-      countdownDisplay.style.display = 'none';
-      continueBtn.style.display = 'inline-block';
-      continueBtn.innerText = 'PRESS START';
-      continueInfo.innerText = 'PRESS START TO RESTART';
+      countdownDisplay.style.display = 'none'; // 0 미표시
+      continueBtn.style.display = 'none';
+      continueInfo.innerText = 'INSERT COIN / REFRESH TO RESTART';
       retroOverlay.style.display = 'flex';
     }
 
-    // GAME OVER 상태에서 새 게임을 시작할 때 모든 게임 상태를 안전하게 초기화
-    function restartGame() {
-      if (!isGameOver) return;
-
-      if (continueInterval) {
-        clearInterval(continueInterval);
-        continueInterval = null;
-      }
-
-      // 게임 상태 초기화
-      score = 0;
-      lives = 2;
-      bombs = 2;
-      credits = 2;
-      isGameOver = false;
-      isContinueState = false;
-      continueTimer = 10;
-
-      playerInvulnerable = 90;
-      autoShootTimer = 0;
-      rapidBoost = 0;
-      items = [];
-      itemSpawnTimer = 0;
-
-      playerBullets = [];
-      enemyBullets = [];
-      explosions = [];
-      bombShockwaves = [];
-      enemies = [];
-
-      enemySpawnTimer = 0;
-      targetEnemyCount = 6;
-      targetRecalcTimer = 0;
-      spawnCycleIndex = 0;
-      squadSpawnTimer = 0;
-      scoutSpawnTimer = 0;
-      fortressTimer = 0;
-      difficultyMultiplier = 0.5;
-
-      playerX = WIDTH / 2;
-      playerY = HEIGHT * 0.8;
-      targetX = playerX;
-      targetY = playerY;
-      lastTouchX = null;
-      lastTouchY = null;
-
-      updateScoreDisplay();
-      updateRapidDisplay();
-      updateLivesDisplay();
-      updateBombsDisplay();
-
-      overlayTitle.className = 'overlay-title continue-text';
-      overlayTitle.innerText = 'CONTINUE?';
-      countdownDisplay.innerText = '10';
-      countdownDisplay.style.display = 'block';
-      continueBtn.innerText = 'PRESS START';
-      continueBtn.style.display = 'none';
-      continueInfo.innerText = 'CREDIT(S) REMAINING: 2';
-      retroOverlay.style.display = 'none';
-
-      initAudio();
-    }
-
-    // 모달 및 화면 터치/클릭 시 컨티뉴/재시작 처리
+    // 모달 및 화면 터치/클릭 시 컨티뉴 즉시 처리
     function handleContinueAction() {
-      if (isGameOver) {
-        restartGame();
-        return;
-      }
-
       if (!isContinueState || credits <= 0) return;
       credits--;
-      if (continueInterval) {
-        clearInterval(continueInterval);
-        continueInterval = null;
-      }
+      clearInterval(continueInterval);
       isContinueState = false;
       retroOverlay.style.display = 'none';
 
@@ -1800,11 +1711,7 @@
 
     continueBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (isGameOver) {
-        restartGame();
-      } else {
-        handleContinueAction();
-      }
+      handleContinueAction();
     });
     retroOverlay.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2394,8 +2301,8 @@
     let fpsTimer = 0;
 
     function gameLoop(now) {
-      // 탭 전환/백그라운드 복귀 후 큰 delta가 게임 상태를 깨뜨리지 않도록 제한
-      const delta = Math.min(0.05, Math.max(0, (now - lastTime) / 1000));
+      hitProcessedThisFrame = false;
+      const delta = (now - lastTime) / 1000;
       lastTime = now;
 
       frameCount++;
@@ -2595,11 +2502,12 @@
         enemy.draw();
 
         // 적과 플레이어의 직접 충돌 검사 (피격점을 기체 끝이 아닌 안쪽 중심부로 축소: 18 -> 8)
-        if (!isGameOver && !isContinueState && playerInvulnerable <= 0) {
+        if (!isGameOver && !isContinueState && playerInvulnerable <= 0 && !hitProcessedThisFrame) {
           if (Math.hypot(playerX - enemy.x, playerY - enemy.y) < enemy.radius + 8) {
             enemy.dead = true;
             createExplosion(enemy.x, enemy.y, 45, '#f59e0b', 24);
             enemies.splice(i, 1);
+            hitProcessedThisFrame = true;
             hitPlayer();
             continue;
           }
@@ -2625,9 +2533,10 @@
         ctx.fill();
 
         // 플레이어 피격 판정 (비행기 외곽 끝이 아닌 중심 콕핏 안쪽 5px 코어 판정)
-        if (!isGameOver && !isContinueState && playerInvulnerable <= 0) {
+        if (!isGameOver && !isContinueState && playerInvulnerable <= 0 && !hitProcessedThisFrame) {
           if (Math.hypot(playerX - eb.x, playerY - eb.y) < eb.radius + 5) {
             enemyBullets.splice(i, 1);
+            hitProcessedThisFrame = true;
             hitPlayer();
             continue;
           }
@@ -2791,16 +2700,15 @@
         }
       }
 
-      requestAnimationFrame(gameLoop);
     }
 
-    // 안전 래퍼: 렌더/이펙트 중 예외가 발생해도 게임 전체 루프가 영구 정지하지 않도록 복구
     function safeGameLoop(now) {
       try {
         gameLoop(now);
       } catch (err) {
-        console.error('Game loop recovered from error:', err);
-        lastTime = now;
+        console.error('GAME LOOP ERROR:', err);
+        lastTime = now || performance.now();
+      } finally {
         requestAnimationFrame(safeGameLoop);
       }
     }
@@ -2832,14 +2740,8 @@
       startGame();
     }, { passive: false });
 
-    // 전역 윈도우 클릭/키보드로 컨티뉴 또는 GAME OVER 재시작
-    window.addEventListener('click', (e) => {
-      // GAME OVER 화면에서는 한 번 클릭하면 새 게임 시작
-      if (isGameOver && e.target !== continueBtn) {
-        restartGame();
-        return;
-      }
-
+    // 전역 윈도우 클릭/키보드로도 컨티뉴 즉시 처리
+    window.addEventListener('click', () => {
       if (isContinueState && credits > 0) {
         handleContinueAction();
       }
@@ -2848,8 +2750,6 @@
     window.addEventListener('keydown', (e) => {
       if (!gameStarted && (e.code === 'Space' || e.code === 'Enter')) {
         startGame();
-      } else if (isGameOver && (e.code === 'Space' || e.code === 'Enter')) {
-        restartGame();
       } else if (isContinueState && (e.code === 'Space' || e.code === 'Enter')) {
         handleContinueAction();
       }
