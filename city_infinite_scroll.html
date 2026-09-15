@@ -29,9 +29,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start; /* 화면 최상단 밀착 */
       min-height: 100vh;
       min-height: 100dvh;
+      padding-top: env(safe-area-inset-top, 0); /* 노치/다이내믹 아일랜드 대응 */
     }
     #game-container {
       position: relative;
@@ -42,6 +43,7 @@
       border-radius: 12px;
       overflow: hidden;
       background: #1e281e;
+      margin-top: 0;
     }
     canvas {
       display: block;
@@ -1178,16 +1180,28 @@
       updatePointerPos(e.clientX, e.clientY);
     });
 
-    // 모바일 터치 조작 (화면 어디든 드래그한 만큼 기체가 부드럽게 이동하는 상대 좌표 컨트롤)
-    canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
+    // 윈도우 전역 터치 조작 (게임 캔버스뿐만 아니라 하단 여백 화면 어디든 스와이프해도 기체 조작 & 2손가락 폭탄)
+    window.addEventListener('touchstart', (e) => {
+      // 컨티뉴 카운트다운 중이면 화면 아무 곳 터치 시 즉시 부활 처리
+      if (isContinueState && credits > 0) {
+        handleContinueAction();
+        return;
+      }
+      // 손가락 2개 이상 터치 시 폭탄 즉시 발동
+      if (e.touches.length >= 2) {
+        triggerBomb();
+        return;
+      }
+      if (e.touches.length === 1) {
         lastTouchX = e.touches[0].clientX;
         lastTouchY = e.touches[0].clientY;
       }
     }, { passive: true });
 
-    canvas.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0 && lastTouchX !== null && lastTouchY !== null) {
+    window.addEventListener('touchmove', (e) => {
+      if (isContinueState) return;
+      if (e.touches.length >= 2) return;
+      if (e.touches.length === 1 && lastTouchX !== null && lastTouchY !== null) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -1207,15 +1221,40 @@
       }
     }, { passive: true });
 
-    canvas.addEventListener('touchend', () => {
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length === 1) {
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+      } else if (e.touches.length === 0) {
+        lastTouchX = null;
+        lastTouchY = null;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchcancel', () => {
       lastTouchX = null;
       lastTouchY = null;
     }, { passive: true });
 
-    canvas.addEventListener('touchcancel', () => {
-      lastTouchX = null;
-      lastTouchY = null;
-    }, { passive: true });
+    // PC 마우스 양쪽 버튼(좌클릭 + 우클릭) 동시 입력 시 폭탄 발동
+    let mouseButtonsDown = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      // e.buttons 비트마스크: 1(좌클릭) + 2(우클릭) = 3(동시 클릭)
+      mouseButtonsDown = e.buttons;
+      if ((mouseButtonsDown & 1) && (mouseButtonsDown & 2)) {
+        triggerBomb();
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      mouseButtonsDown = e.buttons;
+    });
+
+    // 우클릭 시 브라우저 기본 컨텍스트 메뉴 방지 (우클릭 게임 조작 보장)
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
 
     // 플레이어 전투기 및 지면 투영 그림자 드로잉
     function drawPlayer(x, y) {
@@ -2681,10 +2720,25 @@
       playerInvulnerable = 90;
     }
 
+    // 타이틀 화면 시작 이벤트
     titleScreen.addEventListener('click', startGame);
+    titleScreen.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      startGame();
+    }, { passive: false });
+
+    // 전역 윈도우 클릭/키보드로도 컨티뉴 즉시 처리
+    window.addEventListener('click', () => {
+      if (isContinueState && credits > 0) {
+        handleContinueAction();
+      }
+    });
+
     window.addEventListener('keydown', (e) => {
       if (!gameStarted && (e.code === 'Space' || e.code === 'Enter')) {
         startGame();
+      } else if (isContinueState && (e.code === 'Space' || e.code === 'Enter')) {
+        handleContinueAction();
       }
     });
   </script>
