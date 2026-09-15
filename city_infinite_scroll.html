@@ -1399,7 +1399,6 @@
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
-      if (isContinueState) return;
       if (e.touches.length >= 2) return;
       if (e.touches.length === 1 && lastTouchX !== null && lastTouchY !== null) {
         const rect = canvas.getBoundingClientRect();
@@ -1968,30 +1967,33 @@
     function hitPlayer() {
       if (playerInvulnerable > 0 || isGameOver || isContinueState) return;
 
-      // 1. 피격 즉시 무적 부여 (1프레임 다중 피격 차단)
-      playerInvulnerable = 120; // 2초간 무적
+      // 1. 피격 즉시 2초 무적 선적용 (1프레임 다중 피격 원천 차단)
+      playerInvulnerable = 120;
 
-      // 2. 라이프 먼저 감소 및 UI 갱신
+      // 2. 피격 이펙트 및 사운드 방어 실행
+      try {
+        createExplosion(playerX, playerY, 50, '#ef4444', 35);
+        playExplosionSound(false);
+      } catch (err) {
+        console.warn('피격 이펙트 오류 무시:', err);
+      }
+
+      // 3. 잔기(Life) 차감 로직
+      // lives === 2 (첫 피격) -> lives 1 (생존, 아이콘 1개 꺼짐)
+      // lives === 1 (두번째 피격) -> lives 0 (생존, 마지막 기체, 아이콘 모두 꺼짐)
+      // lives === 0 (세번째 피격) -> 비로소 사망 및 컨티뉴/게임오버 진입
       if (lives > 0) {
         lives--;
         updateLivesDisplay();
         // 적 총알 화면 주변 제거 (회복 시간 제공)
         enemyBullets = enemyBullets.filter(b => Math.hypot(b.x - playerX, b.y - playerY) > 200);
-
-        // 3. 이펙트 및 사운드 안전 실행 (오류 발생 시에도 루프 중단 방지)
-        try {
-          createExplosion(playerX, playerY, 50, '#ef4444', 35);
-          playExplosionSound(false);
-        } catch (err) {
-          console.warn('사운드/이펙트 재생 오류 무시:', err);
-        }
       } else {
-        // 잔기가 0인 상태에서 한번 더 맞음 -> 컨티뉴/게임오버 진입
+        // 잔기가 0인 상태에서 추가 피격 -> 기체 대폭발 후 컨티뉴/게임오버 진입
         try {
           createExplosion(playerX, playerY, 70, '#ef4444', 50);
           playExplosionSound(true);
         } catch (err) {
-          console.warn('사운드/이펙트 재생 오류 무시:', err);
+          console.warn('사망 이펙트 오류 무시:', err);
         }
         triggerContinueOrGameOver();
       }
@@ -3082,7 +3084,7 @@
       playerX = Math.max(40, Math.min(WIDTH - 40, playerX));
       playerY = Math.max(60, Math.min(HEIGHT - 40, playerY));
 
-      if (gameStarted && !isGameOver && !isContinueState) {
+      if (gameStarted && !isGameOver) {
         if (playerInvulnerable % 6 < 3) {
           drawPlayer(playerX, playerY);
         }
