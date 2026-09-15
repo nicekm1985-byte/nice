@@ -1405,14 +1405,18 @@
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
 
-        const deltaX = (e.touches[0].clientX - lastTouchX) * scaleX;
-        const deltaY = (e.touches[0].clientY - lastTouchY) * scaleY;
+        const curX = e.touches[0].clientX;
+        const curY = e.touches[0].clientY;
+        const deltaX = (curX - lastTouchX) * scaleX;
+        const deltaY = (curY - lastTouchY) * scaleY;
 
-        lastTouchX = e.touches[0].clientX;
-        lastTouchY = e.touches[0].clientY;
+        lastTouchX = curX;
+        lastTouchY = curY;
 
-        targetX += deltaX;
-        targetY += deltaY;
+        if (Number.isFinite(deltaX) && Number.isFinite(deltaY)) {
+          targetX += deltaX;
+          targetY += deltaY;
+        }
 
         // 경계 제한
         targetX = Math.max(40, Math.min(WIDTH - 40, targetX));
@@ -1719,132 +1723,140 @@
     // 볼륨 30% 감축 (0.13 -> 0.09) + R 아이템 획득(rapidBoost)당 소리 속도 5%씩 가속 (지속시간 단축)
     function playLaserSound() {
       if (!soundEnabled) return;
-      initAudio();
-      if (!audioCtx) return;
+      try {
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
 
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const filter = audioCtx.createBiquadFilter();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
 
-      // 귀에 자극 없는 둥근 Triangle 파형 + 680Hz 로우패스 필터
-      osc.type = 'triangle';
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(680, audioCtx.currentTime);
+        // 귀에 자극 없는 둥근 Triangle 파형 + 680Hz 로우패스 필터
+        osc.type = 'triangle';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(680, audioCtx.currentTime);
 
-      const now = audioCtx.currentTime;
-      
-      // R 아이템 먹을 때마다(rapidBoost: 5% 단위) 사운드 속도 5%씩 가속 -> 지속시간 duration 단축
-      // rapidSpeedFactor = 1 + (rapidBoost / 100)
-      const rapidSpeedFactor = 1 + (rapidBoost / 100);
-      const duration = 0.09 / rapidSpeedFactor;
+        const now = audioCtx.currentTime;
+        
+        // R 아이템 먹을 때마다(rapidBoost: 5% 단위) 사운드 속도 5%씩 가속 -> 지속시간 duration 단축
+        // rapidSpeedFactor = 1 + (rapidBoost / 100)
+        const rapidSpeedFactor = 1 + (rapidBoost / 100);
+        const duration = 0.09 / rapidSpeedFactor;
 
-      // 피치: 720Hz에서 85Hz로 가파른 지수 곡선을 그리며 급격히 곤두박질치는 글라이드 라인
-      osc.frequency.setValueAtTime(720, now);
-      osc.frequency.exponentialRampToValueAtTime(85, now + duration);
+        // 피치: 720Hz에서 85Hz로 가파른 지수 곡선을 그리며 급격히 곤두박질치는 글라이드 라인
+        osc.frequency.setValueAtTime(720, now);
+        osc.frequency.exponentialRampToValueAtTime(85, now + duration);
 
-      // 볼륨: 50% 추가 감축 (0.09 -> 0.045)
-      gain.gain.setValueAtTime(0.045, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        // 볼륨: 50% 추가 감축 (0.09 -> 0.045)
+        gain.gain.setValueAtTime(0.045, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
 
-      osc.start(now);
-      osc.stop(now + duration);
+        osc.start(now);
+        osc.stop(now + duration);
+      } catch (e) {}
     }
 
     // 적기 피격 효과음 (소리를 확실히 키우고 찰진 명중감을 부여: 메탈릭 임팩트 2중 오실레이터, 게인 0.35)
     function playHitSound() {
       if (!soundEnabled) return;
-      initAudio();
-      if (!audioCtx) return;
+      try {
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
 
-      const now = audioCtx.currentTime;
+        const now = audioCtx.currentTime;
 
-      // A. 단단한 금속 타격 바이트 (Square 520Hz -> 200Hz)
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(520, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.07);
+        // A. 단단한 금속 타격 바이트 (Square 520Hz -> 200Hz)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.07);
 
-      gain.gain.setValueAtTime(0.35, now); // 볼륨 대폭 상향 (기존 0.14 -> 0.35)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        gain.gain.setValueAtTime(0.35, now); // 볼륨 대폭 상향 (기존 0.14 -> 0.35)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.07);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.07);
 
-      // B. 묵직한 펀치감 서브 (Triangle 240Hz -> 80Hz)
-      const sub = audioCtx.createOscillator();
-      const subGain = audioCtx.createGain();
-      sub.type = 'triangle';
-      sub.frequency.setValueAtTime(240, now);
-      sub.frequency.exponentialRampToValueAtTime(80, now + 0.07);
+        // B. 묵직한 펀치감 서브 (Triangle 240Hz -> 80Hz)
+        const sub = audioCtx.createOscillator();
+        const subGain = audioCtx.createGain();
+        sub.type = 'triangle';
+        sub.frequency.setValueAtTime(240, now);
+        sub.frequency.exponentialRampToValueAtTime(80, now + 0.07);
 
-      subGain.gain.setValueAtTime(0.30, now);
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        subGain.gain.setValueAtTime(0.30, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
-      sub.connect(subGain);
-      subGain.connect(audioCtx.destination);
-      sub.start(now);
-      sub.stop(now + 0.07);
+        sub.connect(subGain);
+        subGain.connect(audioCtx.destination);
+        sub.start(now);
+        sub.stop(now + 0.07);
+      } catch (e) {}
     }
 
     // 적기 폭발 격추 효과음 (화이트 노이즈 버스트 + 저주파 럼블 붐)
     function playExplosionSound(isBoss = false) {
       if (!soundEnabled) return;
-      initAudio();
-      if (!audioCtx) return;
+      try {
+        initAudio();
+        if (!audioCtx || audioCtx.state === 'suspended') return;
 
-      const now = audioCtx.currentTime;
-      const duration = isBoss ? 0.65 : 0.28;
+        const now = audioCtx.currentTime;
+        const duration = isBoss ? 0.65 : 0.28;
 
-      // 1. 노이즈 버스트 (파열음)
-      const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
+        // 1. 노이즈 버스트 (파열음)
+        const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+
+        // 로우패스 필터로 먹먹한 폭발음 질감 구현
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(isBoss ? 900 : 1200, now);
+        filter.frequency.linearRampToValueAtTime(150, now + duration);
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(isBoss ? 0.45 : 0.26, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+
+        noise.start(now);
+        noise.stop(now + duration);
+
+        // 2. 묵직한 서브 베이스 럼블 (Boom!)
+        const subOsc = audioCtx.createOscillator();
+        const subGain = audioCtx.createGain();
+        subOsc.type = 'triangle';
+        subOsc.frequency.setValueAtTime(isBoss ? 160 : 130, now);
+        subOsc.frequency.exponentialRampToValueAtTime(30, now + duration);
+
+        subGain.gain.setValueAtTime(isBoss ? 0.4 : 0.22, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        subOsc.connect(subGain);
+        subGain.connect(audioCtx.destination);
+
+        subOsc.start(now);
+        subOsc.stop(now + duration);
+      } catch (err) {
+        console.warn('사운드 실행 실패:', err);
       }
-
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = buffer;
-
-      // 로우패스 필터로 먹먹한 폭발음 질감 구현
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(isBoss ? 900 : 1200, now);
-      filter.frequency.linearRampToValueAtTime(150, now + duration);
-
-      const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(isBoss ? 0.45 : 0.26, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-      noise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(audioCtx.destination);
-
-      noise.start(now);
-      noise.stop(now + duration);
-
-      // 2. 묵직한 서브 베이스 럼블 (Boom!)
-      const subOsc = audioCtx.createOscillator();
-      const subGain = audioCtx.createGain();
-      subOsc.type = 'triangle';
-      subOsc.frequency.setValueAtTime(isBoss ? 160 : 130, now);
-      subOsc.frequency.exponentialRampToValueAtTime(30, now + duration);
-
-      subGain.gain.setValueAtTime(isBoss ? 0.4 : 0.22, now);
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-      subOsc.connect(subGain);
-      subGain.connect(audioCtx.destination);
-
-      subOsc.start(now);
-      subOsc.stop(now + duration);
     }
 
     // 사운드 On/Off 토글
@@ -3077,8 +3089,8 @@
       // -----------------------------------------------------------
       // 8. 플레이어 기체 부드러운 추종 및 렌더링 (모든 방향 이동 가능, 피격 무적 시 깜빡임)
       // -----------------------------------------------------------
-      playerX = targetX;
-      playerY = targetY;
+      if (Number.isFinite(targetX)) playerX = targetX;
+      if (Number.isFinite(targetY)) playerY = targetY;
 
       // 화면 밖으로 나가지 않도록 경계값 고정 (여유 마진 40px)
       playerX = Math.max(40, Math.min(WIDTH - 40, playerX));
