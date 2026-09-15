@@ -1155,11 +1155,15 @@
       { y: -HEIGHT, texIdx: 1 }
     ];
 
-    // 플레이어 전투기 상태 (모든 방향 이동 가능: targetX, targetY 둘 다 마우스 좌표 추적)
+    // 플레이어 전투기 상태
     let playerX = WIDTH / 2;
     let playerY = HEIGHT * 0.8;
     let targetX = playerX;
     let targetY = playerY;
+
+    // 모바일 터치 상대 이동 (Relative Touch Delta) 변수
+    let lastTouchX = null;
+    let lastTouchY = null;
 
     function updatePointerPos(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
@@ -1169,21 +1173,48 @@
       targetY = (clientY - rect.top) * scaleY;
     }
 
+    // 데스크톱 마우스 조작
     canvas.addEventListener('mousemove', (e) => {
       updatePointerPos(e.clientX, e.clientY);
     });
 
-    // 모바일 터치 이벤트 연동 (터치 드래그로 기체 1:1 조작)
+    // 모바일 터치 조작 (화면 어디든 드래그한 만큼 기체가 부드럽게 이동하는 상대 좌표 컨트롤)
     canvas.addEventListener('touchstart', (e) => {
       if (e.touches.length > 0) {
-        updatePointerPos(e.touches[0].clientX, e.touches[0].clientY);
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
       }
     }, { passive: true });
 
     canvas.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
-        updatePointerPos(e.touches[0].clientX, e.touches[0].clientY);
+      if (e.touches.length > 0 && lastTouchX !== null && lastTouchY !== null) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const deltaX = (e.touches[0].clientX - lastTouchX) * scaleX;
+        const deltaY = (e.touches[0].clientY - lastTouchY) * scaleY;
+
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+
+        targetX += deltaX;
+        targetY += deltaY;
+
+        // 경계 제한
+        targetX = Math.max(40, Math.min(WIDTH - 40, targetX));
+        targetY = Math.max(60, Math.min(HEIGHT - 40, targetY));
       }
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', () => {
+      lastTouchX = null;
+      lastTouchY = null;
+    }, { passive: true });
+
+    canvas.addEventListener('touchcancel', () => {
+      lastTouchX = null;
+      lastTouchY = null;
     }, { passive: true });
 
     // 플레이어 전투기 및 지면 투영 그림자 드로잉
@@ -1615,8 +1646,8 @@
       retroOverlay.style.display = 'flex';
     }
 
-    // 컨티뉴 버튼 클릭 (부활)
-    continueBtn.addEventListener('click', () => {
+    // 모달 및 화면 터치/클릭 시 컨티뉴 즉시 처리
+    function handleContinueAction() {
       if (!isContinueState || credits <= 0) return;
       credits--;
       clearInterval(continueInterval);
@@ -1631,11 +1662,26 @@
       playerInvulnerable = 180;
       playerX = WIDTH / 2;
       targetX = WIDTH / 2;
+      lastTouchX = null;
+      lastTouchY = null;
 
       // 화면 내 적 총알 전멸
       enemyBullets = [];
       createExplosion(playerX, playerY, 60, '#38bdf8', 40);
+    }
+
+    continueBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleContinueAction();
     });
+    retroOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleContinueAction();
+    });
+    retroOverlay.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      handleContinueAction();
+    }, { passive: false });
 
     // -------------------------------------------------------------
     // 적 기체 타입 시스템 (기존 3종 + 신규 3종: 그룹편대, 소형/중형/대형 자코)
