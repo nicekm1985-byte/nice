@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Air2 - 일반 적 샘플 (PNG 에셋, 델타타임 기반)</title>
+<style>
+  html,body{margin:0;background:#04040a;overflow:hidden;height:100%;}
+  canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
+  #infoBtn{
+    position:fixed;top:8px;left:8px;z-index:20;
+    background:#111;color:#0ff;border:1px solid #0ff;border-radius:6px;
+    font-family:monospace;font-size:12px;padding:6px 10px;cursor:pointer;
+  }
+  #hudOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.75);z-index:30;
+  }
+  #hudPopup{
+    position:absolute;top:40px;left:8px;right:8px;
+    background:#0a0a12;border:1px solid #0ff;border-radius:8px;
+    color:#0ff;font-family:monospace;font-size:12px;line-height:1.7;
+    padding:14px;
+  }
+  #hudPopup b{display:block;margin-top:14px;}
+  #hudPopup b:first-of-type{margin-top:0;}
+  #hudClose{
+    position:absolute;top:8px;right:10px;
+    background:none;border:none;color:#0ff;font-size:16px;cursor:pointer;
+  }
+  #gridInfo{
+    position:fixed;top:8px;right:8px;z-index:20;
+    color:#ff0;font-family:monospace;font-size:11px;
+    background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:6px;
+  }
+  #fpsInfo{
+    position:fixed;top:34px;right:8px;z-index:20;
+    color:#6f6;font-family:monospace;font-size:11px;
+    background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:6px;
+  }
+  #toggleBar{
+    position:fixed;top:80px;left:8px;z-index:20;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .toggleBtn{
+    background:#111;color:#0ff;border:1px solid #0ff;border-radius:6px;
+    font-family:monospace;font-size:11px;padding:6px 8px;cursor:pointer;
+  }
+  .toggleBtn.off{
+    background:#300;color:#f66;border-color:#f66;text-decoration:line-through;
+  }
+  #continueOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.85);z-index:40;
+    align-items:center;justify-content:center;
+  }
+  #continueOverlay .continueText{
+    color:#ff5050;font-family:monospace;font-size:28px;font-weight:bold;
+    text-shadow:0 0 12px #ff5050;
+  }
+  #stageClearOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.92);z-index:45;
+    flex-direction:column;align-items:center;justify-content:center;gap:28px;
+  }
+  #stageClearOverlay .stageClearText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:32px;color:#8fe3ff;text-shadow:0 0 18px #5ad1ff, 0 0 4px #ffffff;
+    letter-spacing:1px;text-align:center;
+  }
+  #goTitleBtn{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:18px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:12px 28px;cursor:pointer;box-shadow:0 0 16px rgba(255,215,106,0.6);
+  }
+  #goTitleBtn:hover{ background:#26264a; }
+</style>
+</head>
+<body>
+<div id="continueOverlay"><div class="continueText">CONTINUE</div></div>
+<div id="stageClearOverlay">
+  <div class="stageClearText">TEST STAGE CLEAR!</div>
+  <button id="goTitleBtn">GO TITLE</button>
+</div>
+<button id="infoBtn">적 정보 보기</button>
+<button id="bossInfoBtn" style="position:fixed;top:40px;left:8px;z-index:20;background:#210036;color:#c9a3ff;border:1px solid #c9a3ff;border-radius:6px;font-family:monospace;font-size:12px;padding:6px 10px;cursor:pointer;">보스 정보 보기</button>
+<div id="gridInfo">[G] 키: 개발용 6등분 그리드 토글 · [H] 키: 주인공 피격 판정 원 토글</div>
+<div id="fpsInfo">FPS: --</div>
+<div id="toggleBar">
+  <button id="toggleAllBtn" class="toggleBtn" style="background:#003300;border-color:#6f6;color:#6f6;">모두 켜기/끄기</button>
+  <button class="toggleBtn" data-type="normal1">일반1</button>
+  <button class="toggleBtn" data-type="normal2">일반2</button>
+  <button class="toggleBtn" data-type="normal3">일반3</button>
+  <button class="toggleBtn" data-type="normal4">일반4</button>
+  <button class="toggleBtn" data-type="normal5">일반5</button>
+  <button class="toggleBtn" data-type="normal6">일반6</button>
+  <button class="toggleBtn" data-type="normal7">일반7</button>
+  <button id="playerLaserToggleBtn" class="toggleBtn" style="background:#001a33;border-color:#7dfcff;color:#7dfcff;">주인공 레이저</button>
+  <button id="itemRBtn" class="toggleBtn" style="background:#331a00;border-color:#ff9a3c;color:#ff9a3c;">아이템 R</button>
+  <button id="itemWBtn" class="toggleBtn" style="background:#210036;border-color:#c77dff;color:#c77dff;">아이템 W</button>
+</div>
+<button id="bossSpawnBtn" style="position:fixed;top:80px;right:8px;z-index:20;background:#210036;color:#c9a3ff;border:1px solid #c9a3ff;border-radius:6px;font-family:monospace;font-size:11px;padding:6px 8px;cursor:pointer;">보스1 등장 (테스트)</button>
+<div id="hudOverlay">
+  <div id="hudPopup">
+    <button id="hudClose">✕</button>
+    <b>일반1 (터렛 포드, 지그재그)</b> — HP: 3 · 크기: 64px · 한 번에 2~3대 등장(각자 x/y 랜덤 위치, 최소간격 70px, 대형 아님) · 출현 속도: 약 1.67초마다 · 이동속도: 좌우 140px/s (지그재그, 즉시반전) · 하강 110px/s · 탄속: 204px/s · 탄 발사속도: 약 1.0초마다 · 탄각도: 조준 단발 1발<br>
+    <b>일반2 (터렛 포드, 직선형/골드)</b> — HP: 3 · 크기: 64px · 일반1과 동일 탄막, 지그재그 없이 위→아래 직선 하강만(110px/s) · 한 번에 2~3대 등장<br>
+    <b>일반3 (정찰 드론)</b> — HP: 10 · 크기: 74px · 출현 속도: 약 1.67초마다 · 이동속도: 하강 90px/s (직선) · 탄속: 216px/s · 탄 발사속도: 약 1.25초마다 · 탄각도: 2발 스프레드 ±12.5°(총 25°)<br>
+    <b>일반4 (감염형 편대, 정방향)</b> — HP: 5(대당) · 크기: 80px · 출현 속도: 약 1.67초마다 · Zone-1 좌측 등장 → Zone-2 우측 퇴장, 3대 가로 간격 75px(겹침없음), 이동속도 240px/s · 탄막: 등장 0.9초 후 편대 중앙 기체가 대표로 조준 없이 180도 부채꼴 9발 동시 발사(탄속 192px/s, 1회성)<br>
+    <b>일반5 (감염형 편대, 역방향)</b> — HP: 5(대당) · 크기: 80px · 출현 속도: 약 1.67초마다(일반4와 교차 등장) · Zone-1 우측 등장 → Zone-2 좌측 퇴장, 이동속도 240px/s · 탄막: 일반4와 동일(180도 부채꼴 9발, 1회성)<br>
+    <b>일반6 (램, 몸통박치기)</b> — HP: 10 · 크기: 60px · 출현 속도: 약 1.67초마다 · 탄 없음(몸통박치기 전용) · Zone-1까지 직선 하강 → Zone-2~5 플레이어 방향 서서히 조준(수직 기준 최대 ±35°로 제한) → Zone-6부터 유도 상실 후 직진하며 화면 밖으로 이탈 · 돌진속도 510px/s(고속) · 후방 촛불형 화염 이펙트<br>
+    <b>일반7 (Stubby)</b> — HP: 30 · 크기: 104px · 출현 속도: 약 4초마다(동시 1기 운용) · 이동속도: 등장 시 210px/s(빠름) → Zone-2 또는 Zone-3 경계선 중 랜덤 위치에서 정지 후 고정 · 탄속: 96px/s · 탄 발사속도: 약 1.83초마다 · 탄각도: 3발 부채꼴 ±30°<br>
+    <br>모든 속도는 델타타임 기반(px/s, 초당 픽셀)으로 계산되어 60Hz/144Hz 등 모니터 주사율과 무관하게 동일한 실제 시간 기준으로 동작합니다.
+  </div>
+</div>
+<div id="bossHudOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:30;">
+  <div id="bossHudPopup" style="position:absolute;top:40px;left:8px;right:8px;background:#12061a;border:1px solid #c9a3ff;border-radius:8px;color:#c9a3ff;font-family:monospace;font-size:12px;line-height:1.7;padding:14px;">
+    <button id="bossHudClose" style="position:absolute;top:8px;right:10px;background:none;border:none;color:#c9a3ff;font-size:16px;cursor:pointer;">✕</button>
+    <b style="display:block;margin-top:0;">보스1 (외계 문명 중형 기체)</b> — HP: 200 · 크기: 240px · 등장: 화면 위에서 하강(80px/s) → Zone-1/Zone-2 경계선에 도착 후 정지<br>
+    <b style="display:block;margin-top:14px;">좌우 이동↔정지 발사 상태 머신</b> — 좌우 마진 40px 내에서 이동속도 180px/s로 랜덤 위치까지 이동(1회 최소 이동거리 120px) → 도착 후 완전 정지, 0.5초 간격으로 7회 반복 발사 후 다시 이동<br>
+    <b style="display:block;margin-top:14px;">기본 탄막(매 정지마다)</b> — 40도 부채꼴을 4갈래(각 10도)로 나눠 4갈래 동시 발사, 탄속 220px/s, 보라색(#b060ff)<br>
+    <b style="display:block;margin-top:14px;">레이저 (시각 효과, 데미지 없음)</b> — 2번째 이동 완료 후부터: 중심에서 화면 아래로 곧게 뻗는 직선 레이저 · 5번째 이동 완료 후부터: 좌우 ±25도(총 50도) 내에서 사인파로 왕복 스윕<br>
+    <b style="display:block;margin-top:14px;">격파 시</b> — 6프레임 스프라이트 폭발(파편 크기 320px, 불투명도 0.70, 약 1.05초 재생) + 화면 전체 화이트 플래시(0.5초에 걸쳐 서서히 사라짐)<br>
+    <br>충돌판정 반경은 100px(일반 적 60px보다 큼)이며, e.x/e.y는 기체의 눈(코어) 위치를 기준으로 합니다.
+  </div>
+</div>
+<canvas id="c" width="480" height="720"></canvas>
+<script>
+document.getElementById('infoBtn').addEventListener('click', ()=>{
+  document.getElementById('hudOverlay').style.display = 'block';
+});
+document.getElementById('hudClose').addEventListener('click', ()=>{
+  document.getElementById('hudOverlay').style.display = 'none';
+});
+document.getElementById('hudOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'hudOverlay') e.currentTarget.style.display = 'none';
+});
+
+document.getElementById('bossInfoBtn').addEventListener('click', ()=>{
+  document.getElementById('bossHudOverlay').style.display = 'block';
+});
+document.getElementById('bossHudClose').addEventListener('click', ()=>{
+  document.getElementById('bossHudOverlay').style.display = 'none';
+});
+document.getElementById('bossHudOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'bossHudOverlay') e.currentTarget.style.display = 'none';
+});
+
+// 적 종류별 on/off 스위치 (enabledTypes는 characters.js에서 선언)
+// 주의: 일반5는 내부적으로 type:'normal4'를 공유(vx<0으로 구분), 일반4는 vx>=0
+document.querySelectorAll('.toggleBtn[data-type]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const type = btn.dataset.type;
+    enabledTypes[type] = !enabledTypes[type];
+    btn.classList.toggle('off', !enabledTypes[type]);
+    if(!enabledTypes[type] && typeof enemies !== 'undefined'){
+      // 스위치를 끄면 화면에 이미 있는 개체도 즉시 제거
+      enemies = enemies.filter(e => {
+        if(type === 'normal1') return !(e.type === 'normal1' || e.type === 'normal2');
+        if(type === 'normal4') return !(e.type === 'normal4' && e.vx >= 0);
+        if(type === 'normal5') return !(e.type === 'normal4' && e.vx < 0);
+        return e.type !== type;
+      });
+      if(type === 'normal7'){
+        normal7Alive = false;
+        normal7RespawnTimer = 0;
+      }
+    }
+  });
+});
+
+// 모두 켜기/끄기: 클릭할 때마다 현재 상태의 반대로 전체 일괄 전환
+document.getElementById('toggleAllBtn').addEventListener('click', ()=>{
+  const types = ['normal1','normal2','normal3','normal4','normal5','normal6','normal7'];
+  const anyOn = types.some(t=> enabledTypes[t]);
+  const newState = !anyOn; // 하나라도 켜져 있으면 전부 끄기, 전부 꺼져 있으면 전부 켜기
+  types.forEach(t=>{
+    enabledTypes[t] = newState;
+    const btn = document.querySelector(`.toggleBtn[data-type="${t}"]`);
+    if(btn) btn.classList.toggle('off', !newState);
+  });
+  if(!newState && typeof enemies !== 'undefined'){
+    enemies = enemies.filter(e => e.type === 'boss1'); // 보스는 유지, 일반 적만 전부 제거
+    normal7Alive = false;
+    normal7RespawnTimer = 0;
+  }
+});
+
+// 주인공 레이저 발사 on/off
+let playerLaserEnabled = true;
+document.getElementById('playerLaserToggleBtn').addEventListener('click', ()=>{
+  playerLaserEnabled = !playerLaserEnabled;
+  document.getElementById('playerLaserToggleBtn').classList.toggle('off', !playerLaserEnabled);
+});
+
+// 아이템 즉시 등장 테스트 버튼 (화면 상단 중앙에 바로 스폰)
+document.getElementById('itemRBtn').addEventListener('click', ()=>{
+  spawnItem('R', W/2, 40);
+});
+document.getElementById('itemWBtn').addEventListener('click', ()=>{
+  spawnItem('W', W/2, 40);
+});
+</script>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
+
+// 개발용 6등분 그리드 (실제 게임에는 노출 안 됨, G키로 토글)
+const ZONE_COUNT = 6;
+const ZONE_HEIGHT = H / ZONE_COUNT;
+const ZONE_NAMES = ['Zone-1','Zone-2','Zone-3','Zone-4','Zone-5','Zone-6 (NO-FIRE)'];
+let devGridVisible = false;
+let devPlayerHitboxVisible = false; // H키로 토글, 주인공 실제 피격 판정 원 표시
+window.addEventListener('keydown', e=>{
+  // 한글 입력 상태(자판이 한글이어도) KeyG의 물리 키코드로 감지되도록 code 사용
+  if(e.code === 'KeyG' || e.key === 'g' || e.key === 'G' || e.key === 'ㅎ'){
+    devGridVisible = !devGridVisible;
+  }
+  if(e.code === 'KeyH' || e.key === 'h' || e.key === 'H' || e.key === 'ㅗ'){
+    devPlayerHitboxVisible = !devPlayerHitboxVisible;
+  }
+});
+function getZoneIndex(y){
+  const idx = Math.floor(y / ZONE_HEIGHT);
+  return Math.max(0, Math.min(ZONE_COUNT-1, idx));
+}
+function isNoFireZone(y){
+  return getZoneIndex(y) === ZONE_COUNT - 1; // 맨 아래(Zone-6)
+}
+function drawDevGrid(){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,0,0.4)';
+  ctx.fillStyle = 'rgba(255,255,0,0.8)';
+  ctx.font = '12px monospace';
+  ctx.lineWidth = 1;
+  for(let i=0;i<ZONE_COUNT;i++){
+    const y = i * ZONE_HEIGHT;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+    ctx.fillText(ZONE_NAMES[i], 6, y + 14);
+  }
+  // 세로 방향 4등분 (컬럼 구분선 + 번호)
+  const COL_COUNT = 4;
+  const colWidth = W / COL_COUNT;
+  for(let i=1;i<COL_COUNT;i++){
+    const x = i * colWidth;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for(let i=0;i<COL_COUNT;i++){
+    const cx = i * colWidth + colWidth/2;
+    ctx.fillText(String(i+1), cx - 4, 14);
+  }
+  ctx.restore();
+}
+
+canvas.addEventListener('mousemove', e=>{
+  startBgm();
+  const r = canvas.getBoundingClientRect();
+  player.x = (e.clientX - r.left) * (W/r.width);
+  player.y = (e.clientY - r.top) * (H/r.height);
+});
+canvas.addEventListener('touchmove', e=>{
+  startBgm();
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  player.x = (t.clientX - r.left) * (W/r.width);
+  player.y = (t.clientY - r.top) * (H/r.height);
+}, {passive:false});
+
+// 폭탄 사용: 마우스 좌+우 버튼 동시 클릭 또는 2손가락 터치
+let mouseButtonsDown = new Set();
+canvas.addEventListener('mousedown', e=>{
+  startBgm();
+  mouseButtonsDown.add(e.button);
+  if(mouseButtonsDown.has(0) && mouseButtonsDown.has(2)) useBomb();
+});
+canvas.addEventListener('mouseup', e=>{
+  mouseButtonsDown.delete(e.button);
+});
+canvas.addEventListener('contextmenu', e=> e.preventDefault()); // 우클릭 메뉴 방지(폭탄 입력용)
+canvas.addEventListener('touchstart', e=>{
+  startBgm();
+  if(e.touches.length >= 2) useBomb();
+}, {passive:true});
+</script>
+<script src="bg.js"></script>
+<script src="characters.js"></script>
+<script src="stage.js"></script>
+<script>
+document.getElementById('bossSpawnBtn').addEventListener('click', ()=>{
+  if(!enemies.some(e=>e.type==='boss1')) spawnBoss1();
+});
+document.getElementById('goTitleBtn').addEventListener('click', ()=>{
+  window.location.href = 'index.html';
+});
+let bullets = [];
+let playerBullets = [];
+let enemies = [];
+
+startStage(1); // 스테이지1 시작 (등장 스케줄/보스 트리거/클리어 판정은 stage.js가 관리)
+
+// ---- 델타타임 루프 ----
+let lastTime = 0;
+let fpsDisplayTimer = 0;
+let fpsFrameCount = 0;
+
+function update(currentTime){
+  if(!lastTime) lastTime = currentTime;
+  let dt = (currentTime - lastTime) / 1000; // 초 단위 경과 시간
+  lastTime = currentTime;
+  dt = Math.min(dt, 0.05); // 탭 전환 등으로 인한 급격한 점프 방지 (최소 20fps 취급)
+  const dtMs = dt * 1000;
+
+  if(continueScreenActive){
+    // 컨티뉴 화면 표시 중에는 게임 로직/그리기를 정지 (디자인은 추후 논의)
+    requestAnimationFrame(update);
+    return;
+  }
+
+  // FPS 표시 (참고용, 실제 로직에는 영향 없음)
+  fpsFrameCount++;
+  fpsDisplayTimer += dtMs;
+  if(fpsDisplayTimer >= 500){
+    const fps = Math.round(fpsFrameCount / (fpsDisplayTimer/1000));
+    document.getElementById('fpsInfo').textContent = 'FPS: ' + fps;
+    fpsDisplayTimer = 0;
+    fpsFrameCount = 0;
+  }
+
+  ctx.clearRect(0,0,W,H);
+
+  drawStarBackground(dt);
+
+  updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
+
+  if(stageClearScreenActive){
+    document.getElementById('stageClearOverlay').style.display = 'flex';
+    requestAnimationFrame(update);
+    return; // 클리어 화면 표시 중에는 게임 로직/그리기 정지, GO TITLE 클릭 대기
+  }
+
+  spawnTimer += dtMs;
+  if(spawnTimer > NORMAL_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    spawnTimer = 0;
+    const type = spawnCycle[cycleIdx % spawnCycle.length];
+    cycleIdx++;
+    if(type==='normal1' && enabledTypes.normal1) spawnNormal1();
+    else if(type==='normal2' && enabledTypes.normal2) spawnNormal2();
+    else if(type==='normal3' && enabledTypes.normal3) spawnNormal3();
+    else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
+    else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
+    else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
+  }
+
+  normal7SpawnTimer += dtMs;
+  if(enabledTypes.normal7 && !normal7Alive && normal7RespawnTimer === 0 && normal7SpawnTimer > NORMAL7_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    normal7SpawnTimer = 0;
+    spawnNormal7();
+  }
+  if(enabledTypes.normal7 && normal7RespawnTimer > 0){
+    normal7RespawnTimer -= dtMs;
+    if(normal7RespawnTimer <= 0){
+      normal7RespawnTimer = 0;
+      spawnNormal7();
+    }
+  }
+
+  enemies.forEach(e=>{
+    e.cool += dtMs;
+    if(e.type==='normal1'){
+      e.x += e.zdir * 140 * dt; // 지그재그 (일정 속도 좌우 이동, 즉시 반전)
+      e.y += e.vy * dt;
+      const margin = 90; // 화면 끝까지 가지 않도록 여유 마진
+      if(e.x < margin){ e.x = margin; e.zdir = 1; }
+      if(e.x > W-margin){ e.x = W-margin; e.zdir = -1; }
+      drawSprite(e, 'normal1', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 204); // 한 발씩 조준 (기체색: 녹색)
+      }
+    } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal2', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 204);
+      }
+    } else if(e.type==='normal3'){
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal3', 74);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireSpread2(e, '#3ad9ff', 216, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
+      }
+    } else if(e.type==='normal4'){
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal4', 80);
+      // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
+      if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
+        e.fired = true;
+        fireFanN(e, '#c9a3ff', 192, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
+      }
+    } else if(e.type==='normal7'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      }
+      drawSprite(e, 'normal7', 104);
+      // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
+      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireFan3(e, '#ff9a3c', 96); // 3발 부채꼴 (기체색: 오렌지)
+      }
+    } else if(e.type==='normal6'){
+      // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
+      const zoneIdx = getZoneIndex(e.y);
+      if(zoneIdx >= 1 && zoneIdx < 5){
+        e.homing = true;
+      }
+      if(zoneIdx >= 5){
+        e.homing = false; // Zone-6부터 유도 기능 상실, 직진만 유지
+      }
+      if(e.homing){
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const d = Math.hypot(dx,dy) || 1;
+        let targetVx = dx/d*e.speed, targetVy = dy/d*e.speed;
+
+        // 목표 방향이 수직(아래) 기준 최대 각도(MAX_TURN_DEG)를 넘지 않도록 클램프
+        const MAX_TURN_DEG = 35;
+        const maxRad = MAX_TURN_DEG * Math.PI/180;
+        const targetAngle = Math.atan2(targetVy, targetVx); // 목표 방향각
+        const downAngle = Math.PI/2; // 아래 방향 기준각
+        let diff = targetAngle - downAngle;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        diff = Math.max(-maxRad, Math.min(maxRad, diff));
+        const clampedAngle = downAngle + diff;
+        targetVx = Math.cos(clampedAngle) * e.speed;
+        targetVy = Math.sin(clampedAngle) * e.speed;
+
+        // turnRateBase는 60fps(16.667ms) 프레임당 적용률로 정의됨 -> dt에 맞게 지수적으로 환산
+        const turnRateBase = 0.06;
+        const alpha = 1 - Math.pow(1 - turnRateBase, dt * 60);
+        e.vx += (targetVx - e.vx) * alpha;
+        e.vy += (targetVy - e.vy) * alpha;
+        // 속력을 speed로 재정규화
+        const curSpeed = Math.hypot(e.vx, e.vy) || 1;
+        e.vx = e.vx / curSpeed * e.speed;
+        e.vy = e.vy / curSpeed * e.speed;
+      }
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawFlameTrail(e, 60); // 화염을 스프라이트 뒤에(먼저) 그림
+      const angle = Math.atan2(e.vy, e.vx) + Math.PI/2; // 스프라이트 기본 방향(아래)이 0도 기준
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(angle);
+      const img = assets['normal6'];
+      if(img && img.complete && img.naturalWidth > 0){
+        ctx.drawImage(img, -30, -30, 60, 60);
+      }
+      ctx.restore();
+      // 탄은 쏘지 않음
+    } else if(e.type==='boss1'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else {
+        // 좌우 이동↔정지 발사 상태 머신
+        const margin = 40; // 화면 끝까지 가지 않도록 여유 마진
+        if(e.moveState === 'move'){
+          if(e.moveTargetX === null){
+            let tx;
+            let attempts = 0;
+            do {
+              tx = margin + Math.random()*(W - margin*2);
+              attempts++;
+            } while(Math.abs(tx - e.x) < e.minMoveDist && attempts < 10);
+            e.moveTargetX = tx;
+          }
+          const dx = e.moveTargetX - e.x;
+          const dist = Math.abs(dx);
+          const step = e.moveSpeed * dt;
+          if(step >= dist){
+            e.x = e.moveTargetX;
+            e.moveState = 'fire';
+            e.moveTargetX = null;
+            e.fireRound = 0;
+            e.fireCool = 0;
+            e.fireElapsed = 0;
+            e.moveCount++;
+            e.sweepThisRound = Math.random() < 0.5; // 3번째 이동 이후, 이번 정지 발사에서 스윕 레이저를 쓸지 랜덤 결정
+            e.sweepCenterAngle = 0; // 스윕 시작 시(충전 종료 시점)에 계산됨
+            e.sweepCenterSet = false;
+          } else {
+            e.x += Math.sign(dx) * step;
+          }
+        } else if(e.moveState === 'fire'){
+          e.fireCool += dtMs;
+          e.fireElapsed += dtMs;
+          if(e.fireRound < 10 && e.fireCool >= 300){
+            e.fireCool = 0;
+            e.fireRound++;
+            fireBossQuadArc(e, '#b060ff', 220); // 40도 부채꼴 4갈래, 갈래당 10발(0.3초 간격), 보스 눈 색상과 맞춘 보라
+          }
+          // 2번째 이동 완료 후부터 레이저: 주둥이에서 0.6초간 충전(맴돌기) 후 0.65초간 발사(스윕 속도 살짝 느리게), 3번째 이동 완료 후부터는 발사 중 좌우 스윕
+          if(e.moveCount >= 2){
+            const muzzle = getBossMuzzle(e);
+            const LASER_CHARGE_MS = 600;
+            const LASER_DURATION_MS = 650;
+            if(e.fireElapsed < LASER_CHARGE_MS){
+              stopBossLaserSound(); // 충전 단계에는 레이저 발사음 없음
+              drawBossLaserCharge(muzzle.x, muzzle.y, e.fireElapsed / LASER_CHARGE_MS, e.moveCount >= 3 && e.sweepThisRound);
+            } else if(e.fireElapsed < LASER_CHARGE_MS + LASER_DURATION_MS){
+              startBossLaserSound(); // 실제 레이저가 나가는 동안 계속 루프 재생
+              if(e.moveCount >= 3 && e.sweepThisRound){
+                const sweepMaxRad = 40 * Math.PI/180; // 좌우 최대 40도(총 80도, 화면 밖으로 벗어나지 않도록 제한)
+                if(!e.sweepCenterSet){
+                  // 발사 시작 순간(충전 종료 직후)에 플레이어 방향을 목표각으로 계산 (시작은 항상 정중앙 0도)
+                  const dx2 = player.x - muzzle.x, dy2 = player.y - muzzle.y;
+                  const targetAngle = Math.atan2(dx2, dy2); // 수직(아래) 기준 각도
+                  e.sweepCenterAngle = Math.max(-sweepMaxRad, Math.min(sweepMaxRad, targetAngle));
+                  e.sweepCenterSet = true;
+                }
+                const sweepProgress = Math.min(1, (e.fireElapsed - LASER_CHARGE_MS) / LASER_DURATION_MS); // 0~1
+                const angle = e.sweepCenterAngle * sweepProgress; // 정중앙(0)에서 플레이어 방향으로 서서히 이동
+                drawBossLaser(muzzle.x, muzzle.y, angle);
+              } else {
+                drawBossLaser(muzzle.x, muzzle.y, 0); // 직선 레이저
+              }
+            } else {
+              stopBossLaserSound(); // 발사 지속시간이 끝나면 정지
+            }
+          } else {
+            stopBossLaserSound(); // 아직 레이저를 쓰지 않는 이동 회차
+          }
+          if(e.fireRound >= 10){
+            e.moveState = 'move';
+          }
+        }
+      }
+      drawBossSprite(e, e.size);
+    }
+  });
+
+  // 플레이어 레이저 vs 모든 적 공통 충돌 판정
+  enemies.forEach(e=>{
+    if(e.dead) return;
+    if(e.type === 'boss1' && !e.settled) return; // 보스는 등장(하강) 중에는 피격 무효, 정지해서 첫 움직임을 시작한 순간부터 유효
+    for(const b of playerBullets){
+      if(b.hit) continue;
+      const dx = b.x - e.x, dy = b.y - e.y;
+      const hitRadius = e.type === 'boss1' ? 100 : 60;
+      if(Math.hypot(dx,dy) < hitRadius){
+        e.hp--;
+        b.hit = true;
+        if(e.hp <= 0){
+          e.dead = true;
+          addScore(e.score || 0);
+          spawnExplosion(e.type, e.x, e.y);
+          if(e.type === 'boss1'){ playBossHitSound(); stopBossLaserSound(); } else playEnemyHitSound(); // 격파(폭발) 효과음
+          // 아이템은 일반7 격파 시에만 드랍, 드랍 쿨다운 중이 아니어야 하며, W는 이미 획득했으면 더 이상 드랍 안 됨
+          if(e.type === 'normal7' && itemDropCooldown <= 0 && items.length === 0){
+            // W는 획득 전에만 드랍 가능. W 확률(35%) 먼저 판정, 실패하면 R 확률(65%)로 판정.
+            const canDropW = !playerHasW;
+            let itemType = null;
+            if(canDropW && Math.random() < ITEM_DROP_CHANCE_W){
+              itemType = 'W';
+            } else if(Math.random() < ITEM_DROP_CHANCE_R){
+              itemType = 'R';
+            }
+            if(itemType) spawnItem(itemType, e.x, e.y);
+          }
+          if(e.type === 'normal7'){
+            normal7Alive = false;
+            normal7RespawnTimer = NORMAL7_RESPAWN_DELAY;
+          }
+        }
+        break;
+      }
+    }
+  });
+  playerBullets = playerBullets.filter(b=> !b.hit);
+  enemies = enemies.filter(e=> !e.dead);
+
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.y < H+40);
+  enemies = enemies.filter(e=> e.type !== 'normal4' || (e.x < W+80 && e.x > -80));
+  enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
+
+  bullets.forEach(b=>{
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    liteBullet(b.x,b.y,b.r,b.color);
+  });
+  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+
+  // 주인공 피격 판정 (적 탄환 vs 실제 타원형 히트박스)
+  bullets.forEach(b=>{
+    if(b.hitPlayer) return;
+    if(isInsidePlayerHitbox(b.x, b.y)){
+      b.hitPlayer = true;
+      handlePlayerHit();
+    }
+  });
+  bullets = bullets.filter(b=> !b.hitPlayer);
+
+  // 아이템 낙하 + 획득 판정
+  if(itemDropCooldown > 0) itemDropCooldown -= dtMs;
+  items.forEach(it=>{
+    avoidBulletsForItem(it, dt);
+    it.y += it.vy * dt;
+    drawItem(it);
+    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
+      it.picked = true;
+      playItemPickupSound(); // 아이템 획득 효과음
+      if(it.type === 'R'){
+        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
+      } else if(it.type === 'W'){
+        playerHasW = true;
+      }
+      itemDropCooldown = ITEM_DROP_COOLDOWN_MS; // 획득 시점부터 20초 후 다음 드랍
+    }
+  });
+  items = items.filter(it=> !it.picked && it.y < H+40);
+
+  playerCool += dtMs;
+  if(playerLaserEnabled && playerCool >= getPlayerFireRate()){
+    playerCool = 0;
+    fireLaser();
+  }
+  playerBullets.forEach(b=>{
+    b.x += (b.vx || 0) * dt;
+    b.y += b.vy * dt;
+    drawLaser(b);
+  });
+  playerBullets = playerBullets.filter(b=> b.y + b.len > -20 && b.x > -20 && b.x < W+20);
+
+  drawPlayerWithEffects(); // 무적 중 깜빡임 + 떠오름 연출 포함하여 그림
+  updatePlayerInvincibility(dtMs);
+
+  updateAndDrawExplosions(dt);
+  updateAndDrawScreenFlash(dt);
+  drawRapidHud();
+  drawScoreHud();
+  drawLifeHud();
+  drawBombHud();
+
+  if(devGridVisible) drawDevGrid();
+  if(devPlayerHitboxVisible) drawPlayerHitbox();
+
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
