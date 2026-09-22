@@ -7,6 +7,18 @@
 <style>
   html,body{margin:0;background:#04040a;overflow:hidden;height:100%;}
   canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
+  #touchPad{ display:none; }
+  @media (max-width: 768px){
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    canvas{
+      width:min(100vw, 66.6vh);height:min(150vw, 100vh);
+      touch-action:none;
+    }
+    #touchPad{
+      display:block;width:min(100vw, 66.6vh);height:12vh;max-height:100px;flex-shrink:0;
+      touch-action:none;
+    }
+  }
   #continueOverlay{
     display:none;position:fixed;top:0;left:0;width:100%;height:100%;
     background:rgba(4,4,10,0.9);z-index:40;
@@ -96,12 +108,22 @@
   <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
 </div>
 <canvas id="c" width="480" height="720"></canvas>
+<div id="touchPad"></div>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
+const touchPad = document.getElementById('touchPad');
 ctx.imageSmoothingEnabled = true;
 ctx.imageSmoothingQuality = 'high';
+
+// 캔버스 좌표계로 클라이언트 좌표 변환 (터치 여백(touchPad)에서 터치해도 캔버스 최하단 y로 클램프)
+function toCanvasXY(clientX, clientY){
+  const r = canvas.getBoundingClientRect();
+  const x = (clientX - r.left) * (W / r.width);
+  const y = (clientY - r.top) * (H / r.height);
+  return { x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) };
+}
 
 // 개발용 6등분 그리드 계산에도 쓰이는 존 상수 (그리드 자체는 디버그 전용이라 이 파일엔 그리지 않음)
 const ZONE_COUNT = 6;
@@ -196,11 +218,13 @@ function drawTitleScreen(){
 window.addEventListener('keydown', ()=> dismissTitleScreen());
 canvas.addEventListener('mousedown', ()=> dismissTitleScreen());
 canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
+touchPad.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
 
 // 컨티뉴 화면 표시 중 아무 키/마우스/터치 입력이 오면 이어하기 (characters.js의 resumeFromContinue() 사용)
 window.addEventListener('keydown', ()=> resumeFromContinue());
 canvas.addEventListener('mousedown', ()=> resumeFromContinue());
 canvas.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+touchPad.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
 
 // GAME OVER 표시 3초 경과 시 characters.js의 updateGameOverScreen()이 이 함수를 호출해 타이틀로 복귀.
 // index.html은 타이틀 화면이 이 파일 자체에 있으므로 새로고침으로 깨끗하게 초기 상태로 되돌림.
@@ -209,16 +233,27 @@ function returnToTitleAfterGameOver(){
 }
 
 canvas.addEventListener('mousemove', e=>{
-  const r = canvas.getBoundingClientRect();
-  player.x = (e.clientX - r.left) * (W/r.width);
-  player.y = (e.clientY - r.top) * (H/r.height);
+  const p = toCanvasXY(e.clientX, e.clientY);
+  player.x = p.x; player.y = p.y;
 });
 canvas.addEventListener('touchmove', e=>{
   e.preventDefault();
-  const r = canvas.getBoundingClientRect();
   const t = e.touches[0];
-  player.x = (t.clientX - r.left) * (W/r.width);
-  player.y = (t.clientY - r.top) * (H/r.height);
+  const p = toCanvasXY(t.clientX, t.clientY);
+  player.x = p.x; player.y = p.y;
+}, {passive:false});
+// 캔버스 아래 여백(touchPad)에서 터치해도 조작 이어지도록: y는 캔버스 최하단으로 클램프됨
+touchPad.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  const t = e.touches[0];
+  const p = toCanvasXY(t.clientX, t.clientY);
+  player.x = p.x; player.y = p.y;
+}, {passive:false});
+touchPad.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  const t = e.touches[0];
+  const p = toCanvasXY(t.clientX, t.clientY);
+  player.x = p.x; player.y = p.y;
 }, {passive:false});
 
 // 폭탄 사용: 마우스 좌+우 버튼 동시 클릭 또는 2손가락 터치
@@ -232,6 +267,9 @@ canvas.addEventListener('mouseup', e=>{
 });
 canvas.addEventListener('contextmenu', e=> e.preventDefault()); // 우클릭 메뉴 방지(폭탄 입력용)
 canvas.addEventListener('touchstart', e=>{
+  if(e.touches.length >= 2) useBomb();
+}, {passive:true});
+touchPad.addEventListener('touchstart', e=>{
   if(e.touches.length >= 2) useBomb();
 }, {passive:true});
 </script>
@@ -355,21 +393,21 @@ function update(currentTime){
       drawSprite(e, 'normal1', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 204); // 한 발씩 조준 (기체색: 녹색)
+        fireAimed(e, '#4dff8f', 143); // 한 발씩 조준 (기체색: 녹색)
       }
     } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
       e.y += e.vy * dt;
       drawSprite(e, 'normal2', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 204);
+        fireAimed(e, '#4dff8f', 143);
       }
     } else if(e.type==='normal3'){
       e.y += e.vy * dt;
       drawSprite(e, 'normal3', 74);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireSpread2(e, '#3ad9ff', 216, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
+        fireSpread2(e, '#3ad9ff', 151, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
       }
     } else if(e.type==='normal4'){
       e.x += e.vx * dt;
@@ -378,7 +416,7 @@ function update(currentTime){
       // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
       if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
         e.fired = true;
-        fireFanN(e, '#c9a3ff', 192, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
+        fireFanN(e, '#c9a3ff', 134, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
       }
     } else if(e.type==='normal7'){
       if(!e.settled){
@@ -389,7 +427,7 @@ function update(currentTime){
       // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
       if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireFan3(e, '#ff9a3c', 96); // 3발 부채꼴 (기체색: 오렌지)
+        fireFan3(e, '#ff9a3c', 67); // 3발 부채꼴 (기체색: 오렌지)
       }
     } else if(e.type==='normal6'){
       // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
@@ -481,7 +519,7 @@ function update(currentTime){
           if(e.fireRound < 10 && e.fireCool >= 300){
             e.fireCool = 0;
             e.fireRound++;
-            fireBossQuadArc(e, '#b060ff', 220); // 40도 부채꼴 4갈래, 갈래당 10발(0.3초 간격), 보스 눈 색상과 맞춘 보라
+            fireBossQuadArc(e, '#b060ff', 154); // 40도 부채꼴 4갈래, 갈래당 10발(0.3초 간격), 보스 눈 색상과 맞춘 보라
           }
           // 2번째 이동 완료 후부터 레이저: 주둥이에서 0.6초간 충전(맴돌기) 후 0.65초간 발사(스윕 속도 살짝 느리게), 3번째 이동 완료 후부터는 발사 중 좌우 스윕
           if(e.moveCount >= 2){
