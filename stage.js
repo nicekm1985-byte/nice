@@ -21,12 +21,17 @@ let stageClearTimer = 0; // ms, 'clear' 단계 진입 후 누적 경과
 let stageSpawnCap = 10;
 
 // ---- 스테이지1 등장 스케줄 (조준형 아님, 시간 기반으로 활성 타입만 순차 확대) ----
-// 0~23초: 일반1/2만 활성화, 화면에 항상 8~10대가 유지되도록 촘촘히 채워짐(격파 즉시 재충전)
-// 23초~: 인원 상한 유지(MAX_ENEMIES_ON_SCREEN, 8~10기 목표)
+// 0~10초: 인원 상한 기본치(MAX_ENEMIES_ON_SCREEN)로 시작
+// 10초: R 아이템 1개 화면에 등장
+// 10~20초: 인원 상한 6대로 제한
+// 20초~: 인원 상한 기본치로 복귀
 // 30초: 일반3/4/5 활성화 시작
 // 60초(1분): 일반6/7 활성화 시작
 // 120초(2분): 화면의 모든 적/탄 제거 후 보스 등장(BGM 전환)
-const STAGE1_CAP_RELEASE_MS = 23000;
+const STAGE1_ITEM_SPAWN_MS = 10000; // 10초 시점 R 아이템 1개 등장
+const STAGE1_CAP_LIMIT_START_MS = 10000; // 10초부터 상한 6대로 축소
+const STAGE1_CAP_RELEASE_MS = 20000; // 20초부터 상한 원복
+const STAGE1_CAP_LIMITED = 6;
 const STAGE1_PHASE2_MS = 30000; // 일반3/4/5 활성화
 const STAGE1_PHASE3_MS = 60000; // 일반6/7 활성화
 const STAGE1_BOSS_TRIGGER_MS = 120000; // 2분 경과 시 보스 등장
@@ -35,10 +40,18 @@ const STAGE_BGM_FADE_MS = 3000; // 보스 트리거 직전 3초간 스테이지 
 // 스테이지1에서만 사용하는 진행 플래그(중복 활성화 방지)
 let stage1Phase2Applied = false;
 let stage1Phase3Applied = false;
+let stage1ItemSpawned = false;
 
 // 매 프레임 호출: stage1 전용 시간 기반 활성 타입/상한 갱신
 function updateStage1Spawns(elapsedMs){
-  stageSpawnCap = MAX_ENEMIES_ON_SCREEN; // 시작부터 8~10기 목표 상한 유지(격파 즉시 재충전은 characters.js 스폰 루프가 담당)
+  stageSpawnCap = (elapsedMs >= STAGE1_CAP_LIMIT_START_MS && elapsedMs < STAGE1_CAP_RELEASE_MS)
+    ? STAGE1_CAP_LIMITED
+    : MAX_ENEMIES_ON_SCREEN;
+
+  if(!stage1ItemSpawned && elapsedMs >= STAGE1_ITEM_SPAWN_MS){
+    stage1ItemSpawned = true;
+    spawnItem('R', W/2, -40); // 화면 상단 중앙에서 낙하 시작
+  }
 
   if(!stage1Phase2Applied && elapsedMs >= STAGE1_PHASE2_MS){
     stage1Phase2Applied = true;
@@ -115,6 +128,7 @@ function startStage(stageNum){
   stageClearScreenActive = false;
   stage1Phase2Applied = false;
   stage1Phase3Applied = false;
+  stage1ItemSpawned = false;
   stageSpawnCap = MAX_ENEMIES_ON_SCREEN;
   // stage1은 초반(0~30초) 일반1/2만 노출되어야 하므로 3~7은 시작 시점에 꺼둠
   if(stageNum === 1){

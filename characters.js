@@ -500,7 +500,7 @@ function spawnNormal1(){ // 일반1: 터렛 포드, 지그재그
     positions.push(x);
     enemies.push({
       type:'normal1', x, y: -40 - Math.random()*260, // 등장 높이도 각자 크게 다르게(대형처럼 안 보이도록)
-      vy:110, zdir: Math.random()<0.5?1:-1, hp:3, score:90, cool:0, fireRate:1000
+      vy:110, zdir: Math.random()<0.5?1:-1, hp:2, score:90, cool:0, fireRate:1000
     });
   }
 }
@@ -519,14 +519,14 @@ function spawnNormal2(){ // 일반2: 일반1과 동일 스탯, 지그재그 없�
     positions.push(x);
     enemies.push({
       type:'normal2', x, y: -40 - Math.random()*260,
-      vy:110, hp:3, score:90, cool:0, fireRate:1000
+      vy:110, hp:2, score:90, cool:0, fireRate:1000
     });
   }
 }
 function spawnNormal3(){ // 일반3: 정찰 드론
   enemies.push({
     type:'normal3', x: 80 + Math.random()*(W-160), y:-30,
-    vy:90, hp:10, score:50, cool:0, fireRate:1250
+    vy:90, hp:7, score:50, cool:0, fireRate:1250
   });
 }
 function spawnNormal4(){ // 일반4: 감염형 편대(정방향), Zone-1 좌측 끝에서 등장해 Zone-2 우측으로 빠져나감 (3대 가로로 나란히, 겹치지 않음)
@@ -543,7 +543,7 @@ function spawnNormal4(){ // 일반4: 감염형 편대(정방향), Zone-1 좌측 
     const vySpread = baseVy * (1 + (Math.random()*0.3 - 0.15)); // 개체별 속도 ±15% 편차
     enemies.push({
       type:'normal4', x: startX + i*spacing, y: zone1Y,
-      vx, vy: vySpread, hp:5, score:70, cool:0, squadId,
+      vx, vy: vySpread, hp:4, score:70, cool:0, squadId,
       isSquadLeader: i === 0, fired:false, fireDelay: 900 // 편대 중앙 기체만 등장 0.9초 후 180도 9발 부채꼴 1회 발사
     });
   }
@@ -562,7 +562,7 @@ function spawnNormal5(){ // 일반5: 감염형 편대(역방향), Zone-1 우측 
     const vySpread = baseVy * (1 + (Math.random()*0.3 - 0.15));
     enemies.push({
       type:'normal4', x: startX + i*spacing, y: zone1Y, // 일반4와 동일 type(에셋/탄막 공유), 이동벡터만 반대
-      vx, vy: vySpread, hp:5, score:70, cool:0, squadId,
+      vx, vy: vySpread, hp:4, score:70, cool:0, squadId,
       isSquadLeader: i === 0, fired:false, fireDelay: 900
     });
   }
@@ -576,7 +576,7 @@ function spawnNormal6(){ // 일반6: 램(Ram), 고속 몸통박치기. Zone-1까
     vx: 0, vy: speed, // Zone-1까지는 아래로 직진
     speed,
     homing: false, // Zone-2 진입 후 true로 전환
-    hp:10, score:120
+    hp:7, score:120
   });
 }
 function spawnNormal7(){ // 일반7: Stubby
@@ -584,7 +584,7 @@ function spawnNormal7(){ // 일반7: Stubby
   const x = margin + Math.random()*(W - margin*2);
   enemies.push({
     type:'normal7', x, y:-40, targetY: (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2), // Zone-2 또는 Zone-3 경계선 중 랜덤
-    settled:false, vy:210, hp:30, score:110, cool:0, fireRate:1833, burstFired:false // 등장(Zone-2 도달) 속도를 빠르게
+    settled:false, vy:210, hp:21, score:110, cool:0, fireRate:1833, burstFired:false // 등장(Zone-2 도달) 속도를 빠르게
   });
   normal7Alive = true;
 }
@@ -592,7 +592,7 @@ function spawnNormal7(){ // 일반7: Stubby
 function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2.3배 크기)
   enemies.push({
     type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT, // Zone-1과 Zone-2 경계선에 도착 후 정지
-    settled:false, vy:80, hp:200, score:2000,
+    settled:false, vy:80, hp:140, score:2000,
     size:240, cool:0,
     // 좌우 이동↔정지 발사 상태 머신 (등장 완료 후부터 동작)
     moveState:'move', moveTargetX: null, moveSpeed:180, // px/s, 좌우 이동 속도
