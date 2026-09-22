@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Air2</title>
+<style>
+  html,body{margin:0;background:#04040a;overflow:hidden;height:100%;}
+  canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
+  #continueOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.9);z-index:40;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  }
+  #continueOverlay .continueText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:34px;color:#ff5a5a;text-shadow:0 0 18px #ff2d2d, 0 0 4px #ffffff;
+    letter-spacing:2px;
+  }
+  #continueOverlay .continueCountdown{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:48px;color:#fff3d0;text-shadow:0 0 16px #ffd76a;
+  }
+  #continueOverlay .continueHint{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-size:14px;color:#8fe3ff;
+    opacity:0.85;
+  }
+  #gameOverOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.95);z-index:46;
+    align-items:center;justify-content:center;
+  }
+  #gameOverOverlay .gameOverText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:38px;color:#ff5a5a;text-shadow:0 0 20px #ff2d2d, 0 0 6px #ffffff;
+    letter-spacing:2px;
+  }
+  #stageClearOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.92);z-index:45;
+    flex-direction:column;align-items:center;justify-content:center;gap:28px;
+  }
+  #stageClearOverlay .stageClearText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:32px;color:#8fe3ff;text-shadow:0 0 18px #5ad1ff, 0 0 4px #ffffff;
+    letter-spacing:1px;text-align:center;
+  }
+  #goTitleBtn{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:18px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:12px 28px;cursor:pointer;box-shadow:0 0 16px rgba(255,215,106,0.6);
+  }
+  #goTitleBtn:hover{ background:#26264a; }
+  #pauseBtn{
+    position:fixed;top:8px;right:8px;z-index:50;
+    width:38px;height:38px;border-radius:8px;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#8fe3ff;background:rgba(10,10,20,0.75);border:2px solid #5ad1ff;
+    cursor:pointer;box-shadow:0 0 10px rgba(90,209,255,0.5);
+  }
+  #pauseMenuOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.85);z-index:48;
+    flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  }
+  #pauseMenuOverlay .pauseTitle{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:26px;color:#8fe3ff;text-shadow:0 0 16px #5ad1ff;letter-spacing:2px;
+  }
+  .pauseMenuBtn{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:10px 26px;cursor:pointer;box-shadow:0 0 12px rgba(255,215,106,0.5);
+    min-width:160px;
+  }
+  .pauseMenuBtn:hover{ background:#26264a; }
+</style>
+</head>
+<body>
+<div id="continueOverlay">
+  <div class="continueText">CONTINUE</div>
+  <div class="continueCountdown" id="continueCountdownNum">10</div>
+  <div class="continueHint">아무 키나 눌러서 계속하기</div>
+</div>
+<div id="gameOverOverlay">
+  <div class="gameOverText">GAME OVER</div>
+</div>
+<div id="stageClearOverlay">
+  <div class="stageClearText">TEST STAGE CLEAR!</div>
+  <button id="goTitleBtn">GO TITLE</button>
+</div>
+<button id="pauseBtn">M</button>
+<div id="pauseMenuOverlay">
+  <div class="pauseTitle">PAUSED</div>
+  <button id="muteToggleBtn" class="pauseMenuBtn">음소거</button>
+  <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
+</div>
+<canvas id="c" width="480" height="720"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
+
+// 개발용 6등분 그리드 계산에도 쓰이는 존 상수 (그리드 자체는 디버그 전용이라 이 파일엔 그리지 않음)
+const ZONE_COUNT = 6;
+const ZONE_HEIGHT = H / ZONE_COUNT;
+function getZoneIndex(y){
+  const idx = Math.floor(y / ZONE_HEIGHT);
+  return Math.max(0, Math.min(ZONE_COUNT-1, idx));
+}
+function isNoFireZone(y){
+  return getZoneIndex(y) === ZONE_COUNT - 1; // 맨 아래(Zone-6)
+}
+
+// ---- 타이틀 화면 ----
+// 게임 시작 시(스코어 초기화 상태) 화면 중앙에 "Space War" 제목 + 하단에 깜빡이는
+// "PUSH ANY KEY" 버튼을 표시. 키보드/마우스/터치 아무 입력이나 오면 타이틀을 닫고
+// 배경음악을 시작하며(startBgm은 characters.js), 이후 입력부터는 정상 플레이 입력으로 동작.
+let titleScreenActive = true;
+
+function dismissTitleScreen(){
+  if(!titleScreenActive) return;
+  titleScreenActive = false;
+  startBgm();
+  startStage(1); // 스테이지1 시작은 타이틀을 벗어나는 시점에 (타이틀 중 BGM/스폰 로직이 새어나가지 않도록)
+}
+
+// 타이틀 로고: 그라디언트 + 네온 글로우 + 살짝 흔들리는 하이라이트로 "세련된" 느낌.
+function drawTitleLogo(){
+  const cx = W/2, cy = H/2 - 40;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 54px "Trebuchet MS", Arial, sans-serif';
+
+  // 은은하게 오르내리는 글로우 강도 (실제 시간 기반, dt 무관)
+  const glowPulse = 0.6 + 0.4 * Math.sin(Date.now()/900);
+
+  // 뒤쪽 큰 블러 글로우 레이어
+  ctx.shadowColor = '#5ad1ff';
+  ctx.shadowBlur = 34 * glowPulse;
+  const grad = ctx.createLinearGradient(cx, cy - 34, cx, cy + 34);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, '#8fe3ff');
+  grad.addColorStop(1, '#2f7dff');
+  ctx.fillStyle = grad;
+  ctx.fillText('SPACE WAR', cx, cy);
+
+  // 얇은 화이트 코어 라인으로 한 번 더 겹쳐 그려 선명도 보강
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('SPACE WAR', cx, cy);
+  ctx.restore();
+
+  // 서브 타이틀 라인 장식(밑줄 느낌의 얇은 네온 바)
+  ctx.save();
+  const lineW = 220;
+  const lineGrad = ctx.createLinearGradient(cx - lineW/2, cy, cx + lineW/2, cy);
+  lineGrad.addColorStop(0, 'rgba(90,209,255,0)');
+  lineGrad.addColorStop(0.5, 'rgba(143,227,255,0.9)');
+  lineGrad.addColorStop(1, 'rgba(90,209,255,0)');
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - lineW/2, cy + 42);
+  ctx.lineTo(cx + lineW/2, cy + 42);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// "PUSH ANY KEY" 버튼: 0.5초 간격으로 완전히 켜짐/꺼짐을 반복하는 깜빡임(하드 블링크).
+function drawPushAnyKey(){
+  const cx = W/2, cy = H/2 + 130;
+  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0; // 0.5초마다 on/off 전환
+  if(!blinkOn) return;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 20px "Trebuchet MS", Arial, sans-serif';
+  ctx.shadowColor = '#ffd76a';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#fff3d0';
+  ctx.fillText('PUSH ANY KEY', cx, cy);
+  ctx.restore();
+}
+
+function drawTitleScreen(){
+  drawStarBackground(0); // dt=0으로 호출해 배경 스크롤을 정지시킨 채로 그림(위치는 유지, 진행만 멈춤)
+  drawTitleLogo();
+  drawPushAnyKey();
+}
+
+window.addEventListener('keydown', ()=> dismissTitleScreen());
+canvas.addEventListener('mousedown', ()=> dismissTitleScreen());
+canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
+
+// 컨티뉴 화면 표시 중 아무 키/마우스/터치 입력이 오면 이어하기 (characters.js의 resumeFromContinue() 사용)
+window.addEventListener('keydown', ()=> resumeFromContinue());
+canvas.addEventListener('mousedown', ()=> resumeFromContinue());
+canvas.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+
+// GAME OVER 표시 3초 경과 시 characters.js의 updateGameOverScreen()이 이 함수를 호출해 타이틀로 복귀.
+// index.html은 타이틀 화면이 이 파일 자체에 있으므로 새로고침으로 깨끗하게 초기 상태로 되돌림.
+function returnToTitleAfterGameOver(){
+  window.location.reload();
+}
+
+canvas.addEventListener('mousemove', e=>{
+  const r = canvas.getBoundingClientRect();
+  player.x = (e.clientX - r.left) * (W/r.width);
+  player.y = (e.clientY - r.top) * (H/r.height);
+});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  player.x = (t.clientX - r.left) * (W/r.width);
+  player.y = (t.clientY - r.top) * (H/r.height);
+}, {passive:false});
+
+// 폭탄 사용: 마우스 좌+우 버튼 동시 클릭 또는 2손가락 터치
+let mouseButtonsDown = new Set();
+canvas.addEventListener('mousedown', e=>{
+  mouseButtonsDown.add(e.button);
+  if(mouseButtonsDown.has(0) && mouseButtonsDown.has(2)) useBomb();
+});
+canvas.addEventListener('mouseup', e=>{
+  mouseButtonsDown.delete(e.button);
+});
+canvas.addEventListener('contextmenu', e=> e.preventDefault()); // 우클릭 메뉴 방지(폭탄 입력용)
+canvas.addEventListener('touchstart', e=>{
+  if(e.touches.length >= 2) useBomb();
+}, {passive:true});
+</script>
+<script src="bg.js"></script>
+<script src="characters.js"></script>
+<script src="stage.js"></script>
+<script>
+document.getElementById('goTitleBtn').addEventListener('click', ()=>{
+  window.location.reload();
+});
+
+// ---- 일시정지/메뉴 ----
+// M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
+// 메뉴에는 음소거 토글 버튼이 있으며(characters.js의 toggleMute() 재사용), "계속하기"로 해제.
+let gamePaused = false;
+
+function updateMuteBtnLabel(){
+  document.getElementById('muteToggleBtn').textContent = audioMuted ? '음소거 해제' : '음소거';
+}
+
+function openPauseMenu(){
+  if(gamePaused || titleScreenActive) return; // 타이틀 화면에서는 일시정지 메뉴를 열지 않음
+  gamePaused = true;
+  updateMuteBtnLabel();
+  document.getElementById('pauseMenuOverlay').style.display = 'flex';
+}
+
+function closePauseMenu(){
+  gamePaused = false;
+  document.getElementById('pauseMenuOverlay').style.display = 'none';
+  lastTime = 0; // 재개 시 dt가 튀지 않도록 타임스탬프 리셋
+}
+
+document.getElementById('pauseBtn').addEventListener('click', openPauseMenu);
+document.getElementById('resumeBtn').addEventListener('click', closePauseMenu);
+document.getElementById('muteToggleBtn').addEventListener('click', ()=>{
+  toggleMute();
+  updateMuteBtnLabel();
+});
+let bullets = [];
+let playerBullets = [];
+let enemies = [];
+let lastTime = 0;
+
+function update(currentTime){
+  if(!lastTime) lastTime = currentTime;
+  let dt = (currentTime - lastTime) / 1000;
+  lastTime = currentTime;
+  dt = Math.min(dt, 0.05);
+  const dtMs = dt * 1000;
+
+  if(continueScreenActive){
+    updateContinueScreen(dtMs); // 10초 카운트다운, 0초 도달 시 GAME OVER로 전이
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(gameOverActive){
+    updateGameOverScreen(dtMs); // 3초 경과 시 타이틀로 자동 이동
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(gamePaused){
+    requestAnimationFrame(update); // 화면은 마지막 프레임 그대로 유지, 로직/그리기 갱신 정지
+    return;
+  }
+
+  ctx.clearRect(0,0,W,H);
+
+  if(titleScreenActive){
+    drawTitleScreen(); // 스코어는 초기값(0)인 상태로 대기, BGM/배경스크롤 정지. 입력 시 dismissTitleScreen()으로 게임 화면 전환
+    requestAnimationFrame(update);
+    return;
+  }
+
+  drawStarBackground(dt);
+
+  updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
+
+  if(stageClearScreenActive){
+    document.getElementById('stageClearOverlay').style.display = 'flex';
+    requestAnimationFrame(update);
+    return; // 클리어 화면 표시 중에는 게임 로직/그리기 정지, GO TITLE 클릭 대기
+  }
+
+  spawnTimer += dtMs;
+  if(spawnTimer > NORMAL_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    spawnTimer = 0;
+    const type = spawnCycle[cycleIdx % spawnCycle.length];
+    cycleIdx++;
+    if(type==='normal1' && enabledTypes.normal1) spawnNormal1();
+    else if(type==='normal2' && enabledTypes.normal2) spawnNormal2();
+    else if(type==='normal3' && enabledTypes.normal3) spawnNormal3();
+    else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
+    else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
+    else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
+  }
+
+  normal7SpawnTimer += dtMs;
+  if(enabledTypes.normal7 && !normal7Alive && normal7RespawnTimer === 0 && normal7SpawnTimer > NORMAL7_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    normal7SpawnTimer = 0;
+    spawnNormal7();
+  }
+  if(enabledTypes.normal7 && normal7RespawnTimer > 0){
+    normal7RespawnTimer -= dtMs;
+    if(normal7RespawnTimer <= 0){
+      normal7RespawnTimer = 0;
+      spawnNormal7();
+    }
+  }
+
+  enemies.forEach(e=>{
+    e.cool += dtMs;
+    if(e.type==='normal1'){
+      e.x += e.zdir * 140 * dt; // 지그재그 (일정 속도 좌우 이동, 즉시 반전)
+      e.y += e.vy * dt;
+      const margin = 90; // 화면 끝까지 가지 않도록 여유 마진
+      if(e.x < margin){ e.x = margin; e.zdir = 1; }
+      if(e.x > W-margin){ e.x = W-margin; e.zdir = -1; }
+      drawSprite(e, 'normal1', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 204); // 한 발씩 조준 (기체색: 녹색)
+      }
+    } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal2', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 204);
+      }
+    } else if(e.type==='normal3'){
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal3', 74);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireSpread2(e, '#3ad9ff', 216, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
+      }
+    } else if(e.type==='normal4'){
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal4', 80);
+      // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
+      if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
+        e.fired = true;
+        fireFanN(e, '#c9a3ff', 192, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
+      }
+    } else if(e.type==='normal7'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      }
+      drawSprite(e, 'normal7', 104);
+      // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
+      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireFan3(e, '#ff9a3c', 96); // 3발 부채꼴 (기체색: 오렌지)
+      }
+    } else if(e.type==='normal6'){
+      // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
+      const zoneIdx = getZoneIndex(e.y);
+      if(zoneIdx >= 1 && zoneIdx < 5){
+        e.homing = true;
+      }
+      if(zoneIdx >= 5){
+        e.homing = false; // Zone-6부터 유도 기능 상실, 직진만 유지
+      }
+      if(e.homing){
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const d = Math.hypot(dx,dy) || 1;
+        let targetVx = dx/d*e.speed, targetVy = dy/d*e.speed;
+
+        // 목표 방향이 수직(아래) 기준 최대 각도(MAX_TURN_DEG)를 넘지 않도록 클램프
+        const MAX_TURN_DEG = 35;
+        const maxRad = MAX_TURN_DEG * Math.PI/180;
+        const targetAngle = Math.atan2(targetVy, targetVx); // 목표 방향각
+        const downAngle = Math.PI/2; // 아래 방향 기준각
+        let diff = targetAngle - downAngle;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        diff = Math.max(-maxRad, Math.min(maxRad, diff));
+        const clampedAngle = downAngle + diff;
+        targetVx = Math.cos(clampedAngle) * e.speed;
+        targetVy = Math.sin(clampedAngle) * e.speed;
+
+        // turnRateBase는 60fps(16.667ms) 프레임당 적용률로 정의됨 -> dt에 맞게 지수적으로 환산
+        const turnRateBase = 0.06;
+        const alpha = 1 - Math.pow(1 - turnRateBase, dt * 60);
+        e.vx += (targetVx - e.vx) * alpha;
+        e.vy += (targetVy - e.vy) * alpha;
+        // 속력을 speed로 재정규화
+        const curSpeed = Math.hypot(e.vx, e.vy) || 1;
+        e.vx = e.vx / curSpeed * e.speed;
+        e.vy = e.vy / curSpeed * e.speed;
+      }
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawFlameTrail(e, 60); // 화염을 스프라이트 뒤에(먼저) 그림
+      const angle = Math.atan2(e.vy, e.vx) + Math.PI/2; // 스프라이트 기본 방향(아래)이 0도 기준
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(angle);
+      const img = assets['normal6'];
+      if(img && img.complete && img.naturalWidth > 0){
+        ctx.drawImage(img, -30, -30, 60, 60);
+      }
+      ctx.restore();
+      // 탄은 쏘지 않음
+    } else if(e.type==='boss1'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else {
+        // 좌우 이동↔정지 발사 상태 머신
+        const margin = 40; // 화면 끝까지 가지 않도록 여유 마진
+        if(e.moveState === 'move'){
+          if(e.moveTargetX === null){
+            let tx;
+            let attempts = 0;
+            do {
+              tx = margin + Math.random()*(W - margin*2);
+              attempts++;
+            } while(Math.abs(tx - e.x) < e.minMoveDist && attempts < 10);
+            e.moveTargetX = tx;
+          }
+          const dx = e.moveTargetX - e.x;
+          const dist = Math.abs(dx);
+          const step = e.moveSpeed * dt;
+          if(step >= dist){
+            e.x = e.moveTargetX;
+            e.moveState = 'fire';
+            e.moveTargetX = null;
+            e.fireRound = 0;
+            e.fireCool = 0;
+            e.fireElapsed = 0;
+            e.moveCount++;
+            e.sweepThisRound = Math.random() < 0.5; // 3번째 이동 이후, 이번 정지 발사에서 스윕 레이저를 쓸지 랜덤 결정
+            e.sweepCenterAngle = 0; // 스윕 시작 시(충전 종료 시점)에 계산됨
+            e.sweepCenterSet = false;
+          } else {
+            e.x += Math.sign(dx) * step;
+          }
+        } else if(e.moveState === 'fire'){
+          e.fireCool += dtMs;
+          e.fireElapsed += dtMs;
+          if(e.fireRound < 10 && e.fireCool >= 300){
+            e.fireCool = 0;
+            e.fireRound++;
+            fireBossQuadArc(e, '#b060ff', 220); // 40도 부채꼴 4갈래, 갈래당 10발(0.3초 간격), 보스 눈 색상과 맞춘 보라
+          }
+          // 2번째 이동 완료 후부터 레이저: 주둥이에서 0.6초간 충전(맴돌기) 후 0.65초간 발사(스윕 속도 살짝 느리게), 3번째 이동 완료 후부터는 발사 중 좌우 스윕
+          if(e.moveCount >= 2){
+            const muzzle = getBossMuzzle(e);
+            const LASER_CHARGE_MS = 600;
+            const LASER_DURATION_MS = 650;
+            if(e.fireElapsed < LASER_CHARGE_MS){
+              stopBossLaserSound(); // 충전 단계에는 레이저 발사음 없음
+              drawBossLaserCharge(muzzle.x, muzzle.y, e.fireElapsed / LASER_CHARGE_MS, e.moveCount >= 3 && e.sweepThisRound);
+            } else if(e.fireElapsed < LASER_CHARGE_MS + LASER_DURATION_MS){
+              startBossLaserSound(); // 실제 레이저가 나가는 동안 계속 루프 재생
+              if(e.moveCount >= 3 && e.sweepThisRound){
+                const sweepMaxRad = 40 * Math.PI/180; // 좌우 최대 40도(총 80도, 화면 밖으로 벗어나지 않도록 제한)
+                if(!e.sweepCenterSet){
+                  // 발사 시작 순간(충전 종료 직후)에 플레이어 방향을 목표각으로 계산 (시작은 항상 정중앙 0도)
+                  const dx2 = player.x - muzzle.x, dy2 = player.y - muzzle.y;
+                  const targetAngle = Math.atan2(dx2, dy2); // 수직(아래) 기준 각도
+                  e.sweepCenterAngle = Math.max(-sweepMaxRad, Math.min(sweepMaxRad, targetAngle));
+                  e.sweepCenterSet = true;
+                }
+                const sweepProgress = Math.min(1, (e.fireElapsed - LASER_CHARGE_MS) / LASER_DURATION_MS); // 0~1
+                const angle = e.sweepCenterAngle * sweepProgress; // 정중앙(0)에서 플레이어 방향으로 서서히 이동
+                drawBossLaser(muzzle.x, muzzle.y, angle);
+              } else {
+                drawBossLaser(muzzle.x, muzzle.y, 0); // 직선 레이저
+              }
+            } else {
+              stopBossLaserSound(); // 발사 지속시간이 끝나면 정지
+            }
+          } else {
+            stopBossLaserSound(); // 아직 레이저를 쓰지 않는 이동 회차
+          }
+          if(e.fireRound >= 10){
+            e.moveState = 'move';
+          }
+        }
+      }
+      drawBossSprite(e, e.size);
+    }
+  });
+
+  // 플레이어 레이저 vs 모든 적 공통 충돌 판정
+  enemies.forEach(e=>{
+    if(e.dead) return;
+    if(e.type === 'boss1' && !e.settled) return; // 보스는 등장(하강) 중에는 피격 무효, 정지해서 첫 움직임을 시작한 순간부터 유효
+    for(const b of playerBullets){
+      if(b.hit) continue;
+      const dx = b.x - e.x, dy = b.y - e.y;
+      const hitRadius = e.type === 'boss1' ? 100 : 60;
+      if(Math.hypot(dx,dy) < hitRadius){
+        e.hp--;
+        b.hit = true;
+        if(e.hp <= 0){
+          e.dead = true;
+          addScore(e.score || 0);
+          spawnExplosion(e.type, e.x, e.y);
+          if(e.type === 'boss1'){ playBossHitSound(); stopBossLaserSound(); } else playEnemyHitSound(); // 격파(폭발) 효과음
+          // 아이템은 일반7 격파 시에만 드랍, 드랍 쿨다운 중이 아니어야 하며, W는 이미 획득했으면 더 이상 드랍 안 됨
+          if(e.type === 'normal7' && itemDropCooldown <= 0 && items.length === 0){
+            // W는 획득 전에만 드랍 가능. W 확률(35%) 먼저 판정, 실패하면 R 확률(65%)로 판정.
+            const canDropW = !playerHasW;
+            let itemType = null;
+            if(canDropW && Math.random() < ITEM_DROP_CHANCE_W){
+              itemType = 'W';
+            } else if(Math.random() < ITEM_DROP_CHANCE_R){
+              itemType = 'R';
+            }
+            if(itemType) spawnItem(itemType, e.x, e.y);
+          }
+          if(e.type === 'normal7'){
+            normal7Alive = false;
+            normal7RespawnTimer = NORMAL7_RESPAWN_DELAY;
+          }
+        }
+        break;
+      }
+    }
+  });
+  playerBullets = playerBullets.filter(b=> !b.hit);
+  enemies = enemies.filter(e=> !e.dead);
+
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.y < H+40);
+  enemies = enemies.filter(e=> e.type !== 'normal4' || (e.x < W+80 && e.x > -80));
+  enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
+
+  bullets.forEach(b=>{
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    liteBullet(b.x,b.y,b.r,b.color);
+  });
+  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+
+  // 주인공 피격 판정 (적 탄환 vs 실제 타원형 히트박스)
+  bullets.forEach(b=>{
+    if(b.hitPlayer) return;
+    if(isInsidePlayerHitbox(b.x, b.y)){
+      b.hitPlayer = true;
+      handlePlayerHit();
+    }
+  });
+  bullets = bullets.filter(b=> !b.hitPlayer);
+
+  // 아이템 낙하 + 획득 판정
+  if(itemDropCooldown > 0) itemDropCooldown -= dtMs;
+  items.forEach(it=>{
+    avoidBulletsForItem(it, dt);
+    it.y += it.vy * dt;
+    drawItem(it);
+    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
+      it.picked = true;
+      playItemPickupSound(); // 아이템 획득 효과음
+      if(it.type === 'R'){
+        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
+      } else if(it.type === 'W'){
+        playerHasW = true;
+      }
+      itemDropCooldown = ITEM_DROP_COOLDOWN_MS; // 획득 시점부터 20초 후 다음 드랍
+    }
+  });
+  items = items.filter(it=> !it.picked && it.y < H+40);
+
+  playerCool += dtMs;
+  if(playerCool >= getPlayerFireRate()){
+    playerCool = 0;
+    fireLaser();
+  }
+  playerBullets.forEach(b=>{
+    b.x += (b.vx || 0) * dt;
+    b.y += b.vy * dt;
+    drawLaser(b);
+  });
+  playerBullets = playerBullets.filter(b=> b.y + b.len > -20 && b.x > -20 && b.x < W+20);
+
+  drawPlayerWithEffects(); // 무적 중 깜빡임 + 떠오름 연출 포함하여 그림
+  updatePlayerInvincibility(dtMs);
+
+  updateAndDrawExplosions(dt);
+  updateAndDrawScreenFlash(dt);
+  drawRapidHud();
+  drawScoreHud();
+  drawLifeHud();
+  drawBombHud();
+
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
