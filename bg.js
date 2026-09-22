@@ -30,7 +30,7 @@ function drawBgLayer1(dt){
 }
 
 // ---- Layer 2: 밝은 별 (드문드문, 중간 속도) ----
-const BG_LAYER2_SPEED = 45; // px/s
+const BG_LAYER2_SPEED = 200; // px/s
 const BG_LAYER2_COUNT = 18; // 드문드문
 let bgLayer2Stars = [];
 for(let i=0;i<BG_LAYER2_COUNT;i++){
@@ -63,7 +63,7 @@ function drawBgLayer2(dt){
 }
 
 // ---- Layer 3: 작은 파편 조각 (가장 위, 매우 빠르게) ----
-const BG_LAYER3_SPEED = 420; // px/s, 매우 빠름
+const BG_LAYER3_SPEED = 800; // px/s, 매우 빠름
 const BG_LAYER3_COUNT = 14;
 let bgLayer3Debris = [];
 for(let i=0;i<BG_LAYER3_COUNT;i++){

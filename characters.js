@@ -30,7 +30,7 @@ const playerFrames = ['assets/player/player.png', 'assets/player/player2.png'].m
   img.src = src;
   return img;
 });
-const PLAYER_FRAME_INTERVAL_MS = 140; // ms, 프레임 전환 간격
+const PLAYER_FRAME_INTERVAL_MS = 80; // ms, 프레임 전환 간격
 
 // 보스1 (외계 문명 중형 기체, 불꽃 길이가 다른 2프레임을 교차 표시해 애니메이션 효과)
 const bossFrames = ['assets/boss/boss1.png', 'assets/boss/boss1_longflame.png'].map(src=>{
@@ -417,8 +417,8 @@ let normal7RespawnTimer = 0; // 0이면 대기 없음, >0이면 카운트다운 
 const NORMAL7_RESPAWN_DELAY = 1500; // 격파 후 재등장까지 지연 (ms)
 const spawnCycle = ['normal1','normal2','normal3','normal4','normal5','normal6']; // 일반7은 별도 타이머로 분리
 let cycleIdx = 0;
-const MAX_ENEMIES_ON_SCREEN = 8; // 스테이지1 상한 (편대 3대 포함 개별 카운트)
-const NORMAL_SPAWN_INTERVAL = 1667; // 공용 사이클 spawn 간격(ms)
+const MAX_ENEMIES_ON_SCREEN = 10; // 화면 내 동시 존재 상한 (항상 8~10기 유지되도록 목표치와 함께 사용)
+const NORMAL_SPAWN_INTERVAL = 350; // 공용 사이클 spawn 체크 간격(ms) — 인원 미달 시 이 주기로 즉시 재시도해 격파 즉시 채움
 const NORMAL7_SPAWN_INTERVAL = 4000;  // 일반7 spawn 간격(ms)
 
 // ---- 스폰 함수 (모든 이동속도는 px/s, 모든 타이머는 ms 기준) ----
@@ -907,17 +907,18 @@ function updateAndDrawScreenFlash(dt){
 
 // ---- 주인공 피격 판정 (세로 타원 + 가로 타원, 두 개) ----
 const PLAYER_HIT_RADIUS_X = 6; // 세로 타원의 가로 반경(px)
-const PLAYER_HIT_RADIUS_Y = 12; // 세로 타원의 세로 반경(px)
+const PLAYER_HIT_RADIUS_Y = 15; // 세로 타원의 세로 반경(px)
+const PLAYER_HIT_OFFSET_Y = -3; // 세로 타원을 날개 부근까지 아래로 내리는 오프셋(px)
 const PLAYER_HIT2_RADIUS_X = 12; // 가로 타원의 가로 반경(px) — 세로 타원을 눕힌 복제본
 const PLAYER_HIT2_RADIUS_Y = 6; // 가로 타원의 세로 반경(px)
-const PLAYER_HIT2_OFFSET_Y = 7; // 가로 타원을 날개 부근까지 아래로 내리는 오프셋(px)
+const PLAYER_HIT2_OFFSET_Y = -7; // 가로 타원을 날개 부근까지 아래로 내리는 오프셋(px)
 
 function drawPlayerHitbox(){
   ctx.save();
   ctx.strokeStyle = 'rgba(255,60,60,0.9)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(player.x, player.y, PLAYER_HIT_RADIUS_X, PLAYER_HIT_RADIUS_Y, 0, 0, Math.PI*2);
+  ctx.ellipse(player.x, player.y + PLAYER_HIT2_OFFSET_Y, PLAYER_HIT_RADIUS_X, PLAYER_HIT_RADIUS_Y, 0, 0, Math.PI*2);
   ctx.stroke();
   ctx.beginPath();
   ctx.ellipse(player.x, player.y + PLAYER_HIT2_OFFSET_Y, PLAYER_HIT2_RADIUS_X, PLAYER_HIT2_RADIUS_Y, 0, 0, Math.PI*2);
@@ -929,7 +930,7 @@ function drawPlayerHitbox(){
 // (적 탄환 vs 주인공 피격 판정에만 사용. 아이템 획득 판정은 픽셀 단위 충돌 함수를 별도 사용)
 function isInsidePlayerHitbox(px, py){
   const dx1 = (px - player.x) / PLAYER_HIT_RADIUS_X;
-  const dy1 = (py - player.y) / PLAYER_HIT_RADIUS_Y;
+  const dy1 = (py - (player.y + PLAYER_HIT_OFFSET_Y)) / PLAYER_HIT_RADIUS_Y;
   if((dx1*dx1 + dy1*dy1) < 1) return true;
   const dx2 = (px - player.x) / PLAYER_HIT2_RADIUS_X;
   const dy2 = (py - (player.y + PLAYER_HIT2_OFFSET_Y)) / PLAYER_HIT2_RADIUS_Y;

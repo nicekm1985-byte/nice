@@ -18,11 +18,11 @@ let stageClearTimer = 0; // ms, 'clear' 단계 진입 후 누적 경과
 
 // 스폰 시 동시 존재 가능한 최대 적 수. 스테이지 진행에 따라 stage1 스케줄에서 동적으로 조절됨
 // (사이드 HTML의 스폰 루프는 MAX_ENEMIES_ON_SCREEN 대신 이 값을 사용).
-let stageSpawnCap = 6;
+let stageSpawnCap = 10;
 
 // ---- 스테이지1 등장 스케줄 (조준형 아님, 시간 기반으로 활성 타입만 순차 확대) ----
-// 0~23초: 일반1/2만 활성화, 화면에 최대 6대까지 랜덤 위치로 채워짐
-// 23초~: 인원 상한을 기본치(MAX_ENEMIES_ON_SCREEN)로 완화
+// 0~23초: 일반1/2만 활성화, 화면에 항상 8~10대가 유지되도록 촘촘히 채워짐(격파 즉시 재충전)
+// 23초~: 인원 상한 유지(MAX_ENEMIES_ON_SCREEN, 8~10기 목표)
 // 30초: 일반3/4/5 활성화 시작
 // 60초(1분): 일반6/7 활성화 시작
 // 120초(2분): 화면의 모든 적/탄 제거 후 보스 등장(BGM 전환)
@@ -37,7 +37,7 @@ let stage1Phase3Applied = false;
 
 // 매 프레임 호출: stage1 전용 시간 기반 활성 타입/상한 갱신
 function updateStage1Spawns(elapsedMs){
-  stageSpawnCap = elapsedMs < STAGE1_CAP_RELEASE_MS ? 6 : MAX_ENEMIES_ON_SCREEN;
+  stageSpawnCap = MAX_ENEMIES_ON_SCREEN; // 시작부터 8~10기 목표 상한 유지(격파 즉시 재충전은 characters.js 스폰 루프가 담당)
 
   if(!stage1Phase2Applied && elapsedMs >= STAGE1_PHASE2_MS){
     stage1Phase2Applied = true;
@@ -103,7 +103,7 @@ function startStage(stageNum){
   stageClearScreenActive = false;
   stage1Phase2Applied = false;
   stage1Phase3Applied = false;
-  stageSpawnCap = 6;
+  stageSpawnCap = MAX_ENEMIES_ON_SCREEN;
   // stage1은 초반(0~30초) 일반1/2만 노출되어야 하므로 3~7은 시작 시점에 꺼둠
   if(stageNum === 1){
     enabledTypes.normal1 = true;
