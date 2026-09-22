@@ -9,12 +9,31 @@
   canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
   #continueOverlay{
     display:none;position:fixed;top:0;left:0;width:100%;height:100%;
-    background:rgba(0,0,0,0.85);z-index:40;
-    align-items:center;justify-content:center;
+    background:rgba(4,4,10,0.9);z-index:40;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
   }
   #continueOverlay .continueText{
-    color:#ff5050;font-family:monospace;font-size:28px;font-weight:bold;
-    text-shadow:0 0 12px #ff5050;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:34px;color:#ff5a5a;text-shadow:0 0 18px #ff2d2d, 0 0 4px #ffffff;
+    letter-spacing:2px;
+  }
+  #continueOverlay .continueCountdown{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:48px;color:#fff3d0;text-shadow:0 0 16px #ffd76a;
+  }
+  #continueOverlay .continueHint{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-size:14px;color:#8fe3ff;
+    opacity:0.85;
+  }
+  #gameOverOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.95);z-index:46;
+    align-items:center;justify-content:center;
+  }
+  #gameOverOverlay .gameOverText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:38px;color:#ff5a5a;text-shadow:0 0 20px #ff2d2d, 0 0 6px #ffffff;
+    letter-spacing:2px;
   }
   #stageClearOverlay{
     display:none;position:fixed;top:0;left:0;width:100%;height:100%;
@@ -32,13 +51,49 @@
     padding:12px 28px;cursor:pointer;box-shadow:0 0 16px rgba(255,215,106,0.6);
   }
   #goTitleBtn:hover{ background:#26264a; }
+  #pauseBtn{
+    position:fixed;top:8px;right:8px;z-index:50;
+    width:38px;height:38px;border-radius:8px;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#8fe3ff;background:rgba(10,10,20,0.75);border:2px solid #5ad1ff;
+    cursor:pointer;box-shadow:0 0 10px rgba(90,209,255,0.5);
+  }
+  #pauseMenuOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.85);z-index:48;
+    flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  }
+  #pauseMenuOverlay .pauseTitle{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:26px;color:#8fe3ff;text-shadow:0 0 16px #5ad1ff;letter-spacing:2px;
+  }
+  .pauseMenuBtn{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:10px 26px;cursor:pointer;box-shadow:0 0 12px rgba(255,215,106,0.5);
+    min-width:160px;
+  }
+  .pauseMenuBtn:hover{ background:#26264a; }
 </style>
 </head>
 <body>
-<div id="continueOverlay"><div class="continueText">CONTINUE</div></div>
+<div id="continueOverlay">
+  <div class="continueText">CONTINUE</div>
+  <div class="continueCountdown" id="continueCountdownNum">10</div>
+  <div class="continueHint">아무 키나 눌러서 계속하기</div>
+</div>
+<div id="gameOverOverlay">
+  <div class="gameOverText">GAME OVER</div>
+</div>
 <div id="stageClearOverlay">
   <div class="stageClearText">TEST STAGE CLEAR!</div>
   <button id="goTitleBtn">GO TITLE</button>
+</div>
+<button id="pauseBtn">M</button>
+<div id="pauseMenuOverlay">
+  <div class="pauseTitle">PAUSED</div>
+  <button id="muteToggleBtn" class="pauseMenuBtn">음소거</button>
+  <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
 </div>
 <canvas id="c" width="480" height="720"></canvas>
 <script>
@@ -69,6 +124,7 @@ function dismissTitleScreen(){
   if(!titleScreenActive) return;
   titleScreenActive = false;
   startBgm();
+  startStage(1); // 스테이지1 시작은 타이틀을 벗어나는 시점에 (타이틀 중 BGM/스폰 로직이 새어나가지 않도록)
 }
 
 // 타이틀 로고: 그라디언트 + 네온 글로우 + 살짝 흔들리는 하이라이트로 "세련된" 느낌.
@@ -141,6 +197,17 @@ window.addEventListener('keydown', ()=> dismissTitleScreen());
 canvas.addEventListener('mousedown', ()=> dismissTitleScreen());
 canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
 
+// 컨티뉴 화면 표시 중 아무 키/마우스/터치 입력이 오면 이어하기 (characters.js의 resumeFromContinue() 사용)
+window.addEventListener('keydown', ()=> resumeFromContinue());
+canvas.addEventListener('mousedown', ()=> resumeFromContinue());
+canvas.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+
+// GAME OVER 표시 3초 경과 시 characters.js의 updateGameOverScreen()이 이 함수를 호출해 타이틀로 복귀.
+// index.html은 타이틀 화면이 이 파일 자체에 있으므로 새로고침으로 깨끗하게 초기 상태로 되돌림.
+function returnToTitleAfterGameOver(){
+  window.location.reload();
+}
+
 canvas.addEventListener('mousemove', e=>{
   const r = canvas.getBoundingClientRect();
   player.x = (e.clientX - r.left) * (W/r.width);
@@ -176,12 +243,38 @@ document.getElementById('goTitleBtn').addEventListener('click', ()=>{
   window.location.reload();
 });
 
+// ---- 일시정지/메뉴 ----
+// M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
+// 메뉴에는 음소거 토글 버튼이 있으며(characters.js의 toggleMute() 재사용), "계속하기"로 해제.
+let gamePaused = false;
+
+function updateMuteBtnLabel(){
+  document.getElementById('muteToggleBtn').textContent = audioMuted ? '음소거 해제' : '음소거';
+}
+
+function openPauseMenu(){
+  if(gamePaused || titleScreenActive) return; // 타이틀 화면에서는 일시정지 메뉴를 열지 않음
+  gamePaused = true;
+  updateMuteBtnLabel();
+  document.getElementById('pauseMenuOverlay').style.display = 'flex';
+}
+
+function closePauseMenu(){
+  gamePaused = false;
+  document.getElementById('pauseMenuOverlay').style.display = 'none';
+  lastTime = 0; // 재개 시 dt가 튀지 않도록 타임스탬프 리셋
+}
+
+document.getElementById('pauseBtn').addEventListener('click', openPauseMenu);
+document.getElementById('resumeBtn').addEventListener('click', closePauseMenu);
+document.getElementById('muteToggleBtn').addEventListener('click', ()=>{
+  toggleMute();
+  updateMuteBtnLabel();
+});
 let bullets = [];
 let playerBullets = [];
 let enemies = [];
 let lastTime = 0;
-
-startStage(1); // 스테이지1 시작 (등장 스케줄/보스 트리거/클리어 판정은 stage.js가 관리)
 
 function update(currentTime){
   if(!lastTime) lastTime = currentTime;
@@ -191,7 +284,19 @@ function update(currentTime){
   const dtMs = dt * 1000;
 
   if(continueScreenActive){
+    updateContinueScreen(dtMs); // 10초 카운트다운, 0초 도달 시 GAME OVER로 전이
     requestAnimationFrame(update);
+    return;
+  }
+
+  if(gameOverActive){
+    updateGameOverScreen(dtMs); // 3초 경과 시 타이틀로 자동 이동
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(gamePaused){
+    requestAnimationFrame(update); // 화면은 마지막 프레임 그대로 유지, 로직/그리기 갱신 정지
     return;
   }
 
