@@ -21,17 +21,23 @@ let stageClearTimer = 0; // ms, 'clear' 단계 진입 후 누적 경과
 let stageSpawnCap = 10;
 
 // ---- 스테이지1 등장 스케줄 (조준형 아님, 시간 기반으로 활성 타입만 순차 확대) ----
-// 0~10초: 인원 상한 기본치(MAX_ENEMIES_ON_SCREEN)로 시작
+// 0~10초: 인원 상한 4대
 // 10초: R 아이템 1개 화면에 등장
-// 10~20초: 인원 상한 6대로 제한
-// 20초~: 인원 상한 기본치로 복귀
+// 10~20초: 인원 상한 5대
+// 20~60초: 인원 상한 5대 유지 (30초에 일반3/4/5 활성화는 별도로 진행)
 // 30초: 일반3/4/5 활성화 시작
-// 60초(1분): 일반6/7 활성화 시작
+// 60초(1분)~120초(2분): 인원 상한 7대, 일반6/7 활성화
 // 120초(2분): 화면의 모든 적/탄 제거 후 보스 등장(BGM 전환)
 const STAGE1_ITEM_SPAWN_MS = 10000; // 10초 시점 R 아이템 1개 등장
-const STAGE1_CAP_LIMIT_START_MS = 10000; // 10초부터 상한 6대로 축소
-const STAGE1_CAP_RELEASE_MS = 20000; // 20초부터 상한 원복
-const STAGE1_CAP_LIMITED = 6;
+const STAGE1_CAP_STAGE1_END_MS = 10000; // 0~10초: 4대
+const STAGE1_CAP_STAGE2_END_MS = 20000; // 10~20초: 5대
+const STAGE1_CAP_STAGE3_END_MS = 60000; // 20~60초: 5대 (일반3/4/5는 30초에 별도로 활성화)
+const STAGE1_CAP_STAGE4_START_MS = 60000; // 60초부터 7대 제한 시작
+const STAGE1_CAP_STAGE4_END_MS = 120000; // 120초(보스 트리거)까지 7대 유지
+const STAGE1_CAP_STAGE1_LIMIT = 4;
+const STAGE1_CAP_STAGE2_LIMIT = 5;
+const STAGE1_CAP_STAGE3_LIMIT = 5;
+const STAGE1_CAP_STAGE4_LIMIT = 7;
 const STAGE1_PHASE2_MS = 30000; // 일반3/4/5 활성화
 const STAGE1_PHASE3_MS = 60000; // 일반6/7 활성화
 const STAGE1_BOSS_TRIGGER_MS = 120000; // 2분 경과 시 보스 등장
@@ -44,9 +50,17 @@ let stage1ItemSpawned = false;
 
 // 매 프레임 호출: stage1 전용 시간 기반 활성 타입/상한 갱신
 function updateStage1Spawns(elapsedMs){
-  stageSpawnCap = (elapsedMs >= STAGE1_CAP_LIMIT_START_MS && elapsedMs < STAGE1_CAP_RELEASE_MS)
-    ? STAGE1_CAP_LIMITED
-    : MAX_ENEMIES_ON_SCREEN;
+  if(elapsedMs < STAGE1_CAP_STAGE1_END_MS){
+    stageSpawnCap = STAGE1_CAP_STAGE1_LIMIT; // 0~10초: 4대
+  } else if(elapsedMs < STAGE1_CAP_STAGE2_END_MS){
+    stageSpawnCap = STAGE1_CAP_STAGE2_LIMIT; // 10~20초: 5대
+  } else if(elapsedMs < STAGE1_CAP_STAGE3_END_MS){
+    stageSpawnCap = STAGE1_CAP_STAGE3_LIMIT; // 20~30초: 5대
+  } else if(elapsedMs >= STAGE1_CAP_STAGE4_START_MS && elapsedMs < STAGE1_CAP_STAGE4_END_MS){
+    stageSpawnCap = STAGE1_CAP_STAGE4_LIMIT; // 60~120초: 7대
+  } else {
+    stageSpawnCap = MAX_ENEMIES_ON_SCREEN; // 30~60초 등 그 외 구간은 기본치 유지
+  }
 
   if(!stage1ItemSpawned && elapsedMs >= STAGE1_ITEM_SPAWN_MS){
     stage1ItemSpawned = true;
