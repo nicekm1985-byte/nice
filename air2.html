@@ -105,6 +105,7 @@
 <div id="pauseMenuOverlay">
   <div class="pauseTitle">PAUSED</div>
   <button id="muteToggleBtn" class="pauseMenuBtn">음소거</button>
+  <button id="touchModeToggleBtn" class="pauseMenuBtn">터치 방식 전환</button>
   <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
 </div>
 <canvas id="c" width="480" height="720"></canvas>
@@ -124,6 +125,62 @@ function toCanvasXY(clientX, clientY){
   const y = (clientY - r.top) * (H / r.height);
   return { x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) };
 }
+
+// 터치 조작 방식: 'relative'(기본, 손가락 이동한 만큼만 따라옴) 또는 'absolute'(터치한 지점으로 즉시 이동).
+// M 메뉴의 "터치 방식 전환" 버튼으로 토글, localStorage에 저장해 다음 접속에도 유지.
+let touchMoveMode = localStorage.getItem('air2_touchMoveMode') || 'relative';
+
+let lastTouchXY = null;
+function handleTouchStart(clientX, clientY){
+  if(touchMoveMode === 'absolute'){
+    const p = toCanvasXY(clientX, clientY);
+    spawnTeleportFlash(p.x, p.y); // 순간이동 지점에 "짠" 하는 플래시 이펙트
+    player.x = p.x; player.y = p.y;
+  } else {
+    lastTouchXY = { x: clientX, y: clientY };
+  }
+}
+function handleTouchMove(clientX, clientY){
+  if(touchMoveMode === 'absolute'){
+    const p = toCanvasXY(clientX, clientY);
+    player.x = p.x; player.y = p.y;
+    return;
+  }
+  if(!lastTouchXY){ lastTouchXY = { x: clientX, y: clientY }; return; }
+  const r = canvas.getBoundingClientRect();
+  const scaleX = W / r.width, scaleY = H / r.height;
+  const dx = (clientX - lastTouchXY.x) * scaleX;
+  const dy = (clientY - lastTouchXY.y) * scaleY;
+  lastTouchXY = { x: clientX, y: clientY };
+  player.x = Math.max(0, Math.min(W, player.x + dx));
+  player.y = Math.max(0, Math.min(H, player.y + dy));
+}
+
+// 순간이동(절대 좌표 모드) 시 도착 지점에 짧게 번쩍이는 링 이펙트 (실제 시간 기반, dt 무관)
+let teleportFlashes = [];
+function spawnTeleportFlash(x, y){
+  teleportFlashes.push({ x, y, start: Date.now() });
+}
+const TELEPORT_FLASH_DURATION_MS = 260;
+function drawTeleportFlashes(){
+  const now = Date.now();
+  teleportFlashes = teleportFlashes.filter(f => now - f.start < TELEPORT_FLASH_DURATION_MS);
+  teleportFlashes.forEach(f=>{
+    const t = (now - f.start) / TELEPORT_FLASH_DURATION_MS; // 0~1
+    const radius = 8 + t * 34;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - t);
+    ctx.strokeStyle = '#8fe3ff';
+    ctx.shadowColor = '#5ad1ff';
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, radius, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
 
 // 개발용 6등분 그리드 계산에도 쓰이는 존 상수 (그리드 자체는 디버그 전용이라 이 파일엔 그리지 않음)
 const ZONE_COUNT = 6;
@@ -236,25 +293,29 @@ canvas.addEventListener('mousemove', e=>{
   const p = toCanvasXY(e.clientX, e.clientY);
   player.x = p.x; player.y = p.y;
 });
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  const t = e.touches[0];
+  handleTouchStart(t.clientX, t.clientY);
+}, {passive:false});
 canvas.addEventListener('touchmove', e=>{
   e.preventDefault();
   const t = e.touches[0];
-  const p = toCanvasXY(t.clientX, t.clientY);
-  player.x = p.x; player.y = p.y;
+  handleTouchMove(t.clientX, t.clientY);
 }, {passive:false});
-// 캔버스 아래 여백(touchPad)에서 터치해도 조작 이어지도록: y는 캔버스 최하단으로 클램프됨
+// 캔버스 아래 여백(touchPad)에서도 동일한 상대 이동 방식 적용
 touchPad.addEventListener('touchstart', e=>{
   e.preventDefault();
   const t = e.touches[0];
-  const p = toCanvasXY(t.clientX, t.clientY);
-  player.x = p.x; player.y = p.y;
+  handleTouchStart(t.clientX, t.clientY);
 }, {passive:false});
 touchPad.addEventListener('touchmove', e=>{
   e.preventDefault();
   const t = e.touches[0];
-  const p = toCanvasXY(t.clientX, t.clientY);
-  player.x = p.x; player.y = p.y;
+  handleTouchMove(t.clientX, t.clientY);
 }, {passive:false});
+canvas.addEventListener('touchend', ()=>{ lastTouchXY = null; }, {passive:true});
+touchPad.addEventListener('touchend', ()=>{ lastTouchXY = null; }, {passive:true});
 
 // 폭탄 사용: 마우스 좌+우 버튼 동시 클릭 또는 2손가락 터치
 let mouseButtonsDown = new Set();
@@ -290,10 +351,16 @@ function updateMuteBtnLabel(){
   document.getElementById('muteToggleBtn').textContent = audioMuted ? '음소거 해제' : '음소거';
 }
 
+function updateTouchModeBtnLabel(){
+  document.getElementById('touchModeToggleBtn').textContent =
+    touchMoveMode === 'absolute' ? '터치 방식: 순간이동' : '터치 방식: 드래그';
+}
+
 function openPauseMenu(){
   if(gamePaused || titleScreenActive) return; // 타이틀 화면에서는 일시정지 메뉴를 열지 않음
   gamePaused = true;
   updateMuteBtnLabel();
+  updateTouchModeBtnLabel();
   document.getElementById('pauseMenuOverlay').style.display = 'flex';
 }
 
@@ -308,6 +375,12 @@ document.getElementById('resumeBtn').addEventListener('click', closePauseMenu);
 document.getElementById('muteToggleBtn').addEventListener('click', ()=>{
   toggleMute();
   updateMuteBtnLabel();
+});
+document.getElementById('touchModeToggleBtn').addEventListener('click', ()=>{
+  touchMoveMode = touchMoveMode === 'absolute' ? 'relative' : 'absolute';
+  localStorage.setItem('air2_touchMoveMode', touchMoveMode);
+  lastTouchXY = null; // 모드 전환 시 이전 델타 기준점 초기화
+  updateTouchModeBtnLabel();
 });
 let bullets = [];
 let playerBullets = [];
@@ -393,14 +466,14 @@ function update(currentTime){
       drawSprite(e, 'normal1', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 143); // 한 발씩 조준 (기체색: 녹색)
+        fireAimed(e, '#4dff8f', 100); // 한 발씩 조준 (기체색: 녹색)
       }
     } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
       e.y += e.vy * dt;
       drawSprite(e, 'normal2', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 143);
+        fireAimed(e, '#4dff8f', 100);
       }
     } else if(e.type==='normal3'){
       e.y += e.vy * dt;
@@ -653,6 +726,7 @@ function update(currentTime){
   playerBullets = playerBullets.filter(b=> b.y + b.len > -20 && b.x > -20 && b.x < W+20);
 
   drawPlayerWithEffects(); // 무적 중 깜빡임 + 떠오름 연출 포함하여 그림
+  drawTeleportFlashes(); // 순간이동 모드에서 터치 지점에 짧게 번쩍이는 이펙트
   updatePlayerInvincibility(dtMs);
 
   updateAndDrawExplosions(dt);
