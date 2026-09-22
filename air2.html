@@ -278,10 +278,14 @@ canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true})
 touchPad.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
 
 // 컨티뉴 화면 표시 중 아무 키/마우스/터치 입력이 오면 이어하기 (characters.js의 resumeFromContinue() 사용)
+// #continueOverlay는 z-index가 캔버스보다 높아 터치가 오버레이 자신에게 먼저 잡히므로, 오버레이 요소에도 직접 리스너를 건다.
 window.addEventListener('keydown', ()=> resumeFromContinue());
 canvas.addEventListener('mousedown', ()=> resumeFromContinue());
 canvas.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
 touchPad.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+const continueOverlayEl = document.getElementById('continueOverlay');
+continueOverlayEl.addEventListener('mousedown', ()=> resumeFromContinue());
+continueOverlayEl.addEventListener('touchstart', (e)=>{ e.preventDefault(); resumeFromContinue(); }, {passive:false});
 
 // GAME OVER 표시 3초 경과 시 characters.js의 updateGameOverScreen()이 이 함수를 호출해 타이틀로 복귀.
 // index.html은 타이틀 화면이 이 파일 자체에 있으므로 새로고침으로 깨끗하게 초기 상태로 되돌림.
@@ -357,7 +361,7 @@ function updateTouchModeBtnLabel(){
 }
 
 function openPauseMenu(){
-  if(gamePaused || titleScreenActive) return; // 타이틀 화면에서는 일시정지 메뉴를 열지 않음
+  if(gamePaused) return; // 타이틀 화면에서도 메뉴는 열림(스테이지1은 startStage(1) 시점에만 시작되므로 안전)
   gamePaused = true;
   updateMuteBtnLabel();
   updateTouchModeBtnLabel();
