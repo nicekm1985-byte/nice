@@ -64,7 +64,7 @@ function addScore(amount){
 // 적 탄환에 피격 시 호출. 라이프가 남아있으면 1대 소진, 없으면 컨티뉴 화면 트리거.
 // 무적 상태(피격 후 2초)일 때는 재차 호출되어도 무시됨.
 function handlePlayerHit(){
-  if(continueScreenActive || playerInvincible) return;
+  if(continueScreenActive || gameOverActive || playerInvincible) return;
   spawnPlayerHitExplosion(player.x, player.y);
   playPlayerHitSound(); // 피격 효과음
   startPlayerInvincibility(); // 2초 무적 + 떠오름/깜빡임 연출 시작
@@ -72,14 +72,74 @@ function handlePlayerHit(){
     playerLife--;
   } else {
     continueScreenActive = true;
+    continueCountdown = 10;
+    continueCountdownTimer = 0;
     const overlay = document.getElementById('continueOverlay');
     if(overlay) overlay.style.display = 'flex';
+    const numEl = document.getElementById('continueCountdownNum');
+    if(numEl) numEl.textContent = continueCountdown;
+  }
+}
+
+// 컨티뉴 카운트다운 상태: 10초부터 0초까지 1초 간격으로 감소. 아무 키/터치 입력이 오면
+// resumeFromContinue()로 이어하기, 0초에 도달하면 triggerGameOver()로 전이.
+let continueCountdown = 10;
+let continueCountdownTimer = 0; // ms 누적, 1000ms마다 카운트다운 1 감소
+let gameOverActive = false; // 0초 도달 후 GAME OVER 화면 표시 중
+let gameOverTimer = 0; // ms, GAME OVER 표시 후 경과 시간
+const GAME_OVER_AUTO_TITLE_MS = 3000; // GAME OVER 표시 3초 후 타이틀로 자동 이동
+
+// 매 프레임(컨티뉴 화면 표시 중) 호출: 델타타임 기반으로 1초마다 카운트다운 감소
+function updateContinueScreen(dtMs){
+  if(!continueScreenActive) return;
+  continueCountdownTimer += dtMs;
+  while(continueCountdownTimer >= 1000 && continueCountdown > 0){
+    continueCountdownTimer -= 1000;
+    continueCountdown--;
+    const numEl = document.getElementById('continueCountdownNum');
+    if(numEl) numEl.textContent = continueCountdown;
+  }
+  if(continueCountdown <= 0){
+    triggerGameOver();
+  }
+}
+
+// 아무 키/마우스/터치 입력 시 호출: 컨티뉴 화면을 닫고 라이프를 리필해 게임을 이어감.
+function resumeFromContinue(){
+  if(!continueScreenActive) return;
+  continueScreenActive = false;
+  const overlay = document.getElementById('continueOverlay');
+  if(overlay) overlay.style.display = 'none';
+  playerLife = 2; // 컨티뉴 수락 시 라이프 리필
+  startPlayerInvincibility(); // 재개 직후 잠깐 무적 부여(안전 확보)
+}
+
+// 카운트다운이 0에 도달하면 호출: 컨티뉴 화면을 닫고 GAME OVER 화면을 표시
+function triggerGameOver(){
+  continueScreenActive = false;
+  const overlay = document.getElementById('continueOverlay');
+  if(overlay) overlay.style.display = 'none';
+  gameOverActive = true;
+  gameOverTimer = 0;
+  const goOverlay = document.getElementById('gameOverOverlay');
+  if(goOverlay) goOverlay.style.display = 'flex';
+}
+
+// 매 프레임(GAME OVER 표시 중) 호출: 3초 경과 시 타이틀로 자동 이동
+// (타이틀 복귀 방식은 파일마다 다르므로 각 HTML에서 정의한 returnToTitleAfterGameOver()를 호출)
+function updateGameOverScreen(dtMs){
+  if(!gameOverActive) return;
+  gameOverTimer += dtMs;
+  if(gameOverTimer >= GAME_OVER_AUTO_TITLE_MS){
+    gameOverActive = false;
+    if(typeof returnToTitleAfterGameOver === 'function') returnToTitleAfterGameOver();
+    else window.location.reload();
   }
 }
 
 // 폭탄 사용: 화면의 적 탄환을 전부 제거 + 화이트 플래시. TODO: 폭탄 아이템 드랍 시스템(획득 방식) 추후 설계
 function useBomb(){
-  if(continueScreenActive || playerBombs <= 0) return;
+  if(continueScreenActive || gameOverActive || playerBombs <= 0) return;
   playerBombs--;
   bullets = [];
   screenFlash = SCREEN_FLASH_DURATION;
@@ -204,11 +264,13 @@ const enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
   return a;
 });
 let enemyHitSoundIdx = 0;
+const ENEMY_HIT_SOUND_MAX_DURATION_MS = 1500; // ms, 원본 2.17초에서 1.5초로 잘라 재생
 function playEnemyHitSound(){
   const a = enemyHitSoundPool[enemyHitSoundIdx];
   enemyHitSoundIdx = (enemyHitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
   a.currentTime = 0;
   a.play().catch(()=>{});
+  setTimeout(()=>{ a.pause(); }, ENEMY_HIT_SOUND_MAX_DURATION_MS);
 }
 
 // 주인공 피격 효과음: 격파음과 마찬가지로 풀(pool) 방식으로 재생 (연속 피격 시 겹쳐도 끊기지 않도록)
@@ -354,8 +416,8 @@ let playerRStack = 0; // 0~4, R 아이템 스택 개수 (스택당 탄속 +35% +
 let playerHasW = false; // W 아이템 획득 여부 (3방향 스프레드), 획득하면 더 이상 W 아이템 드랍 안 됨
 let itemDropCooldown = 0; // ms, >0이면 드랍 대기 중 (일반7 격파해도 드랍 안 됨)
 const ITEM_DROP_COOLDOWN_MS = 20000; // 아이템 하나 획득 후 다음 드랍까지 20초
-const ITEM_DROP_CHANCE_R = 0.45; // 일반7 격파 시 R 드랍 확률 45%
-const ITEM_DROP_CHANCE_W = 0.35; // 일반7 격파 시 W 드랍 확률 35% (R보다 낮게)
+const ITEM_DROP_CHANCE_R = 0.5; // 일반7 격파 시 R 드랍 확률 50%
+const ITEM_DROP_CHANCE_W = 0.5; // 일반7 격파 시 W 드랍 확률 50%
 
 function spawnItem(type, x, y){
   // 등장 시 근처 적 탄환과 겹치지 않도록 x좌표를 살짝 밀어냄 (겹침 회피)

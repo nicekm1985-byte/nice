@@ -30,6 +30,7 @@ const STAGE1_CAP_RELEASE_MS = 23000;
 const STAGE1_PHASE2_MS = 30000; // 일반3/4/5 활성화
 const STAGE1_PHASE3_MS = 60000; // 일반6/7 활성화
 const STAGE1_BOSS_TRIGGER_MS = 120000; // 2분 경과 시 보스 등장
+const STAGE_BGM_FADE_MS = 3000; // 보스 트리거 직전 3초간 스테이지 BGM 페이드아웃
 
 // 스테이지1에서만 사용하는 진행 플래그(중복 활성화 방지)
 let stage1Phase2Applied = false;
@@ -77,9 +78,20 @@ function switchToBossBgm(){
 function switchToStageBgm(){
   bossBgmAudio.pause();
   if(typeof bgmAudio !== 'undefined'){
+    bgmAudio.volume = STAGE_BGM_BASE_VOLUME;
     bgmAudio.currentTime = 0;
     bgmAudio.play().catch(()=>{});
   }
+}
+
+// 보스 트리거 직전 STAGE_BGM_FADE_MS 구간 동안 스테이지 BGM 볼륨을 선형으로 줄임 (실제 시간 기반)
+const STAGE_BGM_BASE_VOLUME = 0.05;
+let stageBgmFading = false;
+function fadeOutStageBgm(remainingMs){
+  if(typeof bgmAudio === 'undefined') return;
+  stageBgmFading = true;
+  const t = Math.max(0, Math.min(1, remainingMs / STAGE_BGM_FADE_MS)); // 1(페이드 시작)->0(끝)
+  bgmAudio.volume = STAGE_BGM_BASE_VOLUME * t;
 }
 
 // ---- 스테이지 클리어 연출 ----
@@ -144,6 +156,10 @@ function updateStage(dtMs){
     const cfg = stageConfigs[currentStage];
     if(cfg && cfg.spawnScheduleFn) cfg.spawnScheduleFn(stageElapsed);
     const triggerMs = (cfg && cfg.bossTriggerMs) || STAGE1_BOSS_TRIGGER_MS;
+    const remaining = triggerMs - stageElapsed;
+    if(remaining <= STAGE_BGM_FADE_MS){
+      fadeOutStageBgm(remaining);
+    }
     if(stageElapsed >= triggerMs){
       triggerBossPhase();
     }
