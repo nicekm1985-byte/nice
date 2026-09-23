@@ -675,7 +675,7 @@ function update(currentTime){
           e.dead = true;
           addScore(e.score || 0);
           spawnExplosion(e.type, e.x, e.y);
-          if(e.type === 'boss1'){ playBossHitSound(); stopBossLaserSound(); } else playEnemyHitSound(); // 격파(폭발) 효과음
+          if(e.type === 'boss1'){ playBossHitSound(); stopBossLaserSound(); } else playEnemyHitSound(e.type); // 격파(폭발) 효과음
           // 아이템은 일반7 격파 시에만 드랍, 드랍 쿨다운 중이 아니어야 하며, W는 이미 획득했으면 더 이상 드랍 안 됨
           if(e.type === 'normal7' && itemDropCooldown <= 0 && items.length === 0){
             // W는 획득 전에만 드랍 가능. W 확률(35%) 먼저 판정, 실패하면 R 확률(65%)로 판정.
