@@ -22,13 +22,14 @@ let stageSpawnCap = 10;
 
 // ---- 스테이지1 등장 스케줄 (조준형 아님, 시간 기반으로 활성 타입만 순차 확대) ----
 // 0~10초: 인원 상한 4대
-// 10초: R 아이템 1개 화면에 등장
+// 10초: R 아이템 1개 화면에 등장, 이후 15초 주기로 반복 등장(10s, 25s, 40s, ...)
 // 10~20초: 인원 상한 5대
 // 20~60초: 인원 상한 5대 유지 (30초에 일반3/4/5 활성화는 별도로 진행)
 // 30초: 일반3/4/5 활성화 시작
 // 60초(1분)~120초(2분): 인원 상한 7대, 일반6/7 활성화
 // 120초(2분): 화면의 모든 적/탄 제거 후 보스 등장(BGM 전환)
-const STAGE1_ITEM_SPAWN_MS = 10000; // 10초 시점 R 아이템 1개 등장
+const STAGE1_ITEM_SPAWN_FIRST_MS = 10000; // 최초 R 아이템 등장 시점(10초)
+const STAGE1_ITEM_SPAWN_INTERVAL_MS = 15000; // 이후 반복 등장 주기(15초)
 const STAGE1_CAP_STAGE1_END_MS = 10000; // 0~10초: 4대
 const STAGE1_CAP_STAGE2_END_MS = 20000; // 10~20초: 5대
 const STAGE1_CAP_STAGE3_END_MS = 60000; // 20~60초: 5대 (일반3/4/5는 30초에 별도로 활성화)
@@ -46,7 +47,7 @@ const STAGE_BGM_FADE_MS = 3000; // 보스 트리거 직전 3초간 스테이지 
 // 스테이지1에서만 사용하는 진행 플래그(중복 활성화 방지)
 let stage1Phase2Applied = false;
 let stage1Phase3Applied = false;
-let stage1ItemSpawned = false;
+let stage1NextItemSpawnMs = STAGE1_ITEM_SPAWN_FIRST_MS; // 다음 R 아이템 등장 예정 시각(ms), 매 등장 후 15초씩 갱신
 
 // 매 프레임 호출: stage1 전용 시간 기반 활성 타입/상한 갱신
 function updateStage1Spawns(elapsedMs){
@@ -62,8 +63,8 @@ function updateStage1Spawns(elapsedMs){
     stageSpawnCap = MAX_ENEMIES_ON_SCREEN; // 30~60초 등 그 외 구간은 기본치 유지
   }
 
-  if(!stage1ItemSpawned && elapsedMs >= STAGE1_ITEM_SPAWN_MS){
-    stage1ItemSpawned = true;
+  if(elapsedMs >= stage1NextItemSpawnMs){
+    stage1NextItemSpawnMs += STAGE1_ITEM_SPAWN_INTERVAL_MS; // 다음 등장은 15초 뒤
     spawnItem('R', W/2, -40); // 화면 상단 중앙에서 낙하 시작
   }
 
@@ -143,7 +144,7 @@ function startStage(stageNum){
   stageClearScreenActive = false;
   stage1Phase2Applied = false;
   stage1Phase3Applied = false;
-  stage1ItemSpawned = false;
+  stage1NextItemSpawnMs = STAGE1_ITEM_SPAWN_FIRST_MS;
   stageSpawnCap = MAX_ENEMIES_ON_SCREEN;
   // stage1은 초반(0~30초) 일반1/2만 노출되어야 하므로 3~7은 시작 시점에 꺼둠
   if(stageNum === 1){
