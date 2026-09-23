@@ -202,6 +202,7 @@ let titleScreenActive = true;
 function dismissTitleScreen(){
   if(!titleScreenActive) return;
   titleScreenActive = false;
+  unlockAllAudio(); // 사용자 제스처 콜스택 안에서 모든 효과음을 미리 언락(첫 플레이부터 정상 재생되도록)
   startBgm();
   startStage(1); // 스테이지1 시작은 타이틀을 벗어나는 시점에 (타이틀 중 BGM/스폰 로직이 새어나가지 않도록)
 }
@@ -444,6 +445,7 @@ function update(currentTime){
     else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
     else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
     else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
+    else if(type==='normal8' && enabledTypes.normal8) spawnNormal8();
   }
 
   normal7SpawnTimer += dtMs;
@@ -505,6 +507,26 @@ function update(currentTime){
       if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
         fireFan3(e, '#ff9a3c', 67); // 3발 부채꼴 (기체색: 오렌지)
+      }
+    } else if(e.type==='normal8'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      }
+      // 바람개비처럼 계속 제자리 회전(시각 연출)
+      e.spinAngle = (e.spinAngle || 0) + NORMAL8_SPIN_SPEED * dt;
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.spinAngle);
+      const img8 = assets['normal8'];
+      if(img8 && img8.complete && img8.naturalWidth > 0){
+        ctx.drawImage(img8, -45, -45, 90, 90);
+      }
+      ctx.restore();
+      // 정지 후 나선형(spiral) 탄막 반복 발사
+      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireSpiral(e, '#ff4dd8', 190); // 마젠타/핑크 (기체 포인트 컬러와 일치)
       }
     } else if(e.type==='normal6'){
       // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
@@ -678,7 +700,7 @@ function update(currentTime){
   playerBullets = playerBullets.filter(b=> !b.hit);
   enemies = enemies.filter(e=> !e.dead);
 
-  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.y < H+40);
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1' || e.y < H+40);
   enemies = enemies.filter(e=> e.type !== 'normal4' || (e.x < W+80 && e.x > -80));
   enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
 

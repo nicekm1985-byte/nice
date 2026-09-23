@@ -15,7 +15,8 @@ const assetList = {
   normal3: 'assets/normal/enemy_normal3.png',
   normal4: 'assets/normal/enemy_normal4.png', // 일반5(역방향)도 동일 에셋 공유
   normal6: 'assets/normal/enemy_normal6.png',
-  normal7: 'assets/normal/enemy_normal7.png'
+  normal7: 'assets/normal/enemy_normal7.png',
+  normal8: 'assets/normal/enemy_normal8.png' // 바람개비 UFO, 나선형(spiral) 탄막
 };
 Object.entries(assetList).forEach(([key, src])=>{
   const img = new Image();
@@ -40,8 +41,8 @@ const bossFrames = ['assets/boss/boss1.png', 'assets/boss/boss1_longflame.png'].
 });
 
 // 폭발 스프라이트 시트 (기종별 폴더, 5프레임 개별 파일 — 코어 노란색→붉은색 파편형; boss1은 6프레임)
-const hitFrames = { normal1: [], normal2: [], normal3: [], normal4: [], normal6: [], normal7: [], boss1: [], player: [] };
-const hitFrameCounts = { normal1:5, normal2:5, normal3:5, normal4:5, normal6:5, normal7:5, boss1:6, player:5 };
+const hitFrames = { normal1: [], normal2: [], normal3: [], normal4: [], normal6: [], normal7: [], normal8: [], boss1: [], player: [] };
+const hitFrameCounts = { normal1:5, normal2:5, normal3:5, normal4:5, normal6:5, normal7:5, normal8:5, boss1:6, player:5 };
 Object.keys(hitFrames).forEach(type=>{
   const count = hitFrameCounts[type] || 5;
   for(let i=0;i<count;i++){
@@ -172,6 +173,26 @@ function toggleMute(){
   audioMuted = !audioMuted;
   registeredAudioElements.forEach(a => { a.muted = audioMuted; });
 }
+
+// ---- 오디오 언락 ----
+// 브라우저는 "사용자 제스처의 콜스택 내부"에서 호출된 재생만 최초에 허용하는 경우가 많음.
+// 타이틀 화면을 닫는 클릭/키/터치 이벤트 콜스택 안에서 등록된 모든 <audio>를 짧게
+// play()+pause()로 미리 재생 허용 상태로 만들어두면, 이후 게임 루프(requestAnimationFrame)
+// 안에서 효과음을 처음 재생할 때도(첫 플레이부터) 막히지 않고 정상적으로 소리가 남.
+let audioUnlocked = false;
+function unlockAllAudio(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  registeredAudioElements.forEach(a=>{
+    const wasMuted = a.muted;
+    a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
+    const p = a.play();
+    if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; }).catch(()=>{ a.muted = wasMuted; });
+    else { a.muted = wasMuted; }
+  });
+  const laserCtx = getLaserAudioCtx();
+  if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+}
 // M 키(물리 키코드 기준, 한/영 자판 상관없이 동작 — 두벌식 자판에서 M은 'ㅡ'로 표시됨)로 음소거 토글
 window.addEventListener('keydown', e=>{
   if(e.code === 'KeyM' || e.key === 'm' || e.key === 'M' || e.key === 'ㅡ'){
@@ -246,7 +267,7 @@ function playLaserSound(){
 // startBgm()을 최초 1회 호출합니다.
 const bgmAudio = registerAudio(new Audio('sound/main.mp3'));
 bgmAudio.loop = true;
-bgmAudio.volume = 0.05; // 레이저 발사음이 묻히지 않도록 더 낮춤
+bgmAudio.volume = 0.035; // 레이저 발사음이 묻히지 않도록 더 낮춤 (기존 0.05에서 30% 추가 감소)
 let bgmStarted = false;
 function startBgm(){
   if(bgmStarted) return;
@@ -469,7 +490,7 @@ function avoidBulletsForItem(it, dt){
 }
 
 // ---- 적 종류별 on/off 스위치 (일반1↔일반2, 일반4↔일반5는 짝으로 함께 제어) ----
-const enabledTypes = { normal1:true, normal2:true, normal3:true, normal4:true, normal5:true, normal6:true, normal7:true };
+const enabledTypes = { normal1:true, normal2:true, normal3:true, normal4:true, normal5:true, normal6:true, normal7:true, normal8:true };
 
 // ---- 공용 스폰 사이클/타이머 상수 ----
 let spawnTimer = 0; // ms 누적
@@ -477,7 +498,7 @@ let normal7SpawnTimer = 0; // ms 누적
 let normal7Alive = false; // 화면에 일반7이 존재하는지 여부 (동시 1기 운용)
 let normal7RespawnTimer = 0; // 0이면 대기 없음, >0이면 카운트다운 중 (ms)
 const NORMAL7_RESPAWN_DELAY = 1500; // 격파 후 재등장까지 지연 (ms)
-const spawnCycle = ['normal1','normal2','normal3','normal4','normal5','normal6']; // 일반7은 별도 타이머로 분리
+const spawnCycle = ['normal1','normal2','normal3','normal4','normal5','normal6','normal8']; // 일반7은 별도 타이머로 분리
 let cycleIdx = 0;
 const MAX_ENEMIES_ON_SCREEN = 10; // 화면 내 동시 존재 상한 (항상 8~10기 유지되도록 목표치와 함께 사용)
 const NORMAL_SPAWN_INTERVAL = 350; // 공용 사이클 spawn 체크 간격(ms) — 인원 미달 시 이 주기로 즉시 재시도해 격파 즉시 채움
@@ -589,6 +610,17 @@ function spawnNormal7(){ // 일반7: Stubby
   normal7Alive = true;
 }
 
+const NORMAL8_SPIN_SPEED = 2.4; // rad/s, 바람개비 자체 회전 속도(시각 연출)
+function spawnNormal8(){ // 일반8: 바람개비 UFO, 등장 후 정지해 나선형(spiral) 탄막 반복 발사
+  const margin = 90;
+  const x = margin + Math.random()*(W - margin*2);
+  enemies.push({
+    type:'normal8', x, y:-60, targetY: (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2), // Zone-2 또는 Zone-3 경계선 중 랜덤
+    settled:false, vy:150, hp:20, score:130, cool:0, fireRate:90,
+    spiralAngle: Math.random()*Math.PI*2, spawnTime: Date.now() // 회전 애니메이션 기준 시각
+  });
+}
+
 function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2.3배 크기)
   enemies.push({
     type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT, // Zone-1과 Zone-2 경계선에 도착 후 정지
@@ -668,6 +700,20 @@ function fireFanN(e, color, speed, bulletCount, spreadDeg){
   playEnemyShootSound();
 }
 
+// 일반8(바람개비 UFO): 매 발사마다 SPIRAL_COUNT_PER_SHOT방향(등간격) 동시 발사 + 기준각을
+// SPIRAL_STEP_DEG만큼 조금씩 회전시켜, 반복 발사가 쌓이면 나선형(spiral) 탄막 모양으로 퍼짐.
+const SPIRAL_COUNT_PER_SHOT = 3; // 한 번에 동시 발사하는 가닥 수(등간격)
+const SPIRAL_STEP_DEG = 9; // 발사마다 기준각을 이만큼 회전(나선이 벌어지는 정도)
+function fireSpiral(e, color, speed){
+  const baseAngle = e.spiralAngle || 0;
+  for(let i=0;i<SPIRAL_COUNT_PER_SHOT;i++){
+    const a = baseAngle + (Math.PI*2/SPIRAL_COUNT_PER_SHOT)*i;
+    bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:6,color});
+  }
+  e.spiralAngle = baseAngle + SPIRAL_STEP_DEG * Math.PI/180;
+  playEnemyShootSound();
+}
+
 // 보스1: 40도 부채꼴을 4갈래(각 10도)로 나눠 매 갈래 방향으로 1발씩 동시 발사.
 // 7번 반복 호출하면(0.5초 간격) 갈래당 7발, 총 28발이 40도 부채꼴을 채움.
 function fireBossQuadArc(e, color, speed){
@@ -680,7 +726,6 @@ function fireBossQuadArc(e, color, speed){
     playEnemyShootSound(); // 갈래마다 재생해 4발이 겹쳐 연속으로 울리게 함
   }
 }
-
 // 보스1 몸통 하단(주둥이) 실제 화면 좌표. drawBossSprite와 동일한 정렬 기준을 사용해
 // 레이저 시작점이 항상 주둥이 끝에서 나오도록 함.
 function getBossMuzzle(e){

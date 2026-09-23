@@ -72,6 +72,7 @@ function updateStage1Spawns(elapsedMs){
     enabledTypes.normal3 = true;
     enabledTypes.normal4 = true;
     enabledTypes.normal5 = true;
+    enabledTypes.normal8 = true; // 바람개비 UFO(나선형 탄막)도 30초부터 함께 등장
   }
   if(!stage1Phase3Applied && elapsedMs >= STAGE1_PHASE3_MS){
     stage1Phase3Applied = true;
@@ -92,7 +93,7 @@ const stageConfigs = {
 // ---- BGM 전환 (스테이지 진행용 main.mp3 <-> 보스전용 boss.mp3) ----
 const bossBgmAudio = registerAudio(new Audio('sound/boss.mp3'));
 bossBgmAudio.loop = true;
-bossBgmAudio.volume = 0.05; // 스테이지 BGM과 동일한 볼륨 기준
+bossBgmAudio.volume = 0.035; // 스테이지 BGM과 동일한 볼륨 기준 (기존 0.05에서 30% 추가 감소)
 
 function switchToBossBgm(){
   if(typeof bgmAudio !== 'undefined'){
@@ -112,7 +113,7 @@ function switchToStageBgm(){
 }
 
 // 보스 트리거 직전 STAGE_BGM_FADE_MS 구간 동안 스테이지 BGM 볼륨을 선형으로 줄임 (실제 시간 기반)
-const STAGE_BGM_BASE_VOLUME = 0.05;
+const STAGE_BGM_BASE_VOLUME = 0.035; // 기존 0.05에서 30% 추가 감소
 let stageBgmFading = false;
 function fadeOutStageBgm(remainingMs){
   if(typeof bgmAudio === 'undefined') return;
@@ -153,6 +154,7 @@ function startStage(stageNum){
     enabledTypes.normal5 = false;
     enabledTypes.normal6 = false;
     enabledTypes.normal7 = false;
+    enabledTypes.normal8 = false; // 바람개비 UFO는 30초(STAGE1_PHASE2_MS)부터 활성화
   }
   switchToStageBgm();
 }
