@@ -277,18 +277,28 @@ function startBgm(){
 
 // 적 피격(타격) 효과음: 짧은 시간에 여러 발이 동시에 맞을 수 있으므로, 하나의 Audio 인스턴스를
 // 재사용하지 않고 풀(pool)에서 순환하며 재생해 소리가 서로 끊기지 않고 겹쳐 들리도록 함.
+// 일반7은 몸체가 커서(Stubby) 격파음도 별도 풀(ehit_normal7.m4a)을 사용.
 const ENEMY_HIT_SOUND_VOLUME = 0.05;
 const ENEMY_HIT_SOUND_POOL_SIZE = 6;
 const enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/ehit.mp3'));
+  const a = registerAudio(new Audio('sound/ehit_new.m4a'));
   a.volume = ENEMY_HIT_SOUND_VOLUME;
   return a;
 });
 let enemyHitSoundIdx = 0;
+const normal7HitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
+  const a = registerAudio(new Audio('sound/ehit_normal7.m4a'));
+  a.volume = ENEMY_HIT_SOUND_VOLUME;
+  return a;
+});
+let normal7HitSoundIdx = 0;
 const ENEMY_HIT_SOUND_MAX_DURATION_MS = 1500; // ms, 원본 2.17초에서 1.5초로 잘라 재생
-function playEnemyHitSound(){
-  const a = enemyHitSoundPool[enemyHitSoundIdx];
-  enemyHitSoundIdx = (enemyHitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
+function playEnemyHitSound(enemyType){
+  const pool = enemyType === 'normal7' ? normal7HitSoundPool : enemyHitSoundPool;
+  const idx = enemyType === 'normal7' ? normal7HitSoundIdx : enemyHitSoundIdx;
+  const a = pool[idx];
+  if(enemyType === 'normal7') normal7HitSoundIdx = (normal7HitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
+  else enemyHitSoundIdx = (enemyHitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
   a.currentTime = 0;
   a.play().catch(()=>{});
   setTimeout(()=>{ a.pause(); }, ENEMY_HIT_SOUND_MAX_DURATION_MS);
@@ -312,7 +322,7 @@ function playPlayerHitSound(){
 
 // 보스 격파(폭발) 효과음: 보스는 동시에 여러 번 겹쳐 재생될 일이 거의 없어 단일 인스턴스로 충분.
 const BOSS_HIT_SOUND_VOLUME = 0.5;
-const bossHitAudio = registerAudio(new Audio('sound/bosshit.mp3'));
+const bossHitAudio = registerAudio(new Audio('sound/bosshit.m4a'));
 bossHitAudio.volume = BOSS_HIT_SOUND_VOLUME;
 function playBossHitSound(){
   bossHitAudio.currentTime = 0;
@@ -611,12 +621,14 @@ function spawnNormal7(){ // 일반7: Stubby
 }
 
 const NORMAL8_SPIN_SPEED = 2.4; // rad/s, 바람개비 자체 회전 속도(시각 연출)
-function spawnNormal8(){ // 일반8: 바람개비 UFO, 등장 후 정지해 나선형(spiral) 탄막 반복 발사
+const NORMAL8_STAY_MS = 5000; // ms, 정지 후 이 시간이 지나면 다시 위로 퇴장 시작
+const NORMAL8_RETREAT_SPEED = 150; // px/s, 퇴장 시 위로 올라가는 속도
+function spawnNormal8(){ // 일반8: 바람개비 UFO, 등장 후 정지해 나선형(spiral) 탄막 반복 발사 -> 5초 후 위로 퇴장
   const margin = 90;
   const x = margin + Math.random()*(W - margin*2);
   enemies.push({
     type:'normal8', x, y:-60, targetY: (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2), // Zone-2 또는 Zone-3 경계선 중 랜덤
-    settled:false, vy:150, hp:20, score:130, cool:0, fireRate:90,
+    settled:false, retreating:false, stayTimer:0, vy:150, hp:20, score:130, cool:0, fireRate:90,
     spiralAngle: Math.random()*Math.PI*2, spawnTime: Date.now() // 회전 애니메이션 기준 시각
   });
 }
