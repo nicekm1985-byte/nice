@@ -435,7 +435,7 @@ function update(currentTime){
   }
 
   spawnTimer += dtMs;
-  if(spawnTimer > NORMAL_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+  if(stagePhase === 'spawn' && spawnTimer > NORMAL_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
     spawnTimer = 0;
     const type = spawnCycle[cycleIdx % spawnCycle.length];
     cycleIdx++;
@@ -445,7 +445,13 @@ function update(currentTime){
     else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
     else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
     else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
-    else if(type==='normal8' && enabledTypes.normal8) spawnNormal8();
+  }
+
+  // spiral(일반8) 전용 스폰: 1기 등장 후 10초 뒤 다음 등장 (화면 내 최대 MAX_NORMAL8_ON_SCREEN대)
+  normal8SpawnTimer += dtMs;
+  if(enabledTypes.normal8 && normal8SpawnTimer > NORMAL8_SPAWN_INTERVAL && enemies.filter(en=>en.type==='normal8').length < MAX_NORMAL8_ON_SCREEN){
+    normal8SpawnTimer = 0;
+    spawnNormal8();
   }
 
   normal7SpawnTimer += dtMs;
@@ -512,6 +518,13 @@ function update(currentTime){
       if(!e.settled){
         e.y += e.vy * dt;
         if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else if(!e.retreating){
+        e.stayTimer += dtMs;
+        if(e.stayTimer >= NORMAL8_STAY_MS){
+          e.retreating = true; // 5초 체류 후 위로 퇴장 시작
+        }
+      } else {
+        e.y -= NORMAL8_RETREAT_SPEED * dt; // 위로 다시 들어감
       }
       // 바람개비처럼 계속 제자리 회전(시각 연출)
       e.spinAngle = (e.spinAngle || 0) + NORMAL8_SPIN_SPEED * dt;
@@ -523,10 +536,10 @@ function update(currentTime){
         ctx.drawImage(img8, -45, -45, 90, 90);
       }
       ctx.restore();
-      // 정지 후 나선형(spiral) 탄막 반복 발사
-      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+      // 정지 후 퇴장 시작 전까지 나선형(spiral) 탄막 반복 발사
+      if(e.settled && !e.retreating && e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireSpiral(e, '#ff4dd8', 190); // 마젠타/핑크 (기체 포인트 컬러와 일치)
+        fireSpiral(e, '#ff4dd8', 133); // 마젠타/핑크 (기체 포인트 컬러와 일치), 기존 190px/s에서 30% 감소
       }
     } else if(e.type==='normal6'){
       // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
@@ -676,18 +689,7 @@ function update(currentTime){
           addScore(e.score || 0);
           spawnExplosion(e.type, e.x, e.y);
           if(e.type === 'boss1'){ playBossHitSound(); stopBossLaserSound(); } else playEnemyHitSound(e.type); // 격파(폭발) 효과음
-          // 아이템은 일반7 격파 시에만 드랍, 드랍 쿨다운 중이 아니어야 하며, W는 이미 획득했으면 더 이상 드랍 안 됨
-          if(e.type === 'normal7' && itemDropCooldown <= 0 && items.length === 0){
-            // W는 획득 전에만 드랍 가능. W 확률(35%) 먼저 판정, 실패하면 R 확률(65%)로 판정.
-            const canDropW = !playerHasW;
-            let itemType = null;
-            if(canDropW && Math.random() < ITEM_DROP_CHANCE_W){
-              itemType = 'W';
-            } else if(Math.random() < ITEM_DROP_CHANCE_R){
-              itemType = 'R';
-            }
-            if(itemType) spawnItem(itemType, e.x, e.y);
-          }
+          // R/W 아이템은 격파와 완전히 무관하게 stage.js에서 시간 기반으로 독립 등장(정책 변경으로 이 블록 제거됨)
           if(e.type === 'normal7'){
             normal7Alive = false;
             normal7RespawnTimer = NORMAL7_RESPAWN_DELAY;
@@ -700,9 +702,26 @@ function update(currentTime){
   playerBullets = playerBullets.filter(b=> !b.hit);
   enemies = enemies.filter(e=> !e.dead);
 
-  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1' || e.y < H+40);
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || (e.type === 'normal8' ? e.y > -80 : e.y < H+40));
   enemies = enemies.filter(e=> e.type !== 'normal4' || (e.x < W+80 && e.x > -80));
   enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
+
+  // 아이템 낙하 + 획득 판정 (먼저 그려서, 아래에서 그리는 적 탄환이 그 위로 지나가도록 함)
+  items.forEach(it=>{
+    avoidBulletsForItem(it, dt);
+    it.y += it.vy * dt;
+    drawItem(it);
+    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
+      it.picked = true;
+      playItemPickupSound(); // 아이템 획득 효과음
+      if(it.type === 'R'){
+        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
+      } else if(it.type === 'W'){
+        playerHasW = true;
+      }
+    }
+  });
+  items = items.filter(it=> !it.picked && it.y < H+40);
 
   bullets.forEach(b=>{
     b.x += b.vx * dt; b.y += b.vy * dt;
@@ -719,25 +738,6 @@ function update(currentTime){
     }
   });
   bullets = bullets.filter(b=> !b.hitPlayer);
-
-  // 아이템 낙하 + 획득 판정
-  if(itemDropCooldown > 0) itemDropCooldown -= dtMs;
-  items.forEach(it=>{
-    avoidBulletsForItem(it, dt);
-    it.y += it.vy * dt;
-    drawItem(it);
-    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
-      it.picked = true;
-      playItemPickupSound(); // 아이템 획득 효과음
-      if(it.type === 'R'){
-        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
-      } else if(it.type === 'W'){
-        playerHasW = true;
-      }
-      itemDropCooldown = ITEM_DROP_COOLDOWN_MS; // 획득 시점부터 20초 후 다음 드랍
-    }
-  });
-  items = items.filter(it=> !it.picked && it.y < H+40);
 
   playerCool += dtMs;
   if(playerCool >= getPlayerFireRate()){
@@ -761,6 +761,7 @@ function update(currentTime){
   drawScoreHud();
   drawLifeHud();
   drawBombHud();
+  drawBossHpBar(enemies.find(e=>e.type==='boss1'));
 
   requestAnimationFrame(update);
 }
