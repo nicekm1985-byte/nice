@@ -119,7 +119,7 @@ const stageConfigs = {
 let bossBgmAudio = null;
 function getBossBgmAudio(){
   if(!bossBgmAudio){
-    bossBgmAudio = registerAudio(new Audio('sound/boss.mp3'));
+    bossBgmAudio = registerAudio(new Audio('sound/boss.m4a'));
     bossBgmAudio.loop = true;
     bossBgmAudio.volume = 0.035; // 스테이지 BGM과 동일한 볼륨 기준 (기존 0.05에서 30% 추가 감소)
   }

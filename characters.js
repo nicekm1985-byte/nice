@@ -197,6 +197,25 @@ function unlockAllAudio(){
   const laserCtx = getLaserAudioCtx();
   if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
 }
+
+// ---- 페이지 이탈 시 전체 오디오 정지 ----
+// 탭 전환, 다른 앱으로 전환, 최소화 등으로 페이지가 백그라운드로 가면(visibilitychange)
+// BGM/효과음 풀/보스 레이저 루프/Web Audio(레이저 합성음)까지 전부 즉시 정지시킴.
+// 복귀 시에는 자동으로 다시 재생하지 않고, 사용자가 재상호작용(클릭 등)할 때 정상 흐름으로 이어짐.
+function pauseAllAudioForPageHidden(){
+  registeredAudioElements.forEach(a=>{ a.pause(); });
+  if(bossLaserSoundPlaying){
+    bossLaserSoundPlaying = false;
+    bossLaserAudio.pause();
+  }
+  const laserCtx = getLaserAudioCtx();
+  if(laserCtx && laserCtx.state === 'running') laserCtx.suspend().catch(()=>{});
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden) pauseAllAudioForPageHidden();
+});
+window.addEventListener('blur', pauseAllAudioForPageHidden);
+window.addEventListener('pagehide', pauseAllAudioForPageHidden);
 // M 키(물리 키코드 기준, 한/영 자판 상관없이 동작 — 두벌식 자판에서 M은 'ㅡ'로 표시됨)로 음소거 토글
 window.addEventListener('keydown', e=>{
   if(e.code === 'KeyM' || e.key === 'm' || e.key === 'M' || e.key === 'ㅡ'){
@@ -275,7 +294,7 @@ let bgmAudio = null;
 let bgmStarted = false;
 function getBgmAudio(){
   if(!bgmAudio){
-    bgmAudio = registerAudio(new Audio('sound/main.mp3'));
+    bgmAudio = registerAudio(new Audio('sound/main.m4a'));
     bgmAudio.loop = true;
     bgmAudio.volume = 0.035; // 레이저 발사음이 묻히지 않도록 더 낮춤 (기존 0.05에서 30% 추가 감소)
   }
@@ -289,17 +308,17 @@ function startBgm(){
 
 // 적 피격(타격) 효과음: 짧은 시간에 여러 발이 동시에 맞을 수 있으므로, 하나의 Audio 인스턴스를
 // 재사용하지 않고 풀(pool)에서 순환하며 재생해 소리가 서로 끊기지 않고 겹쳐 들리도록 함.
-// 일반7은 몸체가 커서(Stubby) 격파음도 별도 풀(ehit_normal7.m4a)을 사용.
+// 일반7 포함 모든 적 격파음이 game_explosion8.mp3로 통일됨(과거엔 일반7만 별도 사운드 사용).
 const ENEMY_HIT_SOUND_VOLUME = 0.05;
 const ENEMY_HIT_SOUND_POOL_SIZE = 6;
 const enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/ehit_new.m4a'));
+  const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
   a.volume = ENEMY_HIT_SOUND_VOLUME;
   return a;
 });
 let enemyHitSoundIdx = 0;
 const normal7HitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/ehit_normal7.m4a'));
+  const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
   a.volume = ENEMY_HIT_SOUND_VOLUME;
   return a;
 });
@@ -387,7 +406,7 @@ function playSpiralShootSound(){
 // 보스 레이저 발사음: 레이저가 실제로 나가는 동안 계속 루프 재생, 발사가 끝나면 정지.
 // (충전 단계에는 재생하지 않고, drawBossLaser()가 실제로 호출되는 구간에서만 재생)
 const BOSS_LASER_SOUND_VOLUME = 0.25;
-const bossLaserAudio = registerAudio(new Audio('sound/bosslaser.mp3'));
+const bossLaserAudio = registerAudio(new Audio('sound/laser.m4a'));
 bossLaserAudio.loop = true;
 bossLaserAudio.volume = BOSS_LASER_SOUND_VOLUME;
 let bossLaserSoundPlaying = false;
