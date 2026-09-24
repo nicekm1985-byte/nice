@@ -121,7 +121,7 @@ function getBossBgmAudio(){
   if(!bossBgmAudio){
     bossBgmAudio = registerAudio(new Audio('sound/boss.m4a'));
     bossBgmAudio.loop = true;
-    bossBgmAudio.volume = 0.0105; // 전체 볼륨 30%로 조정
+    bossBgmAudio.volume = 0.028; // BGM 볼륨 소폭 추가 상향
   }
   return bossBgmAudio;
 }
@@ -137,12 +137,15 @@ function switchToStageBgm(){
   if(bossBgmAudio) bossBgmAudio.pause();
   const audio = getBgmAudio();
   audio.volume = STAGE_BGM_BASE_VOLUME;
-  audio.currentTime = 0;
-  audio.play().catch(()=>{});
+  if(audio.paused){
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  }
+  // 이미 재생 중이면(발사 연출 중 startBgm()으로 이미 흐르고 있는 경우) 끊지 않고 그대로 이어서 재생
 }
 
 // 보스 트리거 직전 STAGE_BGM_FADE_MS 구간 동안 스테이지 BGM 볼륨을 선형으로 줄임 (실제 시간 기반)
-const STAGE_BGM_BASE_VOLUME = 0.0105; // 전체 볼륨 30%로 조정
+const STAGE_BGM_BASE_VOLUME = 0.028; // BGM 볼륨 소폭 추가 상향
 let stageBgmFading = false;
 function fadeOutStageBgm(remainingMs){
   if(!bgmAudio) return;

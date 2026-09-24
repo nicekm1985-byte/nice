@@ -140,7 +140,7 @@ function updateGameOverScreen(dtMs){
 
 // 폭탄 사용: 화면의 적 탄환을 전부 제거 + 화이트 플래시. TODO: 폭탄 아이템 드랍 시스템(획득 방식) 추후 설계
 function useBomb(){
-  if(continueScreenActive || gameOverActive || playerBombs <= 0) return;
+  if(launchSequenceActive || continueScreenActive || gameOverActive || playerBombs <= 0) return;
   playerBombs--;
   bullets = [];
   screenFlash = SCREEN_FLASH_DURATION;
@@ -187,22 +187,40 @@ let audioUnlocked = false;
 function unlockAllAudio(){
   if(audioUnlocked) return;
   audioUnlocked = true;
-  registeredAudioElements.forEach(a=>{
-    const wasMuted = a.muted;
-    a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
-    const p = a.play();
-    if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; }).catch(()=>{ a.muted = wasMuted; });
-    else { a.muted = wasMuted; }
-  });
+  // 등록된 모든 오디오(효과음 풀 20여개 + BGM 2개)를 한 프레임에 몰아서 재생시키면 브라우저가
+  // 디코더 파이프라인을 순간적으로 여러 개 동시에 열고 닫으며 "틱틱"거리는 잡음이 나는 경우가 있어,
+  // 프레임당 몇 개씩만 순차적으로 언락하도록 나눠서 부하를 분산시킴.
+  const queue = registeredAudioElements.slice();
+  const BATCH_SIZE = 3;
+  function unlockBatch(){
+    const batch = queue.splice(0, BATCH_SIZE);
+    if(batch.length === 0) return;
+    batch.forEach(a=>{
+      const wasMuted = a.muted;
+      const wasVolume = a.volume;
+      a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
+      a.volume = 0; // muted 적용이 브라우저에서 비동기적으로 지연되는 경우(Safari 등)에도 확실히 무음이 되도록 volume도 함께 0으로
+      const p = a.play();
+      if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; a.volume = wasVolume; }).catch(()=>{ a.muted = wasMuted; a.volume = wasVolume; });
+      else { a.muted = wasMuted; a.volume = wasVolume; }
+    });
+    if(queue.length > 0) requestAnimationFrame(unlockBatch);
+  }
+  unlockBatch();
   const laserCtx = getLaserAudioCtx();
   if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
 }
 
-// ---- 페이지 이탈 시 전체 오디오 정지 ----
+// ---- 페이지 이탈 시 전체 오디오 정지 / 복귀 시 BGM 재개 ----
 // 탭 전환, 다른 앱으로 전환, 최소화 등으로 페이지가 백그라운드로 가면(visibilitychange)
 // BGM/효과음 풀/보스 레이저 루프/Web Audio(레이저 합성음)까지 전부 즉시 정지시킴.
-// 복귀 시에는 자동으로 다시 재생하지 않고, 사용자가 재상호작용(클릭 등)할 때 정상 흐름으로 이어짐.
+// 복귀 시에는 효과음/레이저 합성음은 다음 재생 시점에 자연히 다시 흐르지만, BGM(스테이지/보스)은
+// loop 재생 중이던 트랙이므로 명시적으로 이어서 재생해야 끊긴 채로 멈춰있지 않음.
+let wasBgmPlayingBeforeHidden = false;
+let wasBossBgmPlayingBeforeHidden = false;
 function pauseAllAudioForPageHidden(){
+  wasBgmPlayingBeforeHidden = !!(bgmAudio && !bgmAudio.paused);
+  wasBossBgmPlayingBeforeHidden = !!(bossBgmAudio && !bossBgmAudio.paused);
   registeredAudioElements.forEach(a=>{ a.pause(); });
   if(bossLaserSoundPlaying){
     bossLaserSoundPlaying = false;
@@ -211,11 +229,25 @@ function pauseAllAudioForPageHidden(){
   const laserCtx = getLaserAudioCtx();
   if(laserCtx && laserCtx.state === 'running') laserCtx.suspend().catch(()=>{});
 }
+// 페이지가 다시 보이면 재생 중이던 BGM만 그 자리에서 이어서 재생(효과음은 재개할 필요 없음).
+function resumeBgmAfterPageVisible(){
+  if(wasBgmPlayingBeforeHidden && bgmAudio){
+    bgmAudio.play().catch(()=>{});
+  }
+  if(wasBossBgmPlayingBeforeHidden && bossBgmAudio){
+    bossBgmAudio.play().catch(()=>{});
+  }
+  const laserCtx = getLaserAudioCtx();
+  if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+}
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden) pauseAllAudioForPageHidden();
+  else resumeBgmAfterPageVisible();
 });
 window.addEventListener('blur', pauseAllAudioForPageHidden);
 window.addEventListener('pagehide', pauseAllAudioForPageHidden);
+window.addEventListener('focus', resumeBgmAfterPageVisible);
+window.addEventListener('pageshow', resumeBgmAfterPageVisible);
 // M 키(물리 키코드 기준, 한/영 자판 상관없이 동작 — 두벌식 자판에서 M은 'ㅡ'로 표시됨)로 음소거 토글
 window.addEventListener('keydown', e=>{
   if(e.code === 'KeyM' || e.key === 'm' || e.key === 'M' || e.key === 'ㅡ'){
@@ -237,7 +269,7 @@ function getLaserAudioCtx(){
   return laserAudioCtx;
 }
 
-const LASER_SOUND_BASE_VOLUME = 0.028125; // 기본 볼륨(0~1), 기존 0.01875에서 50% 증가
+const LASER_SOUND_BASE_VOLUME = 0.0084375; // 기본 볼륨(0~1), 전체 볼륨 30%로 조정
 
 // 발사 주기가 기본값(PLAYER_FIRE_RATE)보다 짧아진 비율만큼 톤의 길이/피치도 함께 스케일.
 // 매번 동일한 음(높은 음 -> 낮은 음으로 짧게 미끄러지는 "핑")이며, 매 발사마다 완전히
@@ -296,20 +328,37 @@ function getBgmAudio(){
   if(!bgmAudio){
     bgmAudio = registerAudio(new Audio('sound/main.m4a'));
     bgmAudio.loop = true;
-    bgmAudio.volume = 0.035; // 레이저 발사음이 묻히지 않도록 더 낮춤 (기존 0.05에서 30% 추가 감소)
+    bgmAudio.volume = 0.028; // BGM 볼륨 소폭 추가 상향
   }
   return bgmAudio;
 }
 function startBgm(){
   if(bgmStarted) return;
   bgmStarted = true;
-  getBgmAudio().play().catch(()=>{ bgmStarted = false; }); // 자동재생 차단 시 다음 상호작용에서 재시도
+  const audio = getBgmAudio();
+  const targetVolume = audio.volume;
+  audio.volume = 0; // 재생 시작 시 볼륨 0에서 시작해 서서히 올려 초반 타격음이 갑작스럽게 튀지 않도록 함
+  audio.play().then(()=>{
+    fadeInAudio(audio, targetVolume, 1000); // 1초간 페이드인
+  }).catch(()=>{ bgmStarted = false; audio.volume = targetVolume; });
+}
+
+// 오디오 엘리먼트의 볼륨을 0에서 target까지 실제 시간 기반으로 서서히 올리는 범용 페이드인 유틸.
+// setInterval을 쓰지 않고 requestAnimationFrame으로 진행해 탭 성능에 맞춰 자연스럽게 보간됨.
+function fadeInAudio(audio, targetVolume, durationMs){
+  const startTime = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - startTime) / durationMs);
+    audio.volume = targetVolume * t;
+    if(t < 1 && !audio.paused) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 // 적 피격(타격) 효과음: 짧은 시간에 여러 발이 동시에 맞을 수 있으므로, 하나의 Audio 인스턴스를
 // 재사용하지 않고 풀(pool)에서 순환하며 재생해 소리가 서로 끊기지 않고 겹쳐 들리도록 함.
 // 일반7 포함 모든 적 격파음이 game_explosion8.mp3로 통일됨(과거엔 일반7만 별도 사운드 사용).
-const ENEMY_HIT_SOUND_VOLUME = 0.05;
+const ENEMY_HIT_SOUND_VOLUME = 0.0075; // 적 폭발음, 기존 대비 50% 추가 감소
 const ENEMY_HIT_SOUND_POOL_SIZE = 6;
 const enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
   const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
@@ -336,7 +385,7 @@ function playEnemyHitSound(enemyType){
 }
 
 // 주인공 피격 효과음: 격파음과 마찬가지로 풀(pool) 방식으로 재생 (연속 피격 시 겹쳐도 끊기지 않도록)
-const PLAYER_HIT_SOUND_VOLUME = 0.05;
+const PLAYER_HIT_SOUND_VOLUME = 0.015;
 const PLAYER_HIT_SOUND_POOL_SIZE = 3;
 const playerHitSoundPool = Array.from({length: PLAYER_HIT_SOUND_POOL_SIZE}, ()=>{
   const a = registerAudio(new Audio('sound/ihit.mp3'));
@@ -352,7 +401,7 @@ function playPlayerHitSound(){
 }
 
 // 보스 격파(폭발) 효과음: 보스는 동시에 여러 번 겹쳐 재생될 일이 거의 없어 단일 인스턴스로 충분.
-const BOSS_HIT_SOUND_VOLUME = 0.5;
+const BOSS_HIT_SOUND_VOLUME = 0.15;
 const bossHitAudio = registerAudio(new Audio('sound/bosshit.m4a'));
 bossHitAudio.volume = BOSS_HIT_SOUND_VOLUME;
 function playBossHitSound(){
@@ -361,7 +410,7 @@ function playBossHitSound(){
 }
 
 // 아이템 획득 효과음: R/W 아이템을 먹는 순간 재생. 단일 인스턴스로 충분(연속 획득이 겹칠 일 거의 없음).
-const ITEM_PICKUP_SOUND_VOLUME = 0.05;
+const ITEM_PICKUP_SOUND_VOLUME = 0.015;
 const itemPickupAudio = registerAudio(new Audio('sound/item.mp3'));
 itemPickupAudio.volume = ITEM_PICKUP_SOUND_VOLUME;
 function playItemPickupSound(){
@@ -380,11 +429,7 @@ const enemyShootSoundPool = Array.from({length: ENEMY_SHOOT_SOUND_POOL_SIZE}, ()
 });
 let enemyShootSoundIdx = 0;
 function playEnemyShootSound(volume){
-  const a = enemyShootSoundPool[enemyShootSoundIdx];
-  enemyShootSoundIdx = (enemyShootSoundIdx + 1) % ENEMY_SHOOT_SOUND_POOL_SIZE;
-  a.volume = volume !== undefined ? volume : ENEMY_SHOOT_SOUND_VOLUME;
-  a.currentTime = 0;
-  a.play().catch(()=>{});
+  return; // 적 탄소리 제거
 }
 
 // 일반8(spiral) 전용 발사음: 총소리 느낌(짧은 크랙+바디), 다른 적 탄소리 풀과 분리.
@@ -405,7 +450,7 @@ function playSpiralShootSound(){
 
 // 보스 레이저 발사음: 레이저가 실제로 나가는 동안 계속 루프 재생, 발사가 끝나면 정지.
 // (충전 단계에는 재생하지 않고, drawBossLaser()가 실제로 호출되는 구간에서만 재생)
-const BOSS_LASER_SOUND_VOLUME = 0.25;
+const BOSS_LASER_SOUND_VOLUME = 0.075;
 const bossLaserAudio = registerAudio(new Audio('sound/laser.m4a'));
 bossLaserAudio.loop = true;
 bossLaserAudio.volume = BOSS_LASER_SOUND_VOLUME;
@@ -455,22 +500,145 @@ function updatePlayerInvincibility(dtMs){
   }
 }
 
+// ---- 발사 시퀀스 (스테이지 시작 시 발사대에서 이탈하는 연출) ----
+// sit(스테이션 링 중심에 살짝 축소된 채 대기) -> grow(제자리에서 2초간 크기 100%로 확대) ->
+// hold(0.5초 정지) -> dash(화면 중앙까지 힘차게 전진, 스테이션은 같은 진행률로 동시에 아래로 퇴장) ->
+// descend(기본 위치로 천천히 하강 복귀) -> title(제자리로 돌아온 순간 STAGE N 표시) ->
+// startStage() 호출 + 조작 잠금 해제
+let launchSequenceActive = false;
+let launchPhase = 'sit';
+let launchElapsed = 0;
+let launchStageNum = 1;
+const LAUNCH_SIT_MS = 900;
+const LAUNCH_GROW_MS = 2000; // 제자리에서 크기 100%로 확대되는 시간 2초
+const LAUNCH_HOLD_MS = 500; // 확대 완료 후 정지 0.5초
+const LAUNCH_DASH_MS = 700; // 화면 중앙까지 힘차게 전진하는 시간 (스테이션도 같은 진행률로 퇴장)
+const LAUNCH_DESCEND_MS = 2000; // 기본 위치로 하강 복귀하는 시간(2초로 연장)
+const LAUNCH_TITLE_MS = 1300;
+const LAUNCH_SIT_SCALE = 0.5; // 발사대 위에 앉아있을 때 축소 비율(50%에서 확대 시작)
+let launchCenterY = 0; // dash 종료 시점의 화면 중앙 y (계산해서 고정)
+let launchBaseY = 0; // 발사 시작 시 스테이션 링 중심 y (sit/grow/hold 동안의 고정 위치)
+
+function startLaunchSequence(stageNum){
+  launchStageNum = stageNum || 1;
+  launchSequenceActive = true;
+  launchPhase = 'sit';
+  launchElapsed = 0;
+  // 기체를 스테이션 발사 링 중심에 정확히 배치 (station.png 링 좌표 분석값, bg.js)
+  player.x = (typeof STATION_RING_X !== 'undefined' && STATION_RING_X) ? STATION_RING_X : W/2;
+  player.y = (typeof STATION_RING_Y !== 'undefined' && STATION_RING_Y) ? STATION_RING_Y : H - 80;
+  launchBaseY = player.y;
+  launchCenterY = H/2;
+}
+
+// 매 프레임: 먼저 현재 phase의 렌더 상태를 계산해서 그리고, 그 다음에 시간 진행에 따라 phase를 전이시킴.
+// (전이 시점에 한 프레임이라도 잘못된 상태로 그려지면 화면이 번쩍이듯 보이는 문제가 있어 순서를 분리함)
+function updateLaunchSequence(dtMs){
+  if(!launchSequenceActive) return;
+  launchElapsed += dtMs;
+  if(launchPhase === 'sit' && launchElapsed >= LAUNCH_SIT_MS){
+    launchPhase = 'grow'; launchElapsed = 0;
+  } else if(launchPhase === 'grow' && launchElapsed >= LAUNCH_GROW_MS){
+    launchPhase = 'hold'; launchElapsed = 0;
+  } else if(launchPhase === 'hold' && launchElapsed >= LAUNCH_HOLD_MS){
+    launchPhase = 'dash'; launchElapsed = 0;
+  } else if(launchPhase === 'dash' && launchElapsed >= LAUNCH_DASH_MS){
+    launchPhase = 'descend'; launchElapsed = 0;
+  } else if(launchPhase === 'descend' && launchElapsed >= LAUNCH_DESCEND_MS){
+    launchPhase = 'title'; launchElapsed = 0;
+  } else if(launchPhase === 'title' && launchElapsed >= LAUNCH_TITLE_MS){
+    launchSequenceActive = false;
+    // 시퀀스 중 화면에 그려지던 위치(H-80, 즉 기본 플레이 위치)를 실제 player.y에도 반영해
+    // 조작 가능 시점에 기체가 순간이동하지 않고 그 자리에서 그대로 이어지도록 함.
+    player.y = H - 80;
+    unlockAllAudio(); // 효과음 언락은 실제 게임 시작 직전(스테이션 화면에서는 BGM만 흐르도록)으로 미룸
+    startStage(launchStageNum); // 여기서부터 실제 게임 시작(적 스폰 활성화) + 조작 잠금 해제
+  }
+}
+
+// 현재 프레임의 렌더 상태(기체 y좌표, 크기 배율, 그림자 배율, 스테이션 퇴장 비율) 계산
+function getLaunchRenderState(){
+  if(launchPhase === 'sit'){
+    return { y: launchBaseY, scale: LAUNCH_SIT_SCALE, shadowScale: LAUNCH_SIT_SCALE, stationOffset: 0 };
+  }
+  if(launchPhase === 'grow'){
+    const t = Math.min(1, launchElapsed / LAUNCH_GROW_MS);
+    const ease = 1 - Math.pow(1 - t, 2); // ease-out: 서서히 가속 후 감속
+    const scale = LAUNCH_SIT_SCALE + (1 - LAUNCH_SIT_SCALE) * ease;
+    return {
+      y: launchBaseY, // 제자리에서 확대만
+      scale,
+      shadowScale: scale, // 기체가 커지는 만큼 그림자도 함께 커짐
+      stationOffset: 0
+    };
+  }
+  if(launchPhase === 'hold'){
+    return { y: launchBaseY, scale: 1, shadowScale: 1, stationOffset: 0 }; // 정지
+  }
+  if(launchPhase === 'dash'){
+    const t = Math.min(1, launchElapsed / LAUNCH_DASH_MS);
+    const ease = 1 - Math.pow(1 - t, 2); // ease-out: 힘차게 튀어나가듯 전진
+    return {
+      y: launchBaseY + (launchCenterY - launchBaseY) * ease,
+      scale: 1,
+      shadowScale: 1,
+      stationOffset: ease // 기체가 전진하는 진행률과 동일하게 스테이션도 아래로 퇴장
+    };
+  }
+  if(launchPhase === 'descend'){
+    const t = Math.min(1, launchElapsed / LAUNCH_DESCEND_MS);
+    const ease = 1 - Math.pow(1 - t, 3); // 더 천천히 감속하며 착지 (기존보다 느리게 복귀)
+    return {
+      y: launchCenterY + ((H - 80) - launchCenterY) * ease,
+      scale: 1,
+      shadowScale: 1,
+      stationOffset: 1 // 스테이션은 이미 화면 밖으로 사라진 상태 유지
+    };
+  }
+  // 'title' 단계: 기본 위치에 정지, 스테이션은 화면 밖
+  return { y: H - 80, scale: 1, shadowScale: 1, stationOffset: 1 };
+}
+
 // 주인공 기체를 그림. 무적 중이면 실제 시간 기반으로 깜빡이고(짝수 구간만 그림),
 // 떠오름 애니메이션 진행 중이면 아래쪽 오프셋을 더해 화면 아래에서 위로 올라오는 것처럼 보이게 함.
+// 발사 시퀀스 진행 중에는 크기를 별도로 계산해 발사대 이탈 연출을 그림.
 function drawPlayerWithEffects(){
   if(playerInvincible){
     const blinkOn = Math.floor(Date.now() / PLAYER_BLINK_INTERVAL_MS) % 2 === 0;
     if(!blinkOn) return; // 깜빡임의 꺼짐 구간에는 그리지 않음
   }
   let renderY = player.y;
-  if(playerRespawnTimer > 0){
+  let renderScale = 1;
+  let shadowScale = 0; // 0이면 그림자 안 그림 (발사 시퀀스의 sit/grow/hold 단계에서만 사용)
+  if(launchSequenceActive){
+    const st = getLaunchRenderState();
+    renderY = st.y;
+    renderScale = st.scale;
+    // dash 단계부터는 기체가 스테이션을 벗어나 날아가는 연출이라 그림자를 그리지 않음
+    if(launchPhase === 'sit' || launchPhase === 'grow' || launchPhase === 'hold'){
+      shadowScale = st.shadowScale;
+    }
+  } else if(playerRespawnTimer > 0){
     const t = 1 - (playerRespawnTimer / PLAYER_RESPAWN_RISE_DURATION); // 0(시작) -> 1(완료)
     const ease = 1 - Math.pow(1 - t, 2); // ease-out: 빠르게 올라오다 서서히 감속
     renderY = player.y + PLAYER_RESPAWN_RISE_DISTANCE * (1 - ease);
   }
   const img = playerFrames[Math.floor(Date.now() / PLAYER_FRAME_INTERVAL_MS) % playerFrames.length];
   if(!img || !img.complete || img.naturalWidth === 0) return;
-  const size = 96;
+  const size = 96 * renderScale;
+  if(shadowScale > 0){
+    // 기체 스프라이트 자체의 실루엣을 그대로 검게 칠해 그림자로 사용(타원 대체) - 기체 바로 아래 깔리도록
+    // 세로로 살짝 눌러(squish) 바닥에 깔린 느낌을 내고, 살짝 아래로만 오프셋.
+    const shadowSize = size;
+    const shadowOffsetY = 10 * shadowScale;
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    ctx.filter = 'brightness(0)'; // 투명도(알파)는 유지한 채 보이는 픽셀만 검게 칠함 -> 기체와 동일한 실루엣
+    ctx.translate(player.x, renderY + shadowOffsetY);
+    ctx.scale(1, 0.55); // 바닥에 깔린 것처럼 세로로 압축
+    ctx.drawImage(img, -shadowSize/2, -shadowSize/2, shadowSize, shadowSize);
+    ctx.restore();
+  }
   ctx.drawImage(img, player.x - size/2, renderY - size/2, size, size);
 }
 
@@ -488,8 +656,8 @@ const bombIconImg = new Image();
 bombIconImg.src = 'assets/optimized/item_bomb_sm.png';
 let items = []; // {type:'R'|'W', x, y, vy}
 const ITEM_FALL_SPEED = 90; // px/s
-const ITEM_SIZE_R = 112; // px (기존 56px에서 2배)
-const ITEM_SIZE_W = 144; // px, R보다 더 크게 (기존 72px에서 2배)
+const ITEM_SIZE_R = 90; // px (20% 축소, 기존 112px)
+const ITEM_SIZE_W = 115; // px, R보다 더 크게 (20% 축소, 기존 144px)
 let playerRStack = 0; // 0~4, R 아이템 스택 개수 (스택당 탄속 +35% + 발사 주기 단축, 최대 4개면 +140%)
 let playerHasW = false; // W 아이템 획득 여부 (3방향 스프레드), 획득하면 더 이상 W 아이템 드랍 안 됨
 // R/W는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_R_SPAWN_*, STAGE1_W_SPAWN_* 참고)
@@ -790,7 +958,7 @@ function fireBossQuadArc(e, color, speed){
   for(let i=0;i<arcCount;i++){
     const a = base - totalSpread/2 + totalSpread*(i/(arcCount-1));
     bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:7,color});
-    playEnemyShootSound(); // 갈래마다 재생해 4발이 겹쳐 연속으로 울리게 함
+    playSpiralShootSound(); // 보스 일반탄도 spiral(일반8)과 동일한 총소리로, 갈래마다 재생해 연속으로 잘 들리게 함
   }
 }
 // 보스1 몸통 하단(주둥이) 실제 화면 좌표. drawBossSprite와 동일한 정렬 기준을 사용해

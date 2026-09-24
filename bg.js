@@ -107,6 +107,27 @@ function drawBgLayer3(dt){
   ctx.restore();
 }
 
+// ---- Launch Station: 스테이지 시작 시 화면 하단에 배치되는 발사 스테이션 ----
+const stationImg = new Image();
+stationImg.src = 'assets/bg/station.png';
+let stationDrawW = 0, stationDrawH = 0;
+// 스테이션 이미지 내 발사 링(원)의 중심 비율 (이미지 기준 x=233/480, y=177.5/351 픽셀 분석값)
+const STATION_RING_X_RATIO = 233/480;
+const STATION_RING_Y_RATIO = 177.5/351;
+let STATION_RING_X = 0, STATION_RING_Y = 0; // 캔버스 좌표 기준 실제 링 중심(발사 시퀀스에서 기체 기준점으로 사용)
+stationImg.onload = () => {
+  stationDrawW = W;
+  stationDrawH = stationImg.naturalHeight * (W / stationImg.naturalWidth);
+  STATION_RING_X = stationDrawW * STATION_RING_X_RATIO;
+  STATION_RING_Y = (H - stationDrawH) + stationDrawH * STATION_RING_Y_RATIO;
+};
+// offsetRatio: 0(제자리)~1(화면 완전히 밖으로) 비율, 스테이션이 아래로 빠져나가는 연출에 사용
+function drawStation(offsetRatio){
+  if(!stationDrawH) return;
+  const offsetPx = (offsetRatio||0) * (stationDrawH + 20); // 완전히 화면 밖으로 나가도록 여유(20px) 포함
+  ctx.drawImage(stationImg, 0, H - stationDrawH + offsetPx, stationDrawW, stationDrawH);
+}
+
 // 세 레이어를 아래→위 순서로 한 번에 그리는 통합 함수 (메인 게임 루프에서 이것만 호출)
 function drawStarBackground(dt){
   drawBgLayer1(dt);
