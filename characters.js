@@ -9,14 +9,14 @@
 // ---- 에셋 로딩 ----
 const assets = {};
 const assetList = {
-  player: 'assets/player/player.png',
-  normal1: 'assets/normal/enemy_normal1.png',
-  normal2: 'assets/normal/enemy_normal2.png',
-  normal3: 'assets/normal/enemy_normal3.png',
-  normal4: 'assets/normal/enemy_normal4.png', // 일반5(역방향)도 동일 에셋 공유
-  normal6: 'assets/normal/enemy_normal6.png',
-  normal7: 'assets/normal/enemy_normal7.png',
-  normal8: 'assets/normal/enemy_normal8.png' // 바람개비 UFO, 나선형(spiral) 탄막
+  player: 'assets/optimized/player_sm.png',
+  normal1: 'assets/optimized/normal1_sm.png',
+  normal2: 'assets/optimized/normal2_sm.png',
+  normal3: 'assets/optimized/normal3_sm.png',
+  normal4: 'assets/optimized/normal4_sm.png', // 일반5(역방향)도 동일 에셋 공유
+  normal6: 'assets/optimized/normal6_sm.png',
+  normal7: 'assets/optimized/normal7_sm.png',
+  normal8: 'assets/optimized/normal8_sm.png' // 바람개비 UFO, 나선형(spiral) 탄막
 };
 Object.entries(assetList).forEach(([key, src])=>{
   const img = new Image();
@@ -26,7 +26,7 @@ Object.entries(assetList).forEach(([key, src])=>{
 
 // 주인공 기체 애니메이션: player.png/player2.png 2프레임을 실제 시간 기반으로 교차 표시
 // (보스1 불꽃 애니메이션과 동일한 방식, 프레임 카운트가 아닌 Date.now() 기준)
-const playerFrames = ['assets/player/player.png', 'assets/player/player2.png'].map(src=>{
+const playerFrames = ['assets/optimized/player_sm.png', 'assets/optimized/player2_sm.png'].map(src=>{
   const img = new Image();
   img.src = src;
   return img;
@@ -34,7 +34,7 @@ const playerFrames = ['assets/player/player.png', 'assets/player/player2.png'].m
 const PLAYER_FRAME_INTERVAL_MS = 80; // ms, 프레임 전환 간격
 
 // 보스1 (외계 문명 중형 기체, 불꽃 길이가 다른 2프레임을 교차 표시해 애니메이션 효과)
-const bossFrames = ['assets/boss/boss1.png', 'assets/boss/boss1_longflame.png'].map(src=>{
+const bossFrames = ['assets/optimized/boss1_sm.png', 'assets/optimized/boss1_longflame_sm.png'].map(src=>{
   const img = new Image();
   img.src = src;
   return img;
@@ -162,9 +162,13 @@ function getPlayerFireRate(){
 // ---- 전역 음소거 시스템 ----
 // 모든 mp3 Audio 인스턴스를 이 레지스트리에 등록해두고, 토글 시 한 번에 muted 처리.
 // Web Audio(레이저 합성음)는 별도 오실레이터 기반이라 playLaserSound() 진입부에서 게이트.
+// 성능 최적화: 등록 시 preload='metadata'로 낮춰 스크립트 로드 즉시 전체 파일을
+// 다운로드/디코딩하지 않도록 함(효과음 20여 개가 한꺼번에 프리로드되며 시작 지점에서
+// 버벅이는 문제의 원인이었음). 실제 재생 시점에 필요한 만큼만 로드됨.
 let audioMuted = false;
 const registeredAudioElements = [];
 function registerAudio(a){
+  a.preload = 'metadata';
   a.muted = audioMuted;
   registeredAudioElements.push(a);
   return a;
@@ -265,14 +269,22 @@ function playLaserSound(){
 // ---- 배경음악(BGM): 스테이지 진행 중 반복 재생. 브라우저 자동재생 정책상 사용자
 // 상호작용(첫 마우스/터치 입력) 이후에만 재생 가능하므로, 메인 HTML의 입력 리스너에서
 // startBgm()을 최초 1회 호출합니다.
-const bgmAudio = registerAudio(new Audio('sound/main.mp3'));
-bgmAudio.loop = true;
-bgmAudio.volume = 0.035; // 레이저 발사음이 묻히지 않도록 더 낮춤 (기존 0.05에서 30% 추가 감소)
+// 성능 최적화: main.mp3(4.6MB)는 스크립트 로드 시점이 아니라 최초 재생 시점에 생성해서
+// 게임 시작 직후 몰리는 초기 네트워크/디코딩 부담을 줄임(지연 생성).
+let bgmAudio = null;
 let bgmStarted = false;
+function getBgmAudio(){
+  if(!bgmAudio){
+    bgmAudio = registerAudio(new Audio('sound/main.mp3'));
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.035; // 레이저 발사음이 묻히지 않도록 더 낮춤 (기존 0.05에서 30% 추가 감소)
+  }
+  return bgmAudio;
+}
 function startBgm(){
   if(bgmStarted) return;
   bgmStarted = true;
-  bgmAudio.play().catch(()=>{ bgmStarted = false; }); // 자동재생 차단 시 다음 상호작용에서 재시도
+  getBgmAudio().play().catch(()=>{ bgmStarted = false; }); // 자동재생 차단 시 다음 상호작용에서 재시도
 }
 
 // 적 피격(타격) 효과음: 짧은 시간에 여러 발이 동시에 맞을 수 있으므로, 하나의 Audio 인스턴스를
@@ -343,7 +355,7 @@ function playItemPickupSound(){
 const ENEMY_SHOOT_SOUND_VOLUME = 0.06; // 기존 0.2에서 70% 감소
 const ENEMY_SHOOT_SOUND_POOL_SIZE = 6;
 const enemyShootSoundPool = Array.from({length: ENEMY_SHOOT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/eshoot.mp3'));
+  const a = registerAudio(new Audio('sound/eshoot.m4a'));
   a.volume = ENEMY_SHOOT_SOUND_VOLUME;
   return a;
 });
@@ -352,6 +364,22 @@ function playEnemyShootSound(volume){
   const a = enemyShootSoundPool[enemyShootSoundIdx];
   enemyShootSoundIdx = (enemyShootSoundIdx + 1) % ENEMY_SHOOT_SOUND_POOL_SIZE;
   a.volume = volume !== undefined ? volume : ENEMY_SHOOT_SOUND_VOLUME;
+  a.currentTime = 0;
+  a.play().catch(()=>{});
+}
+
+// 일반8(spiral) 전용 발사음: 총소리 느낌(짧은 크랙+바디), 다른 적 탄소리 풀과 분리.
+const SPIRAL_SHOOT_SOUND_VOLUME = 0.06;
+const SPIRAL_SHOOT_SOUND_POOL_SIZE = 6;
+const spiralShootSoundPool = Array.from({length: SPIRAL_SHOOT_SOUND_POOL_SIZE}, ()=>{
+  const a = registerAudio(new Audio('sound/spiral_gunshot.m4a'));
+  a.volume = SPIRAL_SHOOT_SOUND_VOLUME;
+  return a;
+});
+let spiralShootSoundIdx = 0;
+function playSpiralShootSound(){
+  const a = spiralShootSoundPool[spiralShootSoundIdx];
+  spiralShootSoundIdx = (spiralShootSoundIdx + 1) % SPIRAL_SHOOT_SOUND_POOL_SIZE;
   a.currentTime = 0;
   a.play().catch(()=>{});
 }
@@ -428,7 +456,7 @@ function drawPlayerWithEffects(){
 }
 
 // ---- 아이템 (R: 탄속 강화 스택형, W: 3방향 스프레드) ----
-const itemAssets = { R: 'assets/items/item_r.png', W: 'assets/items/item_w.png' };
+const itemAssets = { R: 'assets/optimized/item_r_sm.png', W: 'assets/optimized/item_w_sm.png' };
 const itemImgs = {};
 Object.entries(itemAssets).forEach(([key, src])=>{
   const img = new Image();
@@ -438,17 +466,14 @@ Object.entries(itemAssets).forEach(([key, src])=>{
 
 // 폭탄 HUD 아이콘 스프라이트 (item_r/item_w와 동일 프레임 틀, 색상만 붉은 계열로 변경 + 알파벳 B)
 const bombIconImg = new Image();
-bombIconImg.src = 'assets/items/item_bomb.png';
+bombIconImg.src = 'assets/optimized/item_bomb_sm.png';
 let items = []; // {type:'R'|'W', x, y, vy}
 const ITEM_FALL_SPEED = 90; // px/s
-const ITEM_SIZE_R = 56; // px
-const ITEM_SIZE_W = 72; // px, R보다 더 크게
+const ITEM_SIZE_R = 112; // px (기존 56px에서 2배)
+const ITEM_SIZE_W = 144; // px, R보다 더 크게 (기존 72px에서 2배)
 let playerRStack = 0; // 0~4, R 아이템 스택 개수 (스택당 탄속 +35% + 발사 주기 단축, 최대 4개면 +140%)
 let playerHasW = false; // W 아이템 획득 여부 (3방향 스프레드), 획득하면 더 이상 W 아이템 드랍 안 됨
-let itemDropCooldown = 0; // ms, >0이면 드랍 대기 중 (일반7 격파해도 드랍 안 됨)
-const ITEM_DROP_COOLDOWN_MS = 20000; // 아이템 하나 획득 후 다음 드랍까지 20초
-const ITEM_DROP_CHANCE_R = 0.5; // 일반7 격파 시 R 드랍 확률 50%
-const ITEM_DROP_CHANCE_W = 0.5; // 일반7 격파 시 W 드랍 확률 50%
+// R/W는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_R_SPAWN_*, STAGE1_W_SPAWN_* 참고)
 
 function spawnItem(type, x, y){
   // 등장 시 근처 적 탄환과 겹치지 않도록 x좌표를 살짝 밀어냄 (겹침 회피)
@@ -508,11 +533,13 @@ let normal7SpawnTimer = 0; // ms 누적
 let normal7Alive = false; // 화면에 일반7이 존재하는지 여부 (동시 1기 운용)
 let normal7RespawnTimer = 0; // 0이면 대기 없음, >0이면 카운트다운 중 (ms)
 const NORMAL7_RESPAWN_DELAY = 1500; // 격파 후 재등장까지 지연 (ms)
-const spawnCycle = ['normal1','normal2','normal3','normal4','normal5','normal6','normal8']; // 일반7은 별도 타이머로 분리
+const spawnCycle = ['normal1','normal2','normal3','normal4','normal5','normal6']; // 일반7/8은 별도 타이머로 분리
 let cycleIdx = 0;
 const MAX_ENEMIES_ON_SCREEN = 10; // 화면 내 동시 존재 상한 (항상 8~10기 유지되도록 목표치와 함께 사용)
 const NORMAL_SPAWN_INTERVAL = 350; // 공용 사이클 spawn 체크 간격(ms) — 인원 미달 시 이 주기로 즉시 재시도해 격파 즉시 채움
 const NORMAL7_SPAWN_INTERVAL = 4000;  // 일반7 spawn 간격(ms)
+let normal8SpawnTimer = 0; // ms 누적, spiral(일반8) 전용 스폰 타이머
+const NORMAL8_SPAWN_INTERVAL = 10000; // spiral 등장 간격: 1기 등장 후 10초 뒤 다음 등장
 
 // ---- 스폰 함수 (모든 이동속도는 px/s, 모든 타이머는 ms 기준) ----
 
@@ -623,20 +650,29 @@ function spawnNormal7(){ // 일반7: Stubby
 const NORMAL8_SPIN_SPEED = 2.4; // rad/s, 바람개비 자체 회전 속도(시각 연출)
 const NORMAL8_STAY_MS = 5000; // ms, 정지 후 이 시간이 지나면 다시 위로 퇴장 시작
 const NORMAL8_RETREAT_SPEED = 150; // px/s, 퇴장 시 위로 올라가는 속도
-function spawnNormal8(){ // 일반8: 바람개비 UFO, 등장 후 정지해 나선형(spiral) 탄막 반복 발사 -> 5초 후 위로 퇴장
+function spawnNormal8(opts){ // 일반8: 바람개비 UFO, 등장 후 정지해 나선형(spiral) 탄막 반복 발사 -> 5초 후 위로 퇴장
   const margin = 90;
-  const x = margin + Math.random()*(W - margin*2);
+  const x = (opts && opts.x !== undefined) ? opts.x : margin + Math.random()*(W - margin*2);
+  const targetY = (opts && opts.targetY !== undefined) ? opts.targetY : (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2);
   enemies.push({
-    type:'normal8', x, y:-60, targetY: (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2), // Zone-2 또는 Zone-3 경계선 중 랜덤
+    type:'normal8', x, y:-60, targetY, // Zone-2 또는 Zone-3 경계선 중 랜덤(옵션으로 지정 가능)
     settled:false, retreating:false, stayTimer:0, vy:150, hp:20, score:130, cool:0, fireRate:90,
     spiralAngle: Math.random()*Math.PI*2, spawnTime: Date.now() // 회전 애니메이션 기준 시각
   });
 }
 
+// 보스전 전용: spiral 2기를 보스(x:W/2, Zone-1/2 경계)와 겹치지 않도록 좌우로 벌려 동시 배치.
+// 좌측 기체는 Zone-3(더 아래), 우측 기체는 Zone-2로 높이도 다르게 둬서 겹침을 추가로 방지.
+const BOSS_SPIRAL_PAIR_OFFSET_X = 130; // px, 화면 중앙(보스 위치)에서 좌우로 벌리는 거리
+function spawnBossSpiralPair(){
+  spawnNormal8({ x: W/2 - BOSS_SPIRAL_PAIR_OFFSET_X, targetY: ZONE_HEIGHT * 2 });
+  spawnNormal8({ x: W/2 + BOSS_SPIRAL_PAIR_OFFSET_X, targetY: ZONE_HEIGHT });
+}
+
 function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2.3배 크기)
   enemies.push({
     type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT, // Zone-1과 Zone-2 경계선에 도착 후 정지
-    settled:false, vy:80, hp:140, score:2000,
+    settled:false, vy:80, hp:280, maxHp:280, score:2000, // HP 기존 140에서 2배로 증가
     size:240, cool:0,
     // 좌우 이동↔정지 발사 상태 머신 (등장 완료 후부터 동작)
     moveState:'move', moveTargetX: null, moveSpeed:180, // px/s, 좌우 이동 속도
@@ -723,7 +759,7 @@ function fireSpiral(e, color, speed){
     bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:6,color});
   }
   e.spiralAngle = baseAngle + SPIRAL_STEP_DEG * Math.PI/180;
-  playEnemyShootSound();
+  playSpiralShootSound();
 }
 
 // 보스1: 40도 부채꼴을 4갈래(각 10도)로 나눠 매 갈래 방향으로 1발씩 동시 발사.
@@ -827,16 +863,24 @@ function fireLaser(){
 
 function drawLaser(b){
   // 진행 방향(vx,vy)의 반대쪽으로 꼬리를 그림. 방향 벡터가 없으면(각도 미지정) 기본 수직 위쪽 발사로 간주.
+  // 성능 최적화: shadowBlur(매 프레임 고비용 블러 재계산)를 쓰지 않고, 굵고 반투명한 외곽 스트로크를
+  // 겹쳐 그려 비슷한 네온 글로우 느낌을 훨씬 저렴하게 재현.
   const speed = Math.hypot(b.vx || 0, b.vy) || 1;
   const dirX = (b.vx || 0) / speed, dirY = b.vy / speed;
   const tailX = b.x - dirX * b.len;
   const tailY = b.y - dirY * b.len;
   ctx.save();
-  ctx.strokeStyle = '#7dfcff';
-  ctx.shadowColor = '#00e6ff';
-  ctx.shadowBlur = 14;
-  ctx.lineWidth = 4;
   ctx.lineCap = 'round';
+  // 글로우(넓고 옅은 레이어)
+  ctx.strokeStyle = 'rgba(0,230,255,0.35)';
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(tailX, tailY);
+  ctx.stroke();
+  // 메인 컬러 라인
+  ctx.strokeStyle = '#7dfcff';
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
   ctx.lineTo(tailX, tailY);
@@ -844,7 +888,6 @@ function drawLaser(b){
   // 밝은 코어 라인
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 1.6;
-  ctx.shadowBlur = 4;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
   ctx.lineTo(tailX, tailY);
@@ -1135,7 +1178,7 @@ const R_STACK_ICON_SIZE = 28; // px
 const R_STACK_GAP = 0; // px, 아이콘 사이 간격
 // item_r.png 원본(1024x1024)은 실제 도안이 중앙 약 60%만 차지하고 사방에 투명 여백이 있어
 // 그대로 그리면 0px 간격으로도 벌어져 보임. 실제 콘텐츠 바운딩박스만 잘라서 그림.
-const R_ICON_CROP = { sx: 205, sy: 206, sw: 614, sh: 602 };
+const R_ICON_CROP = { sx: 32, sy: 32, sw: 96, sh: 94 }; // item_r_sm.png(160px 기준)로 축소된 크롭 좌표
 
 function drawRapidHud(){
   if(playerRStack <= 0) return;
@@ -1199,6 +1242,61 @@ function drawBombHud(){
   for(let i=0;i<playerBombs;i++){
     const x = leftEdge + i * (BOMB_ICON_SIZE + LIFE_ICON_GAP);
     ctx.drawImage(bombIconImg, x, y, BOMB_ICON_SIZE, BOMB_ICON_SIZE);
+  }
+  ctx.restore();
+}
+
+// ---- 보스 HP바 ----
+// SCORE 숫자 블록 바로 아래, 화면 중앙에 "BOSS" 라벨 + 가로 선으로 남은 체력을 표시.
+// 전체 바는 반투명하게, 남은 비율만큼은 시안 네온 선, 깎인(잃은) 부분은 붉은색 선으로 그려
+// 한눈에 피해량을 알 수 있게 함.
+const BOSS_HP_BAR_Y = 66; // px, SCORE 숫자(y:52) 바로 아래
+const BOSS_HP_BAR_MARGIN = 60; // px, 좌우 여백(라벨 폭 확보)
+const BOSS_HP_BAR_LABEL = 'BOSS';
+const BOSS_HP_BAR_ALPHA = 0.55; // 바 전체 반투명도
+
+function drawBossHpBar(boss){
+  if(!boss || boss.type !== 'boss1') return;
+  const maxHp = boss.maxHp || boss.hp || 1;
+  const ratio = Math.max(0, Math.min(1, boss.hp / maxHp));
+
+  const barLeft = BOSS_HP_BAR_MARGIN;
+  const barRight = W - 10;
+  const barWidth = barRight - barLeft;
+  const filledWidth = barWidth * ratio; // 남은 체력에 해당하는 길이
+
+  ctx.save();
+  ctx.globalAlpha = BOSS_HP_BAR_ALPHA;
+  // 라벨
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ff5a5a';
+  ctx.shadowColor = '#ff5a5a';
+  ctx.shadowBlur = 4;
+  ctx.fillText(BOSS_HP_BAR_LABEL, 10, BOSS_HP_BAR_Y);
+
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+
+  // 깎인 부분(잃은 체력): 붉은색으로 전체 바 위에 먼저 그림(바탕)
+  ctx.strokeStyle = 'rgba(255,60,60,0.7)';
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.moveTo(barLeft, BOSS_HP_BAR_Y);
+  ctx.lineTo(barRight, BOSS_HP_BAR_Y);
+  ctx.stroke();
+
+  // 남은 체력: 시안 네온 선으로 왼쪽부터 채움
+  if(filledWidth > 0){
+    ctx.beginPath();
+    ctx.strokeStyle = '#7dfcff';
+    ctx.shadowColor = '#00e6ff';
+    ctx.shadowBlur = 6;
+    ctx.moveTo(barLeft, BOSS_HP_BAR_Y);
+    ctx.lineTo(barLeft + filledWidth, BOSS_HP_BAR_Y);
+    ctx.stroke();
   }
   ctx.restore();
 }

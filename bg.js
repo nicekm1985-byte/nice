@@ -6,11 +6,11 @@
 
 // ---- Layer 1: 행성 배경 (가장 아래, 유일 이미지, 반복 없이 한 번만 천천히 위로 스크롤) ----
 const bgLayer1Img = new Image();
-bgLayer1Img.src = 'assets/bg/layer1_planet_v6.png';
+bgLayer1Img.src = 'assets/bg/layer1_planet_v6_lowres.png'; // 240x633로 해상도를 낮춰 저장(화면 표시 크기는 그대로, 도트감 있지만 디코드/용량 부담 대폭 감소)
 let bgLayer1DrawW = 0, bgLayer1DrawH = 0;
 let bgLayer1OffsetY = 0; // 이미지 내부에서 화면 상단에 대응하는 y좌표 (px, 이미지 기준)
 const BG_LAYER1_START_RATIO = 1; // 게임 시작 시 보여줄 지점(이미지 상단 기준 비율) — 1이면 이미지 맨 아래부터 시작
-const BG_LAYER1_SCROLL_DURATION = 180; // 초(3분)에 걸쳐 시작 지점에서 이미지 맨 위(0)까지 위로 스크롤
+const BG_LAYER1_SCROLL_DURATION = 120; // 초(2분)에 걸쳐 시작 지점에서 이미지 맨 위(0)까지 위로 스크롤
 let bgLayer1Speed = 0; // px/s, onload 시 duration에 맞춰 계산
 
 bgLayer1Img.onload = () => {
@@ -30,7 +30,7 @@ function drawBgLayer1(dt){
 }
 
 // ---- Layer 2: 밝은 별 (드문드문, 중간 속도) ----
-const BG_LAYER2_SPEED = 200; // px/s
+const BG_LAYER2_SPEED = 400; // px/s (기존 200에서 2배)
 const BG_LAYER2_COUNT = 18; // 드문드문
 let bgLayer2Stars = [];
 for(let i=0;i<BG_LAYER2_COUNT;i++){
@@ -51,9 +51,13 @@ function drawBgLayer2(dt){
       s.x = Math.random()*W;
     }
     const twinkle = 0.8 + 0.2 * Math.sin(Date.now()/300 + s.twinkleSeed);
+    // 성능 최적화: shadowBlur 대신 반투명 글로우 원 + 밝은 코어 원 2겹으로 저비용 발광 표현
+    ctx.globalAlpha = twinkle * 0.5;
+    ctx.fillStyle = '#e6f7ff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r * 2.2, 0, Math.PI*2);
+    ctx.fill();
     ctx.globalAlpha = twinkle;
-    ctx.shadowColor = '#e6f7ff';
-    ctx.shadowBlur = 10;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
@@ -63,7 +67,7 @@ function drawBgLayer2(dt){
 }
 
 // ---- Layer 3: 작은 파편 조각 (가장 위, 매우 빠르게) ----
-const BG_LAYER3_SPEED = 800; // px/s, 매우 빠름
+const BG_LAYER3_SPEED = 1600; // px/s, 매우 빠름 (기존 800에서 2배)
 const BG_LAYER3_COUNT = 14;
 let bgLayer3Debris = [];
 for(let i=0;i<BG_LAYER3_COUNT;i++){
