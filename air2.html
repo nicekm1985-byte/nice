@@ -98,7 +98,7 @@
   <div class="gameOverText">GAME OVER</div>
 </div>
 <div id="stageClearOverlay">
-  <div class="stageClearText">TEST STAGE CLEAR!</div>
+  <div class="stageClearText" id="stageClearText">STAGE 1 CLEAR</div>
   <button id="goTitleBtn">GO TITLE</button>
 </div>
 <button id="pauseBtn">M</button>
@@ -468,7 +468,11 @@ function update(currentTime){
   updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
 
   if(stageClearScreenActive){
-    document.getElementById('stageClearOverlay').style.display = 'flex';
+    const overlay = document.getElementById('stageClearOverlay');
+    if(overlay.style.display !== 'flex'){
+      document.getElementById('stageClearText').textContent = 'STAGE ' + currentStage + ' CLEAR';
+      overlay.style.display = 'flex';
+    }
     requestAnimationFrame(update);
     return; // 클리어 화면 표시 중에는 게임 로직/그리기 정지, GO TITLE 클릭 대기
   }
