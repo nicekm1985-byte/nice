@@ -202,10 +202,9 @@ let titleScreenActive = true;
 function dismissTitleScreen(){
   if(!titleScreenActive) return;
   titleScreenActive = false;
-  startBgm(); // BGM은 사용자 제스처 콜스택 안에서 곧바로 재생 시작(자체적으로 재생 허용 상태가 됨)
+  unlockAllAudio(); // 사용자 제스처 콜스택 안에서 모든 효과음을 미리 언락(첫 플레이부터 정상 재생되도록)
+  startBgm(); // BGM은 재생 시작 시점에 자체적으로 페이드인 처리됨
   startLaunchSequence(); // 발사 연출(발사대에서 이탈) 재생 후, 그 끝에서 startStage(1) 호출됨
-  // 효과음 언락(unlockAllAudio)은 여기서 하지 않고 실제 게임 시작(기체가 제자리로 복귀하는 시점,
-  // updateLaunchSequence 내부에서 startStage 호출 직전)으로 미룸 — 스테이션 화면에서는 BGM만 흐르게 함
 }
 
 // 타이틀 로고: 그라디언트 + 네온 글로우 + 살짝 흔들리는 하이라이트로 "세련된" 느낌.
