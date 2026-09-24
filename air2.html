@@ -26,7 +26,7 @@
   }
   #continueOverlay .continueText{
     font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
-    font-size:34px;color:#ff5a5a;text-shadow:0 0 18px #ff2d2d, 0 0 4px #ffffff;
+    font-size:34px;color:#8fe3ff;text-shadow:0 0 18px #5ad1ff, 0 0 4px #ffffff;
     letter-spacing:2px;
   }
   #continueOverlay .continueCountdown{
@@ -202,9 +202,10 @@ let titleScreenActive = true;
 function dismissTitleScreen(){
   if(!titleScreenActive) return;
   titleScreenActive = false;
-  unlockAllAudio(); // 사용자 제스처 콜스택 안에서 모든 효과음을 미리 언락(첫 플레이부터 정상 재생되도록)
-  startBgm();
-  startStage(1); // 스테이지1 시작은 타이틀을 벗어나는 시점에 (타이틀 중 BGM/스폰 로직이 새어나가지 않도록)
+  startBgm(); // BGM은 사용자 제스처 콜스택 안에서 곧바로 재생 시작(자체적으로 재생 허용 상태가 됨)
+  startLaunchSequence(); // 발사 연출(발사대에서 이탈) 재생 후, 그 끝에서 startStage(1) 호출됨
+  // 효과음 언락(unlockAllAudio)은 여기서 하지 않고 실제 게임 시작(기체가 제자리로 복귀하는 시점,
+  // updateLaunchSequence 내부에서 startStage 호출 직전)으로 미룸 — 스테이션 화면에서는 BGM만 흐르게 함
 }
 
 // 타이틀 로고: 그라디언트 + 네온 글로우 + 살짝 흔들리는 하이라이트로 "세련된" 느낌.
@@ -273,6 +274,29 @@ function drawTitleScreen(){
   drawPushAnyKey();
 }
 
+// "STAGE N" 타이틀: 발사 시퀀스 마지막(title 단계)에 화면 중앙에 표시, 타이틀 로고와 동일한 폰트/글로우 스타일.
+function drawStageTitle(stageNum){
+  const cx = W/2, cy = H/2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 54px "Trebuchet MS", Arial, sans-serif';
+  const glowPulse = 0.6 + 0.4 * Math.sin(Date.now()/300);
+  ctx.shadowColor = '#5ad1ff';
+  ctx.shadowBlur = 34 * glowPulse;
+  const grad = ctx.createLinearGradient(cx, cy - 34, cx, cy + 34);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, '#8fe3ff');
+  grad.addColorStop(1, '#2f7dff');
+  ctx.fillStyle = grad;
+  ctx.fillText('STAGE ' + stageNum, cx, cy);
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('STAGE ' + stageNum, cx, cy);
+  ctx.restore();
+}
+
 window.addEventListener('keydown', ()=> dismissTitleScreen());
 canvas.addEventListener('mousedown', ()=> dismissTitleScreen());
 canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
@@ -294,28 +318,34 @@ function returnToTitleAfterGameOver(){
   window.location.reload();
 }
 
+// 조작 입력은 발사 시퀀스가 끝난 뒤에만(launchSequenceActive === false) 반영되도록 가드.
 canvas.addEventListener('mousemove', e=>{
+  if(launchSequenceActive) return;
   const p = toCanvasXY(e.clientX, e.clientY);
   player.x = p.x; player.y = p.y;
 });
 canvas.addEventListener('touchstart', e=>{
   e.preventDefault();
+  if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchStart(t.clientX, t.clientY);
 }, {passive:false});
 canvas.addEventListener('touchmove', e=>{
   e.preventDefault();
+  if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchMove(t.clientX, t.clientY);
 }, {passive:false});
 // 캔버스 아래 여백(touchPad)에서도 동일한 상대 이동 방식 적용
 touchPad.addEventListener('touchstart', e=>{
   e.preventDefault();
+  if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchStart(t.clientX, t.clientY);
 }, {passive:false});
 touchPad.addEventListener('touchmove', e=>{
   e.preventDefault();
+  if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchMove(t.clientX, t.clientY);
 }, {passive:false});
@@ -425,6 +455,16 @@ function update(currentTime){
   }
 
   drawStarBackground(dt);
+
+  if(launchSequenceActive){
+    const launchState = getLaunchRenderState(); // 먼저 현재 상태로 그린 뒤에 시간 진행(전이) 처리 → 번쩍임 방지
+    drawStation(launchState.stationOffset);
+    drawPlayerWithEffects();
+    if(launchPhase === 'title') drawStageTitle(launchStageNum);
+    updateLaunchSequence(dtMs);
+    requestAnimationFrame(update);
+    return; // 발사 연출 중에는 스폰/적 로직 완전히 정지
+  }
 
   updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
 
