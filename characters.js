@@ -187,28 +187,21 @@ let audioUnlocked = false;
 function unlockAllAudio(){
   if(audioUnlocked) return;
   audioUnlocked = true;
-  // 등록된 모든 오디오(효과음 풀 20여개 + BGM 2개)를 한 프레임에 몰아서 재생시키면 브라우저가
-  // 디코더 파이프라인을 순간적으로 여러 개 동시에 열고 닫으며 "틱틱"거리는 잡음이 나는 경우가 있어,
-  // 프레임당 몇 개씩만 순차적으로 언락하도록 나눠서 부하를 분산시킴.
-  const queue = registeredAudioElements.slice();
-  const BATCH_SIZE = 3;
-  function unlockBatch(){
-    const batch = queue.splice(0, BATCH_SIZE);
-    if(batch.length === 0) return;
-    batch.forEach(a=>{
-      const wasMuted = a.muted;
-      const wasVolume = a.volume;
-      a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
-      a.volume = 0; // muted 적용이 브라우저에서 비동기적으로 지연되는 경우(Safari 등)에도 확실히 무음이 되도록 volume도 함께 0으로
-      const p = a.play();
-      if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; a.volume = wasVolume; }).catch(()=>{ a.muted = wasMuted; a.volume = wasVolume; });
-      else { a.muted = wasMuted; a.volume = wasVolume; }
-    });
-    if(queue.length > 0) requestAnimationFrame(unlockBatch);
-  }
-  unlockBatch();
+  // 사용자 제스처 콜스택 안에서 전부 동기적으로 처리해야 브라우저의 자동재생 잠금 해제가 정상 동작함.
+  // (프레임 단위로 나눠서 처리하면 일부가 제스처 콜스택 밖에서 실행되어 muted 동기화가 깨지고,
+  //  효과음이 짧게 새어나오는(예: 폭발음이 시작과 동시에 들리는) 문제가 있어 한 번에 처리로 되돌림)
+  registeredAudioElements.forEach(a=>{
+    const wasMuted = a.muted;
+    const wasVolume = a.volume;
+    a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
+    a.volume = 0; // muted 적용이 브라우저에서 비동기적으로 지연되는 경우(Safari 등)에도 확실히 무음이 되도록 volume도 함께 0으로
+    const p = a.play();
+    if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; a.volume = wasVolume; }).catch(()=>{ a.muted = wasMuted; a.volume = wasVolume; });
+    else { a.muted = wasMuted; a.volume = wasVolume; }
+  });
   const laserCtx = getLaserAudioCtx();
   if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+  loadEnemyHitSoundBuffer(); // 적 폭발음(Web Audio 버퍼)도 이 시점에 미리 디코드해둬서 첫 격파 때 스킵되지 않도록 함
 }
 
 // ---- 페이지 이탈 시 전체 오디오 정지 / 복귀 시 BGM 재개 ----
@@ -355,33 +348,66 @@ function fadeInAudio(audio, targetVolume, durationMs){
   requestAnimationFrame(step);
 }
 
-// 적 피격(타격) 효과음: 짧은 시간에 여러 발이 동시에 맞을 수 있으므로, 하나의 Audio 인스턴스를
-// 재사용하지 않고 풀(pool)에서 순환하며 재생해 소리가 서로 끊기지 않고 겹쳐 들리도록 함.
+// 적 피격(타격) 효과음: Web Audio API(AudioBuffer)로 미리 디코드해두고 즉발 재생.
+// (이전엔 <audio> 풀 방식으로 재생했는데, 모바일에서 play() 호출 후 실제 소리가 나오기까지
+//  지연이 커서 폭발 이펙트와 싱크가 어긋나는 문제가 있었음. 레이저 합성음과 동일한 AudioContext를
+//  재사용해 디코드된 PCM 버퍼를 매번 새 AudioBufferSourceNode로 재생하면 지연 없이 즉시 소리가 남.)
+// 단, file://로 로컬에서 직접 열어 테스트하는 경우 fetch()가 CORS 정책에 막혀 버퍼 로딩이 실패할 수 있어,
+// 그 경우엔 기존 <audio> 풀 방식으로 자동 전환(fallback)해 어떤 환경에서도 소리가 나도록 함.
 // 일반7 포함 모든 적 격파음이 game_explosion8.mp3로 통일됨(과거엔 일반7만 별도 사운드 사용).
 const ENEMY_HIT_SOUND_VOLUME = 0.0075; // 적 폭발음, 기존 대비 50% 추가 감소
-const ENEMY_HIT_SOUND_POOL_SIZE = 6;
-const enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
-  a.volume = ENEMY_HIT_SOUND_VOLUME;
-  return a;
-});
-let enemyHitSoundIdx = 0;
-const normal7HitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
-  a.volume = ENEMY_HIT_SOUND_VOLUME;
-  return a;
-});
-let normal7HitSoundIdx = 0;
 const ENEMY_HIT_SOUND_MAX_DURATION_MS = 1500; // ms, 원본 2.17초에서 1.5초로 잘라 재생
+let enemyHitSoundBuffer = null; // 디코드 완료된 AudioBuffer(공용, normal7도 동일 버퍼 재사용)
+let enemyHitSoundBufferLoading = false;
+let enemyHitSoundUseFallback = false; // true면 Web Audio 로딩 실패 -> <audio> 풀 방식 사용
+const ENEMY_HIT_SOUND_POOL_SIZE = 6;
+let enemyHitSoundPool = null; // fallback 시에만 생성(지연 생성)
+let enemyHitSoundIdx = 0;
+function getEnemyHitSoundPool(){
+  if(!enemyHitSoundPool){
+    enemyHitSoundPool = Array.from({length: ENEMY_HIT_SOUND_POOL_SIZE}, ()=>{
+      const a = registerAudio(new Audio('sound/game_explosion8.mp3'));
+      a.volume = ENEMY_HIT_SOUND_VOLUME;
+      return a;
+    });
+  }
+  return enemyHitSoundPool;
+}
+function loadEnemyHitSoundBuffer(){
+  if(enemyHitSoundBuffer || enemyHitSoundBufferLoading || enemyHitSoundUseFallback) return;
+  enemyHitSoundBufferLoading = true;
+  const audioCtx = getLaserAudioCtx();
+  if(!audioCtx) { enemyHitSoundBufferLoading = false; enemyHitSoundUseFallback = true; return; }
+  fetch('sound/game_explosion8.mp3')
+    .then(res => res.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => { enemyHitSoundBuffer = decoded; })
+    .catch(()=>{ enemyHitSoundUseFallback = true; }) // fetch 실패(file:// 환경 등) -> 이후 <audio> 풀로 재생
+    .finally(()=>{ enemyHitSoundBufferLoading = false; });
+}
 function playEnemyHitSound(enemyType){
-  const pool = enemyType === 'normal7' ? normal7HitSoundPool : enemyHitSoundPool;
-  const idx = enemyType === 'normal7' ? normal7HitSoundIdx : enemyHitSoundIdx;
-  const a = pool[idx];
-  if(enemyType === 'normal7') normal7HitSoundIdx = (normal7HitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
-  else enemyHitSoundIdx = (enemyHitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
-  a.currentTime = 0;
-  a.play().catch(()=>{});
-  setTimeout(()=>{ a.pause(); }, ENEMY_HIT_SOUND_MAX_DURATION_MS);
+  if(audioMuted) return;
+  if(enemyHitSoundUseFallback){
+    const pool = getEnemyHitSoundPool();
+    const a = pool[enemyHitSoundIdx];
+    enemyHitSoundIdx = (enemyHitSoundIdx + 1) % ENEMY_HIT_SOUND_POOL_SIZE;
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+    setTimeout(()=>{ a.pause(); }, ENEMY_HIT_SOUND_MAX_DURATION_MS);
+    return;
+  }
+  if(!enemyHitSoundBuffer){ loadEnemyHitSoundBuffer(); return; } // 최초 몇 번은 디코드 대기 중이라 재생 스킵될 수 있음
+  const audioCtx = getLaserAudioCtx();
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  const src = audioCtx.createBufferSource();
+  src.buffer = enemyHitSoundBuffer;
+  const gain = audioCtx.createGain();
+  gain.gain.value = ENEMY_HIT_SOUND_VOLUME;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  const playDur = Math.min(src.buffer.duration, ENEMY_HIT_SOUND_MAX_DURATION_MS/1000);
+  src.start(0, 0, playDur); // offset 0부터 최대 1.5초까지만 재생(잘라 재생)
 }
 
 // 주인공 피격 효과음: 격파음과 마찬가지로 풀(pool) 방식으로 재생 (연속 피격 시 겹쳐도 끊기지 않도록)
@@ -551,7 +577,6 @@ function updateLaunchSequence(dtMs){
     // 시퀀스 중 화면에 그려지던 위치(H-80, 즉 기본 플레이 위치)를 실제 player.y에도 반영해
     // 조작 가능 시점에 기체가 순간이동하지 않고 그 자리에서 그대로 이어지도록 함.
     player.y = H - 80;
-    unlockAllAudio(); // 효과음 언락은 실제 게임 시작 직전(스테이션 화면에서는 BGM만 흐르도록)으로 미룸
     startStage(launchStageNum); // 여기서부터 실제 게임 시작(적 스폰 활성화) + 조작 잠금 해제
   }
 }
