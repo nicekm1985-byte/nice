@@ -121,7 +121,7 @@ function getBossBgmAudio(){
   if(!bossBgmAudio){
     bossBgmAudio = registerAudio(new Audio('sound/boss.m4a'));
     bossBgmAudio.loop = true;
-    bossBgmAudio.volume = 0.035; // 스테이지 BGM과 동일한 볼륨 기준 (기존 0.05에서 30% 추가 감소)
+    bossBgmAudio.volume = 0.0105; // 전체 볼륨 30%로 조정
   }
   return bossBgmAudio;
 }
@@ -142,7 +142,7 @@ function switchToStageBgm(){
 }
 
 // 보스 트리거 직전 STAGE_BGM_FADE_MS 구간 동안 스테이지 BGM 볼륨을 선형으로 줄임 (실제 시간 기반)
-const STAGE_BGM_BASE_VOLUME = 0.035; // 기존 0.05에서 30% 추가 감소
+const STAGE_BGM_BASE_VOLUME = 0.0105; // 전체 볼륨 30%로 조정
 let stageBgmFading = false;
 function fadeOutStageBgm(remainingMs){
   if(!bgmAudio) return;
