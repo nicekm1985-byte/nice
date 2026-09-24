@@ -528,9 +528,9 @@ function updatePlayerInvincibility(dtMs){
 
 // ---- 발사 시퀀스 (스테이지 시작 시 발사대에서 이탈하는 연출) ----
 // sit(스테이션 링 중심에 살짝 축소된 채 대기) -> grow(제자리에서 2초간 크기 100%로 확대) ->
-// hold(0.5초 정지) -> dash(화면 중앙까지 힘차게 전진, 스테이션은 같은 진행률로 동시에 아래로 퇴장) ->
-// descend(기본 위치로 천천히 하강 복귀) -> title(제자리로 돌아온 순간 STAGE N 표시) ->
-// startStage() 호출 + 조작 잠금 해제
+// hold(0.5초 정지) -> dash(가속하며 화면 중앙까지 힘차게 전진 3초, 스테이션은 같은 진행률로 동시에 아래로 퇴장) ->
+// cruise(화면 중앙에서 3초간 정지 비행) -> descend(기본 위치로 천천히 하강 복귀) ->
+// title(제자리로 돌아온 순간 STAGE N 표시) -> startStage() 호출 + 조작 잠금 해제
 let launchSequenceActive = false;
 let launchPhase = 'sit';
 let launchElapsed = 0;
@@ -538,11 +538,13 @@ let launchStageNum = 1;
 const LAUNCH_SIT_MS = 900;
 const LAUNCH_GROW_MS = 2000; // 제자리에서 크기 100%로 확대되는 시간 2초
 const LAUNCH_HOLD_MS = 500; // 확대 완료 후 정지 0.5초
-const LAUNCH_DASH_MS = 3000; // 화면 중앙까지 힘차게 전진하는 시간(3초로 연장) (스테이션도 같은 진행률로 퇴장)
-const LAUNCH_DESCEND_MS = 3000; // 기본 위치로 하강 복귀하는 시간(3초로 연장)
+const LAUNCH_DASH_MS = 1000; // 가속하며 화면 중앙까지 힘차게 전진하는 시간(1초)
+const LAUNCH_CRUISE_MS = 3000; // 화면 중앙에 도착해 멈춰서 비행하는 느낌으로 대기하는 시간(3초)
+const LAUNCH_DESCEND_MS = 3000; // 기본 위치로 하강 복귀하는 시간(3초)
 const LAUNCH_TITLE_MS = 1300;
 const LAUNCH_SIT_SCALE = 0.5; // 발사대 위에 앉아있을 때 축소 비율(50%에서 확대 시작)
 let launchCenterY = 0; // dash 종료 시점의 화면 중앙 y (계산해서 고정)
+let launchCenterXBase = 0; // cruise 단계에서 좌우로 살짝 흔들리는 기준 x(= 발사 시작 시 x, station.png 링 중심 x)
 let launchBaseY = 0; // 발사 시작 시 스테이션 링 중심 y (sit/grow/hold 동안의 고정 위치)
 
 function startLaunchSequence(stageNum){
@@ -555,6 +557,7 @@ function startLaunchSequence(stageNum){
   player.y = (typeof STATION_RING_Y !== 'undefined' && STATION_RING_Y) ? STATION_RING_Y : H - 80;
   launchBaseY = player.y;
   launchCenterY = H/2;
+  launchCenterXBase = player.x;
 }
 
 // 매 프레임: 먼저 현재 phase의 렌더 상태를 계산해서 그리고, 그 다음에 시간 진행에 따라 phase를 전이시킴.
@@ -569,6 +572,8 @@ function updateLaunchSequence(dtMs){
   } else if(launchPhase === 'hold' && launchElapsed >= LAUNCH_HOLD_MS){
     launchPhase = 'dash'; launchElapsed = 0;
   } else if(launchPhase === 'dash' && launchElapsed >= LAUNCH_DASH_MS){
+    launchPhase = 'cruise'; launchElapsed = 0;
+  } else if(launchPhase === 'cruise' && launchElapsed >= LAUNCH_CRUISE_MS){
     launchPhase = 'descend'; launchElapsed = 0;
   } else if(launchPhase === 'descend' && launchElapsed >= LAUNCH_DESCEND_MS){
     launchPhase = 'title'; launchElapsed = 0;
@@ -581,10 +586,10 @@ function updateLaunchSequence(dtMs){
   }
 }
 
-// 현재 프레임의 렌더 상태(기체 y좌표, 크기 배율, 그림자 배율, 스테이션 퇴장 비율) 계산
+// 현재 프레임의 렌더 상태(기체 y좌표, 크기 배율, 그림자 배율, 스테이션 퇴장 비율, 배경 배속) 계산
 function getLaunchRenderState(){
   if(launchPhase === 'sit'){
-    return { y: launchBaseY, scale: LAUNCH_SIT_SCALE, shadowScale: LAUNCH_SIT_SCALE, stationOffset: 0 };
+    return { y: launchBaseY, scale: LAUNCH_SIT_SCALE, shadowScale: LAUNCH_SIT_SCALE, stationOffset: 0, bgSpeedMul: 1 };
   }
   if(launchPhase === 'grow'){
     const t = Math.min(1, launchElapsed / LAUNCH_GROW_MS);
@@ -594,20 +599,33 @@ function getLaunchRenderState(){
       y: launchBaseY, // 제자리에서 확대만
       scale,
       shadowScale: scale, // 기체가 커지는 만큼 그림자도 함께 커짐
-      stationOffset: 0
+      stationOffset: 0,
+      bgSpeedMul: 1
     };
   }
   if(launchPhase === 'hold'){
-    return { y: launchBaseY, scale: 1, shadowScale: 1, stationOffset: 0 }; // 정지
+    return { y: launchBaseY, scale: 1, shadowScale: 1, stationOffset: 0, bgSpeedMul: 1 }; // 정지
   }
   if(launchPhase === 'dash'){
     const t = Math.min(1, launchElapsed / LAUNCH_DASH_MS);
-    const ease = 1 - Math.pow(1 - t, 2); // ease-out: 힘차게 튀어나가듯 전진
+    const ease = t*t; // ease-in: 천천히 시작해 점점 가속하며 힘차게 튀어나가듯 전진
     return {
       y: launchBaseY + (launchCenterY - launchBaseY) * ease,
       scale: 1,
       shadowScale: 1,
-      stationOffset: ease // 기체가 전진하는 진행률과 동일하게 스테이션도 아래로 퇴장
+      stationOffset: ease, // 기체가 전진하는 진행률과 동일하게 스테이션도 아래로 퇴장
+      bgSpeedMul: 3 // 비행 가속감을 배경에도 반영해 배경 스크롤 3배속
+    };
+  }
+  if(launchPhase === 'cruise'){
+    // 화면 중앙에서 완전히 정지하지 않고, 비행 중인 느낌을 주기 위해 상하좌우로 아주 살짝 흔들리게 함
+    const t = launchElapsed / 1000; // 초 단위
+    const bobY = Math.sin(t * 2.1) * 6; // 상하로 살짝
+    const bobX = Math.sin(t * 1.4 + 1.2) * 5; // 좌우로 살짝, 위상을 다르게 해서 원형이 아닌 자연스러운 흔들림
+    return {
+      y: launchCenterY + bobY,
+      x: launchCenterXBase + bobX,
+      scale: 1, shadowScale: 1, stationOffset: 1, bgSpeedMul: 3
     };
   }
   if(launchPhase === 'descend'){
@@ -617,11 +635,31 @@ function getLaunchRenderState(){
       y: launchCenterY + ((H - 80) - launchCenterY) * ease,
       scale: 1,
       shadowScale: 1,
-      stationOffset: 1 // 스테이션은 이미 화면 밖으로 사라진 상태 유지
+      stationOffset: 1, // 스테이션은 이미 화면 밖으로 사라진 상태 유지
+      bgSpeedMul: 3 - 2 * ease // 3배속에서 서서히 원래 속도(1배)로 되돌아옴
     };
   }
-  // 'title' 단계: 기본 위치에 정지, 스테이션은 화면 밖
-  return { y: H - 80, scale: 1, shadowScale: 1, stationOffset: 1 };
+  // 'title' 단계: 기본 위치에 정지, 스테이션은 화면 밖, 배경은 원래 속도로 복귀 완료
+  return { y: H - 80, scale: 1, shadowScale: 1, stationOffset: 1, bgSpeedMul: 1 };
+}
+
+// 기체 스프라이트를 검은 실루엣(그림자용)으로 변환한 오프스크린 캔버스를 이미지별로 캐싱.
+// (ctx.filter='brightness(0)'는 Safari 등 일부 브라우저에서 canvas에 제대로 적용되지 않는 경우가 있어,
+//  composite 연산(source-in)으로 투명도는 유지한 채 보이는 픽셀만 확실하게 검정으로 칠하는 방식을 사용)
+const playerShadowCanvasCache = new Map();
+function getPlayerShadowCanvas(img){
+  let shadow = playerShadowCanvasCache.get(img);
+  if(shadow) return shadow;
+  const size = img.naturalWidth;
+  const c = document.createElement('canvas');
+  c.width = size; c.height = img.naturalHeight;
+  const sctx = c.getContext('2d');
+  sctx.drawImage(img, 0, 0);
+  sctx.globalCompositeOperation = 'source-in';
+  sctx.fillStyle = '#000000';
+  sctx.fillRect(0, 0, c.width, c.height);
+  playerShadowCanvasCache.set(img, c);
+  return c;
 }
 
 // 주인공 기체를 그림. 무적 중이면 실제 시간 기반으로 깜빡이고(짝수 구간만 그림),
@@ -633,15 +671,20 @@ function drawPlayerWithEffects(){
     if(!blinkOn) return; // 깜빡임의 꺼짐 구간에는 그리지 않음
   }
   let renderY = player.y;
+  let renderX = player.x;
   let renderScale = 1;
   let shadowScale = 0; // 0이면 그림자 안 그림 (발사 시퀀스의 sit/grow/hold 단계에서만 사용)
+  let shadowLiftBias = 0; // 0(발사대 위 sit)~1(100% 확대 완료), 떠오를수록 그림자가 왼쪽 아래로 벌어짐
   if(launchSequenceActive){
     const st = getLaunchRenderState();
     renderY = st.y;
+    if(st.x !== undefined) renderX = st.x; // cruise 단계에서만 좌우로 살짝 흔들리는 x 오프셋 적용
     renderScale = st.scale;
     // dash 단계부터는 기체가 스테이션을 벗어나 날아가는 연출이라 그림자를 그리지 않음
     if(launchPhase === 'sit' || launchPhase === 'grow' || launchPhase === 'hold'){
       shadowScale = st.shadowScale;
+      const growRange = 1 - LAUNCH_SIT_SCALE;
+      shadowLiftBias = growRange > 0 ? Math.max(0, Math.min(1, (renderScale - LAUNCH_SIT_SCALE) / growRange)) : 1;
     }
   } else if(playerRespawnTimer > 0){
     const t = 1 - (playerRespawnTimer / PLAYER_RESPAWN_RISE_DURATION); // 0(시작) -> 1(완료)
@@ -652,19 +695,20 @@ function drawPlayerWithEffects(){
   if(!img || !img.complete || img.naturalWidth === 0) return;
   const size = 96 * renderScale;
   if(shadowScale > 0){
-    // 기체 스프라이트 자체의 실루엣을 그대로 검게 칠해 그림자로 사용(타원 대체) - 기체 바로 아래 깔리도록
-    // 세로로 살짝 눌러(squish) 바닥에 깔린 느낌을 내고, 살짝 아래로만 오프셋.
+    // 기체 스프라이트의 검은 실루엣(그림자용 오프스크린 캔버스)을 재사용 - 기체와 완전히 동일한 모양.
+    // 떠오를수록(shadowLiftBias -> 1) 그림자가 기체 오른쪽 아래로 살짝 벌어져 공중에 뜬 느낌을 줌.
     const shadowSize = size;
-    const shadowOffsetY = 10 * shadowScale;
+    const shadowOffsetX = 10 * shadowScale * shadowLiftBias; // 100%로 떠오를수록 오른쪽으로 살짝 벌어짐
+    const shadowOffsetY = (10 + 14 * shadowLiftBias) * shadowScale; // 아래로도 더 벌어짐(떠오를수록 커짐)
+    const shadowImg = getPlayerShadowCanvas(img);
     ctx.save();
     ctx.globalAlpha = 0.32;
-    ctx.filter = 'brightness(0)'; // 투명도(알파)는 유지한 채 보이는 픽셀만 검게 칠함 -> 기체와 동일한 실루엣
-    ctx.translate(player.x, renderY + shadowOffsetY);
+    ctx.translate(renderX + shadowOffsetX, renderY + shadowOffsetY);
     ctx.scale(1, 0.55); // 바닥에 깔린 것처럼 세로로 압축
-    ctx.drawImage(img, -shadowSize/2, -shadowSize/2, shadowSize, shadowSize);
+    ctx.drawImage(shadowImg, -shadowSize/2, -shadowSize/2, shadowSize, shadowSize);
     ctx.restore();
   }
-  ctx.drawImage(img, player.x - size/2, renderY - size/2, size, size);
+  ctx.drawImage(img, renderX - size/2, renderY - size/2, size, size);
 }
 
 // ---- 아이템 (R: 탄속 강화 스택형, W: 3방향 스프레드) ----

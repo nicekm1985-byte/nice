@@ -453,10 +453,9 @@ function update(currentTime){
     return;
   }
 
-  drawStarBackground(dt);
-
   if(launchSequenceActive){
     const launchState = getLaunchRenderState(); // 먼저 현재 상태로 그린 뒤에 시간 진행(전이) 처리 → 번쩍임 방지
+    drawStarBackground(dt, launchState.bgSpeedMul); // dash~descend 구간엔 배경이 비행 가속감에 맞춰 최대 3배속으로 흐름
     drawStation(launchState.stationOffset);
     drawPlayerWithEffects();
     if(launchPhase === 'title') drawStageTitle(launchStageNum);
@@ -464,6 +463,8 @@ function update(currentTime){
     requestAnimationFrame(update);
     return; // 발사 연출 중에는 스폰/적 로직 완전히 정지
   }
+
+  drawStarBackground(dt);
 
   updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
 

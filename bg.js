@@ -42,10 +42,10 @@ for(let i=0;i<BG_LAYER2_COUNT;i++){
   });
 }
 
-function drawBgLayer2(dt){
+function drawBgLayer2(dt, speedMul){
   ctx.save();
   bgLayer2Stars.forEach(s=>{
-    s.y += BG_LAYER2_SPEED * dt;
+    s.y += BG_LAYER2_SPEED * (speedMul||1) * dt;
     if(s.y > H + 4){
       s.y = -4;
       s.x = Math.random()*W;
@@ -81,10 +81,10 @@ for(let i=0;i<BG_LAYER3_COUNT;i++){
   });
 }
 
-function drawBgLayer3(dt){
+function drawBgLayer3(dt, speedMul){
   ctx.save();
   bgLayer3Debris.forEach(d=>{
-    d.y += BG_LAYER3_SPEED * dt;
+    d.y += BG_LAYER3_SPEED * (speedMul||1) * dt;
     d.rot += d.rotSpeed * dt;
     if(d.y > H + 8){
       d.y = -8;
@@ -129,8 +129,9 @@ function drawStation(offsetRatio){
 }
 
 // 세 레이어를 아래→위 순서로 한 번에 그리는 통합 함수 (메인 게임 루프에서 이것만 호출)
-function drawStarBackground(dt){
+// speedMul: layer2(별)/layer3(파편) 스크롤 배속. 발사 시퀀스의 dash~descend 구간에서 비행 가속감을 표현하는 데 사용(기본 1배).
+function drawStarBackground(dt, speedMul){
   drawBgLayer1(dt);
-  drawBgLayer2(dt);
-  drawBgLayer3(dt);
+  drawBgLayer2(dt, speedMul);
+  drawBgLayer3(dt, speedMul);
 }
