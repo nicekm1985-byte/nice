@@ -195,12 +195,37 @@ function unlockAllAudio(){
     const wasVolume = a.volume;
     a.muted = true; // 언락 재생 자체는 소리가 들리지 않도록
     a.volume = 0; // muted 적용이 브라우저에서 비동기적으로 지연되는 경우(Safari 등)에도 확실히 무음이 되도록 volume도 함께 0으로
+    let restored = false;
+    const restore = ()=>{
+      if(restored) return;
+      restored = true;
+      a.pause();
+      a.currentTime = 0;
+      a.muted = wasMuted;
+      a.volume = wasVolume;
+    };
     const p = a.play();
-    if(p && p.catch) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = wasMuted; a.volume = wasVolume; }).catch(()=>{ a.muted = wasMuted; a.volume = wasVolume; });
-    else { a.muted = wasMuted; a.volume = wasVolume; }
+    if(p && p.then) p.then(restore).catch(restore);
+    // iOS Safari에서는 이 play() 프로미스가 resolve되지 않거나 매우 늦게 resolve되는 경우가 있어,
+    // 그대로 두면 볼륨이 0으로 영구히 남아 이후 정상 재생 시에도 소리가 안 나는 버그가 있었음.
+    // 200ms 안에 Promise가 안 풀려도 무조건 원래 볼륨/muted 상태로 복구되도록 안전장치를 둠.
+    setTimeout(restore, 200);
   });
   const laserCtx = getLaserAudioCtx();
-  if(laserCtx && laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+  if(laserCtx){
+    if(laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+    // iOS Safari는 AudioContext.resume()만으로는 실제 오디오 출력이 완전히 풀리지 않는 경우가 있어(state가
+    // 'running'이어도 소리가 안 나는 버그성 동작), 사용자 제스처 콜스택 안에서 무음 버퍼를 한 번 실제로
+    // 재생시켜 출력 파이프라인 자체를 확실하게 열어줌. (BGM은 되는데 레이저/폭발음 등 Web Audio 기반
+    // 효과음만 안 들리는 iOS 특유의 증상을 해결하는 표준적인 처리 방법)
+    try {
+      const silentBuffer = laserCtx.createBuffer(1, 1, laserCtx.sampleRate);
+      const silentSrc = laserCtx.createBufferSource();
+      silentSrc.buffer = silentBuffer;
+      silentSrc.connect(laserCtx.destination);
+      silentSrc.start(0);
+    } catch(e){}
+  }
   loadEnemyHitSoundBuffer(); // 적 폭발음(Web Audio 버퍼)도 이 시점에 미리 디코드해둬서 첫 격파 때 스킵되지 않도록 함
 }
 
