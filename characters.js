@@ -184,7 +184,26 @@ function toggleMute(){
 // play()+pause()로 미리 재생 허용 상태로 만들어두면, 이후 게임 루프(requestAnimationFrame)
 // 안에서 효과음을 처음 재생할 때도(첫 플레이부터) 막히지 않고 정상적으로 소리가 남.
 let audioUnlocked = false;
+// AudioContext resume + 무음 버퍼 재생은 "매번" 사용자 제스처 콜스택 안에서 호출해야 함.
+// iOS Safari는 게임 루프(requestAnimationFrame) 안에서 resume()을 호출해도 실제로 풀리지 않는
+// 경우가 있어(진짜 사용자 제스처가 아니므로), 타이틀 화면 최초 1회 언락이 불완전하게 실패하면
+// 이후 효과음이 계속 안 들림. 메뉴(M) 버튼 클릭처럼 확실한 클릭 제스처가 생길 때마다 다시
+// resume을 시도하도록 별도 함수로 분리(무거운 <audio> 프라이밍은 최초 1회만).
+function resumeAudioContextFromGesture(){
+  const laserCtx = getLaserAudioCtx();
+  if(laserCtx){
+    if(laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
+    try {
+      const silentBuffer = laserCtx.createBuffer(1, 1, laserCtx.sampleRate);
+      const silentSrc = laserCtx.createBufferSource();
+      silentSrc.buffer = silentBuffer;
+      silentSrc.connect(laserCtx.destination);
+      silentSrc.start(0);
+    } catch(e){}
+  }
+}
 function unlockAllAudio(){
+  resumeAudioContextFromGesture(); // 매번 실행: 언락이 실패했던 경우 재시도 기회를 줌
   if(audioUnlocked) return;
   audioUnlocked = true;
   // 사용자 제스처 콜스택 안에서 전부 동기적으로 처리해야 브라우저의 자동재생 잠금 해제가 정상 동작함.
@@ -211,21 +230,6 @@ function unlockAllAudio(){
     // 200ms 안에 Promise가 안 풀려도 무조건 원래 볼륨/muted 상태로 복구되도록 안전장치를 둠.
     setTimeout(restore, 200);
   });
-  const laserCtx = getLaserAudioCtx();
-  if(laserCtx){
-    if(laserCtx.state === 'suspended') laserCtx.resume().catch(()=>{});
-    // iOS Safari는 AudioContext.resume()만으로는 실제 오디오 출력이 완전히 풀리지 않는 경우가 있어(state가
-    // 'running'이어도 소리가 안 나는 버그성 동작), 사용자 제스처 콜스택 안에서 무음 버퍼를 한 번 실제로
-    // 재생시켜 출력 파이프라인 자체를 확실하게 열어줌. (BGM은 되는데 레이저/폭발음 등 Web Audio 기반
-    // 효과음만 안 들리는 iOS 특유의 증상을 해결하는 표준적인 처리 방법)
-    try {
-      const silentBuffer = laserCtx.createBuffer(1, 1, laserCtx.sampleRate);
-      const silentSrc = laserCtx.createBufferSource();
-      silentSrc.buffer = silentBuffer;
-      silentSrc.connect(laserCtx.destination);
-      silentSrc.start(0);
-    } catch(e){}
-  }
   loadEnemyHitSoundBuffer(); // 적 폭발음(Web Audio 버퍼)도 이 시점에 미리 디코드해둬서 첫 격파 때 스킵되지 않도록 함
   // 새로 버퍼 방식으로 전환한 효과음들도 동일하게 제스처 콜스택 근처에서 미리 디코드해둬서
   // 첫 재생 때 스킵되지 않도록 함(디코드 자체는 비동기라 콜스택 밖에서 끝나도 무방).

@@ -325,6 +325,7 @@ canvas.addEventListener('mousemove', e=>{
 });
 canvas.addEventListener('touchstart', e=>{
   e.preventDefault();
+  resumeAudioContextFromGesture(); // 매 터치마다 확실한 제스처 콜스택 안에서 오디오 언락 재시도
   if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchStart(t.clientX, t.clientY);
@@ -338,6 +339,7 @@ canvas.addEventListener('touchmove', e=>{
 // 캔버스 아래 여백(touchPad)에서도 동일한 상대 이동 방식 적용
 touchPad.addEventListener('touchstart', e=>{
   e.preventDefault();
+  resumeAudioContextFromGesture(); // 매 터치마다 확실한 제스처 콜스택 안에서 오디오 언락 재시도
   if(launchSequenceActive) return;
   const t = e.touches[0];
   handleTouchStart(t.clientX, t.clientY);
@@ -392,6 +394,7 @@ function updateTouchModeBtnLabel(){
 
 function openPauseMenu(){
   if(gamePaused) return; // 타이틀 화면에서도 메뉴는 열림(스테이지1은 startStage(1) 시점에만 시작되므로 안전)
+  resumeAudioContextFromGesture(); // 버튼 클릭은 확실한 사용자 제스처이므로 언락 재시도
   gamePaused = true;
   updateMuteBtnLabel();
   updateTouchModeBtnLabel();
@@ -399,6 +402,7 @@ function openPauseMenu(){
 }
 
 function closePauseMenu(){
+  resumeAudioContextFromGesture(); // 버튼 클릭은 확실한 사용자 제스처이므로 언락 재시도
   gamePaused = false;
   document.getElementById('pauseMenuOverlay').style.display = 'none';
   lastTime = 0; // 재개 시 dt가 튀지 않도록 타임스탬프 리셋
