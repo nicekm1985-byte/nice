@@ -287,7 +287,7 @@ function getLaserAudioCtx(){
   return laserAudioCtx;
 }
 
-const LASER_SOUND_BASE_VOLUME = 0.0084375; // 기본 볼륨(0~1), 전체 볼륨 30%로 조정
+const LASER_SOUND_BASE_VOLUME = 1.0; // 기본 볼륨(0~1)
 
 // 발사 주기가 기본값(PLAYER_FIRE_RATE)보다 짧아진 비율만큼 톤의 길이/피치도 함께 스케일.
 // 매번 동일한 음(높은 음 -> 낮은 음으로 짧게 미끄러지는 "핑")이며, 매 발사마다 완전히
@@ -380,7 +380,7 @@ function fadeInAudio(audio, targetVolume, durationMs){
 // 단, file://로 로컬에서 직접 열어 테스트하는 경우 fetch()가 CORS 정책에 막혀 버퍼 로딩이 실패할 수 있어,
 // 그 경우엔 기존 <audio> 풀 방식으로 자동 전환(fallback)해 어떤 환경에서도 소리가 나도록 함.
 // 일반7 포함 모든 적 격파음이 game_explosion8.mp3로 통일됨(과거엔 일반7만 별도 사운드 사용).
-const ENEMY_HIT_SOUND_VOLUME = 0.0075; // 적 폭발음, 기존 대비 50% 추가 감소
+const ENEMY_HIT_SOUND_VOLUME = 1.0;
 const ENEMY_HIT_SOUND_MAX_DURATION_MS = 1500; // ms, 원본 2.17초에서 1.5초로 잘라 재생
 let enemyHitSoundBuffer = null; // 디코드 완료된 AudioBuffer(공용, normal7도 동일 버퍼 재사용)
 let enemyHitSoundBufferLoading = false;
@@ -483,7 +483,7 @@ function playSoundBuffer(url, volume, opts){
 }
 
 // 주인공 피격 효과음
-const PLAYER_HIT_SOUND_VOLUME = 0.015;
+const PLAYER_HIT_SOUND_VOLUME = 1.0;
 const playerHitAudioFallback = registerAudio(new Audio('sound/ihit.mp3'));
 playerHitAudioFallback.volume = PLAYER_HIT_SOUND_VOLUME;
 function playPlayerHitSound(){
@@ -495,7 +495,7 @@ function playPlayerHitSound(){
 }
 
 // 보스 격파(폭발) 효과음: 보스는 동시에 여러 번 겹쳐 재생될 일이 거의 없어 단일 인스턴스로 충분.
-const BOSS_HIT_SOUND_VOLUME = 0.15;
+const BOSS_HIT_SOUND_VOLUME = 1.0;
 const bossHitAudioFallback = registerAudio(new Audio('sound/bosshit.m4a'));
 bossHitAudioFallback.volume = BOSS_HIT_SOUND_VOLUME;
 function playBossHitSound(){
@@ -507,7 +507,7 @@ function playBossHitSound(){
 }
 
 // 아이템 획득 효과음: R/W 아이템을 먹는 순간 재생.
-const ITEM_PICKUP_SOUND_VOLUME = 0.015;
+const ITEM_PICKUP_SOUND_VOLUME = 1.0;
 const itemPickupAudioFallback = registerAudio(new Audio('sound/item.mp3'));
 itemPickupAudioFallback.volume = ITEM_PICKUP_SOUND_VOLUME;
 function playItemPickupSound(){
@@ -524,7 +524,7 @@ function playEnemyShootSound(volume){
 }
 
 // 일반8(spiral) 전용 발사음: 총소리 느낌(짧은 크랙+바디). 보스 일반탄도 동일 사운드 재사용.
-const SPIRAL_SHOOT_SOUND_VOLUME = 0.06;
+const SPIRAL_SHOOT_SOUND_VOLUME = 1.0;
 const spiralShootAudioFallback = registerAudio(new Audio('sound/spiral_gunshot.m4a'));
 spiralShootAudioFallback.volume = SPIRAL_SHOOT_SOUND_VOLUME;
 function playSpiralShootSound(){
@@ -537,7 +537,7 @@ function playSpiralShootSound(){
 
 // 보스 레이저 발사음: 레이저가 실제로 나가는 동안 계속 루프 재생, 발사가 끝나면 정지.
 // (충전 단계에는 재생하지 않고, drawBossLaser()가 실제로 호출되는 구간에서만 재생)
-const BOSS_LASER_SOUND_VOLUME = 0.075;
+const BOSS_LASER_SOUND_VOLUME = 1.0;
 const bossLaserAudioFallback = registerAudio(new Audio('sound/laser.m4a'));
 bossLaserAudioFallback.loop = true;
 bossLaserAudioFallback.volume = BOSS_LASER_SOUND_VOLUME;
