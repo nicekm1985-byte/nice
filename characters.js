@@ -227,6 +227,9 @@ function unlockAllAudio(){
     } catch(e){}
   }
   loadEnemyHitSoundBuffer(); // 적 폭발음(Web Audio 버퍼)도 이 시점에 미리 디코드해둬서 첫 격파 때 스킵되지 않도록 함
+  // 새로 버퍼 방식으로 전환한 효과음들도 동일하게 제스처 콜스택 근처에서 미리 디코드해둬서
+  // 첫 재생 때 스킵되지 않도록 함(디코드 자체는 비동기라 콜스택 밖에서 끝나도 무방).
+  ['sound/ihit.mp3','sound/bosshit.m4a','sound/item.mp3','sound/spiral_gunshot.m4a','sound/laser.m4a'].forEach(loadSoundBuffer);
 }
 
 // ---- 페이지 이탈 시 전체 오디오 정지 / 복귀 시 BGM 재개 ----
@@ -240,10 +243,7 @@ function pauseAllAudioForPageHidden(){
   wasBgmPlayingBeforeHidden = !!(bgmAudio && !bgmAudio.paused);
   wasBossBgmPlayingBeforeHidden = !!(bossBgmAudio && !bossBgmAudio.paused);
   registeredAudioElements.forEach(a=>{ a.pause(); });
-  if(bossLaserSoundPlaying){
-    bossLaserSoundPlaying = false;
-    bossLaserAudio.pause();
-  }
+  stopBossLaserSound();
   const laserCtx = getLaserAudioCtx();
   if(laserCtx && laserCtx.state === 'running') laserCtx.suspend().catch(()=>{});
 }
@@ -435,87 +435,136 @@ function playEnemyHitSound(enemyType){
   src.start(0, 0, playDur); // offset 0부터 최대 1.5초까지만 재생(잘라 재생)
 }
 
-// 주인공 피격 효과음: 격파음과 마찬가지로 풀(pool) 방식으로 재생 (연속 피격 시 겹쳐도 끊기지 않도록)
+// ---- 범용 Web Audio 버퍼 사운드 시스템 ----
+// 모바일(iOS Safari)은 동시에 프리로드 가능한 <audio> 엘리먼트 개수에 제한이 있어(대략 4개 안팎),
+// <audio> 풀을 여러 종류 만들면 일부가 조용히 재생 실패하는 문제가 있었음. 적 격파음(game_explosion8)에
+// 적용했던 것과 동일하게, 공용 AudioContext + decodeAudioData로 미리 디코드한 PCM 버퍼를 매번 새
+// AudioBufferSourceNode로 재생하는 방식으로 통일. 버퍼 방식은 동시 재생 시에도 노드가 각자 독립적으로
+// 생기므로 풀(pool) 자체가 필요 없음(동시에 여러 발 겹쳐도 문제 없이 전부 들림).
+// file://로 직접 열어 fetch()가 CORS에 막히는 환경에서만 <audio> 단일 인스턴스로 자동 전환(fallback).
+const soundBuffers = {};       // url -> 디코드된 AudioBuffer
+const soundBufferLoading = {}; // url -> true(로딩 중)
+const soundUseFallback = {};   // url -> true(Web Audio 실패, <audio> fallback 사용)
+function loadSoundBuffer(url){
+  if(soundBuffers[url] || soundBufferLoading[url] || soundUseFallback[url]) return;
+  soundBufferLoading[url] = true;
+  const audioCtx = getLaserAudioCtx();
+  if(!audioCtx){ soundBufferLoading[url] = false; soundUseFallback[url] = true; return; }
+  fetch(url)
+    .then(res => res.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => { soundBuffers[url] = decoded; })
+    .catch(()=>{ soundUseFallback[url] = true; })
+    .finally(()=>{ soundBufferLoading[url] = false; });
+}
+// 반환값: 재생에 사용된 AudioBufferSourceNode(루프 정지 등에 필요한 경우) 또는 재생 못했으면 null.
+function playSoundBuffer(url, volume, opts){
+  opts = opts || {};
+  if(audioMuted) return null;
+  if(soundUseFallback[url]) return 'fallback'; // 호출부에서 <audio> fallback으로 재생하도록 신호
+  if(!soundBuffers[url]){ loadSoundBuffer(url); return null; } // 아직 디코드 전이면 이번 호출은 스킵
+  const audioCtx = getLaserAudioCtx();
+  if(!audioCtx) return null;
+  if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  const src = audioCtx.createBufferSource();
+  src.buffer = soundBuffers[url];
+  src.loop = !!opts.loop;
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  if(opts.loop){
+    src.start(0);
+  } else {
+    const dur = opts.maxDurationMs ? Math.min(src.buffer.duration, opts.maxDurationMs/1000) : src.buffer.duration;
+    src.start(0, 0, dur);
+  }
+  return src;
+}
+
+// 주인공 피격 효과음
 const PLAYER_HIT_SOUND_VOLUME = 0.015;
-const PLAYER_HIT_SOUND_POOL_SIZE = 3;
-const playerHitSoundPool = Array.from({length: PLAYER_HIT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/ihit.mp3'));
-  a.volume = PLAYER_HIT_SOUND_VOLUME;
-  return a;
-});
-let playerHitSoundIdx = 0;
+const playerHitAudioFallback = registerAudio(new Audio('sound/ihit.mp3'));
+playerHitAudioFallback.volume = PLAYER_HIT_SOUND_VOLUME;
 function playPlayerHitSound(){
-  const a = playerHitSoundPool[playerHitSoundIdx];
-  playerHitSoundIdx = (playerHitSoundIdx + 1) % PLAYER_HIT_SOUND_POOL_SIZE;
-  a.currentTime = 0;
-  a.play().catch(()=>{});
+  const result = playSoundBuffer('sound/ihit.mp3', PLAYER_HIT_SOUND_VOLUME);
+  if(result === 'fallback'){
+    playerHitAudioFallback.currentTime = 0;
+    playerHitAudioFallback.play().catch(()=>{});
+  }
 }
 
 // 보스 격파(폭발) 효과음: 보스는 동시에 여러 번 겹쳐 재생될 일이 거의 없어 단일 인스턴스로 충분.
 const BOSS_HIT_SOUND_VOLUME = 0.15;
-const bossHitAudio = registerAudio(new Audio('sound/bosshit.m4a'));
-bossHitAudio.volume = BOSS_HIT_SOUND_VOLUME;
+const bossHitAudioFallback = registerAudio(new Audio('sound/bosshit.m4a'));
+bossHitAudioFallback.volume = BOSS_HIT_SOUND_VOLUME;
 function playBossHitSound(){
-  bossHitAudio.currentTime = 0;
-  bossHitAudio.play().catch(()=>{});
+  const result = playSoundBuffer('sound/bosshit.m4a', BOSS_HIT_SOUND_VOLUME);
+  if(result === 'fallback'){
+    bossHitAudioFallback.currentTime = 0;
+    bossHitAudioFallback.play().catch(()=>{});
+  }
 }
 
-// 아이템 획득 효과음: R/W 아이템을 먹는 순간 재생. 단일 인스턴스로 충분(연속 획득이 겹칠 일 거의 없음).
+// 아이템 획득 효과음: R/W 아이템을 먹는 순간 재생.
 const ITEM_PICKUP_SOUND_VOLUME = 0.015;
-const itemPickupAudio = registerAudio(new Audio('sound/item.mp3'));
-itemPickupAudio.volume = ITEM_PICKUP_SOUND_VOLUME;
+const itemPickupAudioFallback = registerAudio(new Audio('sound/item.mp3'));
+itemPickupAudioFallback.volume = ITEM_PICKUP_SOUND_VOLUME;
 function playItemPickupSound(){
-  itemPickupAudio.currentTime = 0;
-  itemPickupAudio.play().catch(()=>{});
+  const result = playSoundBuffer('sound/item.mp3', ITEM_PICKUP_SOUND_VOLUME);
+  if(result === 'fallback'){
+    itemPickupAudioFallback.currentTime = 0;
+    itemPickupAudioFallback.play().catch(()=>{});
+  }
 }
 
-// 적 발사(탄환) 효과음: 여러 적이 동시에 쏘는 경우가 많아 풀(pool) 방식으로 재생.
-// 각 fireXXX() 발사 패턴 함수 안에서 직접 호출됨(일반 적 전부 + 보스1의 부채꼴탄 포함).
-const ENEMY_SHOOT_SOUND_VOLUME = 0.06; // 기존 0.2에서 70% 감소
-const ENEMY_SHOOT_SOUND_POOL_SIZE = 6;
-const enemyShootSoundPool = Array.from({length: ENEMY_SHOOT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/eshoot.m4a'));
-  a.volume = ENEMY_SHOOT_SOUND_VOLUME;
-  return a;
-});
-let enemyShootSoundIdx = 0;
+// 적 발사(탄환) 효과음: 현재 미사용(호출부에서 소리 제거 정책).
 function playEnemyShootSound(volume){
   return; // 적 탄소리 제거
 }
 
-// 일반8(spiral) 전용 발사음: 총소리 느낌(짧은 크랙+바디), 다른 적 탄소리 풀과 분리.
+// 일반8(spiral) 전용 발사음: 총소리 느낌(짧은 크랙+바디). 보스 일반탄도 동일 사운드 재사용.
 const SPIRAL_SHOOT_SOUND_VOLUME = 0.06;
-const SPIRAL_SHOOT_SOUND_POOL_SIZE = 6;
-const spiralShootSoundPool = Array.from({length: SPIRAL_SHOOT_SOUND_POOL_SIZE}, ()=>{
-  const a = registerAudio(new Audio('sound/spiral_gunshot.m4a'));
-  a.volume = SPIRAL_SHOOT_SOUND_VOLUME;
-  return a;
-});
-let spiralShootSoundIdx = 0;
+const spiralShootAudioFallback = registerAudio(new Audio('sound/spiral_gunshot.m4a'));
+spiralShootAudioFallback.volume = SPIRAL_SHOOT_SOUND_VOLUME;
 function playSpiralShootSound(){
-  const a = spiralShootSoundPool[spiralShootSoundIdx];
-  spiralShootSoundIdx = (spiralShootSoundIdx + 1) % SPIRAL_SHOOT_SOUND_POOL_SIZE;
-  a.currentTime = 0;
-  a.play().catch(()=>{});
+  const result = playSoundBuffer('sound/spiral_gunshot.m4a', SPIRAL_SHOOT_SOUND_VOLUME);
+  if(result === 'fallback'){
+    spiralShootAudioFallback.currentTime = 0;
+    spiralShootAudioFallback.play().catch(()=>{});
+  }
 }
 
 // 보스 레이저 발사음: 레이저가 실제로 나가는 동안 계속 루프 재생, 발사가 끝나면 정지.
 // (충전 단계에는 재생하지 않고, drawBossLaser()가 실제로 호출되는 구간에서만 재생)
 const BOSS_LASER_SOUND_VOLUME = 0.075;
-const bossLaserAudio = registerAudio(new Audio('sound/laser.m4a'));
-bossLaserAudio.loop = true;
-bossLaserAudio.volume = BOSS_LASER_SOUND_VOLUME;
+const bossLaserAudioFallback = registerAudio(new Audio('sound/laser.m4a'));
+bossLaserAudioFallback.loop = true;
+bossLaserAudioFallback.volume = BOSS_LASER_SOUND_VOLUME;
 let bossLaserSoundPlaying = false;
+let bossLaserSrcNode = null; // Web Audio 루프 재생 중인 소스 노드(정지 시 필요)
 function startBossLaserSound(){
   if(bossLaserSoundPlaying) return;
-  bossLaserSoundPlaying = true;
-  bossLaserAudio.currentTime = 0;
-  bossLaserAudio.play().catch(()=>{});
+  if(audioMuted) return;
+  const result = playSoundBuffer('sound/laser.m4a', BOSS_LASER_SOUND_VOLUME, {loop:true});
+  if(result === 'fallback'){
+    bossLaserAudioFallback.currentTime = 0;
+    bossLaserAudioFallback.play().catch(()=>{});
+    bossLaserSoundPlaying = true;
+  } else if(result){
+    bossLaserSrcNode = result;
+    bossLaserSoundPlaying = true;
+  }
+  // result가 null이면(버퍼 디코드 대기 중) 아직 재생 못 함 — 다음 프레임 호출 시 재시도됨
 }
 function stopBossLaserSound(){
   if(!bossLaserSoundPlaying) return;
   bossLaserSoundPlaying = false;
-  bossLaserAudio.pause();
+  if(bossLaserSrcNode){
+    try{ bossLaserSrcNode.stop(); } catch(e){}
+    bossLaserSrcNode = null;
+  }
+  if(!bossLaserAudioFallback.paused) bossLaserAudioFallback.pause();
 }
 
 // ---- 주인공 무적/재등장 상태 ----
