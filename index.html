@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>런처</title>
+<style>
+  :root {
+    --bg1: #0f172a;
+    --bg2: #1e293b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    background: radial-gradient(circle at 20% 20%, #1e293b, #020617 70%);
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 48px;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+  }
+  .card {
+    position: relative;
+    width: 280px;
+    height: 340px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #fff;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .card:hover {
+    transform: translateY(-10px) scale(1.03);
+    box-shadow: 0 20px 45px rgba(0,0,0,0.6);
+  }
+  .card:active {
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  /* 창고담당 김대리 카드 */
+  .card.kim {
+    background: linear-gradient(160deg, #fff7e6 0%, #ffe6b3 45%, #ffcf7a 100%);
+    color: #4a2e05;
+  }
+  .card.kim::before {
+    content: "📦";
+    font-size: 72px;
+    margin-bottom: 18px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+  }
+  .card.kim .title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .card.kim .subtitle {
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #7a4e10;
+    opacity: 0.85;
+  }
+  .card.kim .ribbon {
+    position: absolute;
+    top: 18px;
+    right: -36px;
+    width: 150px;
+    background: #d97706;
+    color: #fff;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 0;
+    transform: rotate(40deg);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+  /* Space War 카드 */
+  .card.space {
+    background:
+      radial-gradient(circle at 70% 20%, rgba(255,255,255,0.9) 0 2px, transparent 3px),
+      radial-gradient(circle at 20% 80%, rgba(255,255,255,0.7) 0 1.5px, transparent 2.5px),
+      radial-gradient(circle at 85% 70%, rgba(255,255,255,0.8) 0 1.5px, transparent 2.5px),
+      radial-gradient(circle at 40% 40%, rgba(255,255,255,0.6) 0 1px, transparent 2px),
+      radial-gradient(circle at 10% 30%, rgba(255,255,255,0.6) 0 1px, transparent 2px),
+      linear-gradient(160deg, #050816 0%, #0b1d3a 55%, #091026 100%);
+    color: #e0f2fe;
+  }
+  .card.space::before {
+    content: "🚀";
+    font-size: 72px;
+    margin-bottom: 18px;
+    filter: drop-shadow(0 0 14px rgba(96,165,250,0.8));
+    animation: float 2.4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .card.space .title {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-shadow: 0 0 16px rgba(56,189,248,0.6);
+  }
+  .card.space .subtitle {
+    margin-top: 8px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #7dd3fc;
+    opacity: 0.9;
+  }
+
+  .heading {
+    position: absolute;
+    top: 36px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 15px;
+    letter-spacing: 3px;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="heading">선택하세요</div>
+  <div class="wrap">
+    <a class="card kim" href="mr/mrkim/mrkim.html">
+      <span class="ribbon">관리</span>
+      <div class="title">창고담당 김대리</div>
+      <div class="subtitle">재고 · 입출고 관리</div>
+    </a>
+    <a class="card space" href="air2/index.html">
+      <div class="title">SPACE WAR</div>
+      <div class="subtitle">ARCADE SHOOTER</div>
+    </a>
+  </div>
+</body>
+</html>
