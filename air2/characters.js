@@ -40,6 +40,16 @@ const bossFrames = ['assets/optimized/boss1_sm.png', 'assets/optimized/boss1_lon
   return img;
 });
 
+// 보스2 (스테이지2 전용, 거미형 기계. 좌/우 다리가 반대 위상으로 번갈아 움직이는 4프레임 보행 애니메이션,
+// 몸체는 4프레임 모두 고정이고 다리만 움직임. 이동 중에만 애니메이션 진행, 정지(발사) 중에는 프레임 고정)
+const boss2Frames = ['assets/optimized/boss2_frame0_sm.png','assets/optimized/boss2_frame1_sm.png',
+  'assets/optimized/boss2_frame2_sm.png','assets/optimized/boss2_frame3_sm.png'].map(src=>{
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+const BOSS2_FRAME_INTERVAL_MS = 110; // ms, 다리 프레임 전환 간격
+
 // 폭발 스프라이트 시트 (기종별 폴더, 5프레임 개별 파일 — 코어 노란색→붉은색 파편형; boss1은 6프레임)
 const hitFrames = { normal1: [], normal2: [], normal3: [], normal4: [], normal6: [], normal7: [], normal8: [], boss1: [], player: [] };
 const hitFrameCounts = { normal1:5, normal2:5, normal3:5, normal4:5, normal6:5, normal7:5, normal8:5, boss1:6, player:5 };
@@ -188,9 +198,9 @@ function useBomb(){
   screenFlash = SCREEN_FLASH_DURATION;
   enemies.forEach(e=>{
     if(e.dead) return;
-    if(e.type === 'boss1' ? !e.settled : !isEnemyOnScreen(e)) return;
+    if((e.type === 'boss1' || e.type === 'boss2') ? !e.settled : !isEnemyOnScreen(e)) return;
     e.hp -= BOMB_DAMAGE;
-    if(typeof triggerHitFlash === 'function' && (e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1')) triggerHitFlash(e);
+    if(typeof triggerHitFlash === 'function' && (e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1' || e.type === 'boss2')) triggerHitFlash(e);
     if(e.hp <= 0) killEnemy(e);
   });
 }
@@ -444,8 +454,7 @@ function getSfxAverageVolume(){
   return vols.reduce((a,b)=>a+b, 0) / vols.length;
 }
 function getBgmVolume(){
-  const baseVolume = getSfxAverageVolume() * BGM_TO_SFX_RATIO;
-  return baseVolume * BGM_MOBILE_VOLUME_SCALE; // PC도 모바일과 동일한 볼륨 설정 사용(기기 구분 없이 항상 적용)
+  return 0.045; // 사용자 요청으로 고정값 지정(스테이지1/2 공용 메인 BGM 볼륨)
 }
 // 모바일 전용 효과음 볼륨 배율: 레이저/스파이럴탄/보스탄/적격파음/보스격파음은 모바일 스피커에서
 // 더 잘 들리도록 재생 시점에만 2배 증폭(효과음 볼륨 상수 자체는 그대로 유지 -> BGM 계산에 영향 없음).
@@ -870,10 +879,19 @@ function getLaunchRenderState(){
     };
   }
   if(launchPhase === 'cruise'){
-    // 화면 중앙에서 완전히 정지하지 않고, 비행 중인 느낌을 주기 위해 상하좌우로 아주 살짝 흔들리게 함
+    // 화면 중앙에서 완전히 정지하지 않고, 비행 중인 느낌을 주기 위해 상하좌우로 아주 살짝 흔들리게 함.
+    // cruise가 끝나기 직전(마지막 CRUISE_SETTLE_MS)에는 흔들림 진폭을 서서히 0으로 줄여 정확히
+    // 중앙으로 수렴시킨 뒤 descend로 넘어가게 함(흔들리던 중 임의의 위치에서 뚝 끊기지 않도록).
     const t = launchElapsed / 1000; // 초 단위
-    const bobY = Math.sin(t * 2.1) * 6; // 상하로 살짝
-    const bobX = Math.sin(t * 1.4 + 1.2) * 5; // 좌우로 살짝, 위상을 다르게 해서 원형이 아닌 자연스러운 흔들림
+    const CRUISE_SETTLE_MS = 700; // 이 시간 동안 흔들림이 서서히 가라앉으며 중앙으로 복귀
+    const settleStart = LAUNCH_CRUISE_MS - CRUISE_SETTLE_MS;
+    let wobbleMul = 1;
+    if(launchElapsed > settleStart){
+      const settleT = Math.min(1, (launchElapsed - settleStart) / CRUISE_SETTLE_MS);
+      wobbleMul = Math.pow(1 - settleT, 2); // 진폭이 제곱으로 빠르게 줄며 자연스럽게 중앙에 안착
+    }
+    const bobY = Math.sin(t * 2.1) * 6 * wobbleMul; // 상하로 살짝
+    const bobX = Math.sin(t * 1.4 + 1.2) * 5 * wobbleMul; // 좌우로 살짝, 위상을 다르게 해서 원형이 아닌 자연스러운 흔들림
     // 스테이션이 완전히 사라진 직후(cruise 진입)부터 20배속까지 0.5초에 걸쳐 가속.
     // 선형이 아니라 ease-in(t^2)으로 처음엔 천천히 붙다가 점점 빠르게 가속되도록 함.
     // 배속이 올라갈수록 layer2/3 파티클이 자동으로 세로 스트릭으로 늘어나며 워프 느낌을 냄(drawBgLayer2/3 참고).
@@ -926,14 +944,16 @@ function getLaunchRenderState(){
 // stage.js의 clearSubPhase==='fly' 구간 동안 index.html에서 매 프레임 호출.
 // t: 0(비행 시작, 현재 위치)~1(비행 완료, 화면 밖/행성 근처로 사라짐).
 // ease-in(t^3)으로 처음엔 천천히 출발했다가 점점 더 빠르게 가속하는 곡선을 사용.
+// 시작 좌표는 'fly' 진입 순간의 실제 플레이어 위치(clearFlyStartX/Y, 보스 격파 시점 좌표 그대로)를
+// 사용 — 과거엔 무조건 화면 중앙(W/2, H-80)에서 시작해 격파 위치와 다르면 순간이동하듯 보였음.
+let clearFlyStartX = W/2, clearFlyStartY = H - 80;
 function getClearFlyRenderState(t){
   const ease = Math.min(1, t) ** 3; // 가속도가 점점 붙는 느낌(3제곱 ease-in)
-  const startX = W/2, startY = H - 80; // 평상시 플레이 위치에서 출발
   const targetX = W/2, targetY = -40; // 화면 상단(행성 배경 방향)으로 사라짐
   return {
-    x: startX + (targetX - startX) * ease,
-    y: startY + (targetY - startY) * ease,
-    scale: 1 - 0.9 * ease // 1(원래 크기) -> 0.1(거의 사라짐)까지 축소
+    x: clearFlyStartX + (targetX - clearFlyStartX) * ease,
+    y: clearFlyStartY + (targetY - clearFlyStartY) * ease,
+    scale: 1 // 요청사항: 축소 없이 원래 크기 유지한 채 위로 사라짐
   };
 }
 
@@ -1097,9 +1117,8 @@ let normal7RespawnTimer = 0; // 0이면 대기 없음, >0이면 카운트다운 
 const NORMAL7_RESPAWN_DELAY = 1500; // 격파 후 재등장까지 지연 (ms)
 const spawnCycle = ['normal1','normal2','normal3','normal6']; // 일반4/5/7/8은 별도 타이머로 분리
 // 일반4/5 전용: 6초마다 1편대씩(일반4 → 일반5 번갈아). 해당 구간에서 켜진 쪽만 등장.
-const NORMAL45_SPAWN_INTERVAL = 6000; // ms
+const NORMAL45_SPAWN_INTERVAL = 10000; // ms, 10초마다 1편대(4 또는 5 중 랜덤)
 let normal45SpawnTimer = 0; // ms 누적
-let normal45NextIs5 = false;
 let cycleIdx = 0;
 const MAX_ENEMIES_ON_SCREEN = 10; // 화면 내 동시 존재 상한 (항상 8~10기 유지되도록 목표치와 함께 사용)
 const NORMAL_SPAWN_INTERVAL = 350; // 공용 사이클 spawn 체크 간격(ms) — 인원 미달 시 이 주기로 즉시 재시도해 격파 즉시 채움
@@ -1142,25 +1161,27 @@ function spawnNormal2(){ // 일반2: 일반1과 동일 스탯, 지그재그 없�
     } while(positions.some(p => Math.abs(p - x) < minGapX) && attempts < 10);
     positions.push(x);
     enemies.push({
-      type:'normal2', x, y: -40 - Math.random()*260,
+      type:'normal2', x, baseX: x, y: -40 - Math.random()*260,
       vy:110, hp:2, score:90, cool:0, fireRate:1000
     });
   }
 }
-function spawnNormal3(){ // 일반3: 정찰 드론
+function spawnNormal3(opts){ // 일반3: 정찰 드론 (opts.x로 좌표 고정 가능, 보스전 쌍 소환용)
+  const x = (opts && opts.x != null) ? opts.x : 80 + Math.random()*(W-160);
   enemies.push({
-    type:'normal3', x: 80 + Math.random()*(W-160), y:-30,
+    type:'normal3', x, y:-30,
     vy:90, hp:7, score:50, cool:0, fireRate:1250
   });
 }
-// 일반4/5: 감염형 편대. 화면 아래쪽 옆에서 들어와 반대편 위로 빠르게 대각선 상승하며 빠져나감.
+// 일반4/5: 감염형 편대. Zone-3 높이에서 등장해 Zone-1 높이로 대각선 이동하며 빠져나감.
 // 3대가 진행 방향으로 일렬(앞·중간·뒤)로 따라붙고, 가운데 기체가 0.9초 뒤 180도 9발 부채꼴 1회 발사.
-const NORMAL45_SPEED = 430;          // px/s, 대각선 이동 속도(기존 가로 240px/s보다 빠르게)
+// 10초마다 일반4 또는 일반5 중 하나만 랜덤으로 등장(기존처럼 번갈아 가며 둘 다 나오지 않음).
+const NORMAL45_SPEED = 430;          // px/s, 대각선 이동 속도
 const NORMAL45_SPACING = 70;         // 편대 기체 간격(진행 방향 기준)
-function spawnNormal45(dir){         // dir: 1 = 일반4(왼쪽 아래 → 오른쪽 위), -1 = 일반5(오른쪽 아래 → 왼쪽 위)
+function spawnNormal45(dir){         // dir: 1 = 일반4(왼쪽→오른쪽), -1 = 일반5(오른쪽→왼쪽)
   const startX = dir > 0 ? -50 : W + 50, endX = dir > 0 ? W + 50 : -50;
-  const startY = ZONE_HEIGHT * 4.3;  // Zone-5 위쪽(주인공 기본 위치보다 위)에서 등장
-  const endY = ZONE_HEIGHT * 0.4;    // Zone-1 위쪽으로 퇴장
+  const startY = ZONE_HEIGHT * 2.3;  // Zone-3 높이에서 등장
+  const endY = ZONE_HEIGHT * 0.4;    // Zone-1 높이로 퇴장
   const dx = endX - startX, dy = endY - startY, len = Math.hypot(dx, dy);
   const ux = dx / len, uy = dy / len;
   const vx = ux * NORMAL45_SPEED, vy = uy * NORMAL45_SPEED;
@@ -1212,18 +1233,22 @@ function spawnNormal8(opts){ // 일반8: 바람개비 UFO, 등장 후 정지해 
   });
 }
 
-// 보스전 전용: spiral 2기를 보스(x:W/2, Zone-1/2 경계)와 겹치지 않도록 좌우로 벌려 동시 배치.
-// 좌측 기체는 Zone-3(더 아래), 우측 기체는 Zone-2로 높이도 다르게 둬서 겹침을 추가로 방지.
+// 보스전 전용: 2기를 보스(x:W/2)와 겹치지 않도록 좌우로 벌려 동시 배치.
+// 스테이지1은 spiral(일반8), 스테이지2는 요청에 따라 normal3(정찰 드론)를 사용.
 const BOSS_SPIRAL_PAIR_OFFSET_X = 130; // px, 화면 중앙(보스 위치)에서 좌우로 벌리는 거리
 function spawnBossSpiralPair(){
   spawnNormal8({ x: W/2 - BOSS_SPIRAL_PAIR_OFFSET_X, targetY: ZONE_HEIGHT * 2 });
   spawnNormal8({ x: W/2 + BOSS_SPIRAL_PAIR_OFFSET_X, targetY: ZONE_HEIGHT });
 }
+function spawnBossNormal3Pair(){
+  spawnNormal3({ x: W/2 - BOSS_SPIRAL_PAIR_OFFSET_X });
+  spawnNormal3({ x: W/2 + BOSS_SPIRAL_PAIR_OFFSET_X });
+}
 
 function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2.3배 크기)
   enemies.push({
-    type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT, // Zone-1과 Zone-2 경계선에 도착 후 정지
-    settled:false, vy:50, hp:300, maxHp:300, score:2000, // HP 300(폭탄 1발 100 데미지 기준). 하강 속도(vy) 80->50px/s로 늦춰 더 천천히 등장
+    type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT * 1.25, // Zone-1과 Zone-2 경계선보다 조금 더 아래로 조정(요청사항)
+    settled:false, vy:50, hp:500, maxHp:500, score:2000, // HP 500(사용자 요청으로 300->500 상향). 하강 속도(vy) 80->50px/s로 늦춰 더 천천히 등장
     size:240, cool:0,
     // 좌우 이동↔정지 발사 상태 머신 (등장 완료 후부터 동작)
     moveState:'move', moveTargetX: null, moveSpeed:180, // px/s, 좌우 이동 속도
@@ -1234,8 +1259,38 @@ function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2
   });
 }
 
+// ---- 보스2 (스테이지2 전용, 거미형 기계) ----
+// 보스1과 동일한 좌우 이동↔정지 발사 상태 머신 골격을 쓰되, 발사 패턴은 web/venom/legVolley 3종을
+// 조합해서 사용(아래 11절 참고). 다리 보행 애니메이션은 이동 중에만 진행되고 정지 중엔 고정됨
+// (frameFrozenIdx에 멈춘 프레임 번호를 저장, index.html의 그리기 쪽에서 참조).
+const BOSS2_PATTERN_SEQUENCE_SOLO = ['web', 'venom', 'legVolley']; // 전투 시작 후 1회차: 한 번씩 단독으로 보여줌
+const BOSS2_PATTERN_COMBOS = [['web','venom'],['web','legVolley'],['venom','legVolley']]; // 2회차부터 랜덤 조합(2개 동시)
+function spawnBoss2(){ // 보스2: 거미형 기계 (스테이지2 전용)
+  enemies.push({
+    type:'boss2', x: W/2, y:-140, targetY: ZONE_HEIGHT * 1.25, // 보스1과 동일하게 조금 더 아래로 조정(요청사항)
+    settled:false, vy:50, hp:800, maxHp:800, score:3000, // HP 800(사용자 요청)
+    size:220, cool:0,
+    // 좌우 이동↔정지 발사 상태 머신: 이동 2초 후 정지해 발사(요청사항), 발사 시간은 패턴에 따라 다름
+    moveState:'move', moveTargetX: null, moveSpeed:150,
+    minMoveDist:100,
+    moveElapsed:0, // 'move' 상태 진입 후 누적 경과(ms), 2초 되면 'fire'로 전환
+    MOVE_DURATION_MS: 2000,
+    fireElapsed:0, // 'fire' 상태 진입 후 누적 경과(ms)
+    legFrameIdx:0, legFrameTimer:0, // 다리 보행 애니메이션 프레임/타이머(이동 중에만 진행)
+    soloPatternIdx:0, // 전투 시작 후 1회차(web->venom->legVolley 순으로 단독 등장)에 사용할 인덱스
+    usedSoloIntro:false, // 1회차 솔로 소개가 끝났는지(끝나면 이후부터는 랜덤 2개 조합)
+    currentPatterns:['web'], // 이번 'fire' 구간에서 실제로 사용할 패턴 배열(1개 또는 2개)
+    webFireTimer:0, webFireIdx:0, // 거미줄 패턴 전용 타이머
+    venomFireTimer:0, // 독액 낙하 패턴 전용 타이머
+    legVolleyFireTimer:0, legVolleyIdx:0 // 다리 연계 사격 전용 타이머/다리 인덱스
+  });
+}
+
 // ---- 탄 발사 패턴 ----
-const BULLET_MAX_LIFE_MS = 6000; // 적 탄환 최대 생존 시간(ms). 느린 탄이 화면에 비정상적으로 오래 머무는 것을 막는 안전장치.
+const BULLET_MAX_LIFE_MS = 13000; // 적 탄환 최대 생존 시간(ms). 가장 느린 일반 탄(fireAimed 기본 100px/s)이
+// 화면 맨 위(y≈-300)에서 맨 아래(y≈740)까지 가는 데 최대 약 10.4초가 걸리므로, 그보다 넉넉히 길게
+// 설정해 중간에 사라지지 않도록 함(기존 6000ms는 너무 짧아 끝까지 못 가고 사라지는 버그가 있었음).
+// 비정상적으로 느린 탄에 대한 안전장치 역할은 유지됨.
 
 function liteBullet(x,y,r,color){
   ctx.save();
@@ -1250,21 +1305,25 @@ function liteBullet(x,y,r,color){
   ctx.restore();
 }
 
+// 수직 단발: 조준 없이 항상 아래 방향(90도)으로 발사. 일반1 전용.
+function fireStraightDown(e, color, speed){
+  bullets.push({x:e.x,y:e.y,vx:0,vy:speed,r:6,color});
+  playEnemyShootSound();
+}
+
 function fireAimed(e, color, speed){ // speed: px/s
   const dx = player.x - e.x, dy = player.y - e.y;
   const d = Math.hypot(dx,dy) || 1;
   let ux = dx/d, uy = dy/d;
-  // 일반1/2처럼 조준 단발을 쏘는 적은 플레이어가 거의 수평 방향(같은 높이)에 있으면 탄의 vy가
-  // 거의 0이 되어 화면을 매우 느리게 가로지르다 끝까지 가지 못하고(수명 제한 등으로) 사라지는
-  // 문제가 있었음. 아래 방향 성분을 최소 MIN_DOWNWARD_RATIO만큼 보장하고, 그 경우엔 탄속도
-  // SLOW_ANGLE_SPEED_BOOST만큼 증폭해 화면 맨 아래까지 확실히, 빠르게 도달하도록 함.
-  const MIN_DOWNWARD_RATIO = 0.45;
+  // 일반1/2처럼 조준 단발을 쏘는 적은, 조준 각도에 따라 수직 속도(vy)가 매우 작아지면
+  // 화면 맨 아래까지 도달하는 데 너무 오래 걸려 수명 제한(BULLET_MAX_LIFE_MS) 전에 끝까지
+  // 못 가고 사라지는 문제가 있었음. 실제 하강 속도(vy)가 항상 MIN_VY 이상이 되도록
+  // 전체 속도를 필요한 만큼 증폭(각도는 그대로 유지, 속도 스칼라만 키움).
+  const MIN_VY = 150; // px/s, 화면 전체 세로 길이(720)를 아무리 느려도 5초 안에는 지나갈 수 있는 하한
   let actualSpeed = speed;
-  if(uy < MIN_DOWNWARD_RATIO){
-    uy = MIN_DOWNWARD_RATIO;
-    const horizMag = Math.sqrt(Math.max(0, 1 - uy*uy));
-    ux = (ux === 0 ? 0 : Math.sign(ux)) * horizMag;
-    actualSpeed = speed * 1.8; // 보정이 걸린 경우에만 탄속 80% 증폭(원래 조준이 아래쪽이면 그대로 유지)
+  const vyAtBaseSpeed = Math.abs(uy) * speed;
+  if(vyAtBaseSpeed < MIN_VY){
+    actualSpeed = (uy !== 0) ? MIN_VY / Math.abs(uy) : speed;
   }
   bullets.push({x:e.x,y:e.y,vx:ux*actualSpeed,vy:uy*actualSpeed,r:6,color});
   playEnemyShootSound();
@@ -1289,17 +1348,17 @@ function fireSpread2(e, color, speed, spreadDeg){
   playEnemyShootSound();
 }
 
-// 스테이지2부터 일반3이 사용하는 신규 탄막: 9발이 좁은 반경(18px)으로 좌우 수평 회전하며
-// 내려오는 "원통형(링 전체 회전)" 탄막. 샘플(normal3_screw_narrow_sample.html)에서 확정한
-// 수치(9발, omega 5rad/s, radius 18px, speed 140px/s, 수평축) 그대로 적용.
-// kind:'screw' 플래그를 둬서 index.html의 bullets 갱신 루프에서 일반 vx/vy 직선 이동이 아니라
-// 각도 기반 공식으로 매 프레임 위치를 재계산하도록 분기함.
+// 스테이지2부터 일반3이 사용하는 신규 탄막: 9발이 반경18px, 회전축을 30도 기울여
+// 내려오는 "원통형(링 전체 회전)" 탄막. 사용자 요청 수치로 재조정
+// (9발, omega 5rad/s, radius 18px, speed 140px/s, 회전축 기울기 30도).
 function fireScrewCylinder(e, color){
   const strands = 9, omega = 5, radius = 18, speed = 140;
+  const wobbleRad = 30 * Math.PI/180;
+  const wobbleDirX = Math.cos(wobbleRad), wobbleDirY = Math.sin(wobbleRad);
   const baseAngle = Math.random() * Math.PI * 2;
   for(let i=0;i<strands;i++){
     bullets.push({
-      kind:'screw', ox:e.x, oy:e.y, x:e.x, y:e.y,
+      kind:'screw', ox:e.x, oy:e.y, x:e.x, y:e.y, wobbleDirX, wobbleDirY,
       vy: speed, omega, radius, baseAngle: baseAngle + (Math.PI*2/strands)*i,
       age: 0, r:6, color
     });
@@ -1372,6 +1431,79 @@ function getBossMuzzle(e){
   const baseH = e.size * 592/616;
   const bottomY = e.y + baseH * eyeDistFromBottomRatio;
   return { x: e.x, y: bottomY };
+}
+
+// ---- 보스2(거미형) 전용 탄막 패턴 3종 ----
+// 샘플(boss_bullet_patterns_sample.html)에서 확정한 수치를 그대로 적용.
+// ---- 스테이지2 전용 일반 적 색상(기체 발광색 + 탄 색). 샘플(stage2_enemy_color_proposal.html)에서
+// 승인된 조합 그대로 적용. 스테이지1에서는 기존 색을 그대로 유지(index.html에서 currentStage로 분기).
+const STAGE2_ENEMY_COLORS = {
+  normal1: '#ff5a7a', // 녹색 -> 코랄핑크
+  normal3: '#ffb347', // 시안 -> 호박색
+  normal4: '#7dffb0', // 밝은 보라 -> 민트그린
+  normal6: '#ff7043', // (청색계 화염) -> 오렌지
+  normal7: '#c77dff', // 오렌지 -> 보라
+  normal8: '#4de8ff'  // 마젠타 -> 시안
+};
+function getEnemyColor(type, stage1Color){
+  return (typeof currentStage !== 'undefined' && currentStage >= 2 && STAGE2_ENEMY_COLORS[type]) ? STAGE2_ENEMY_COLORS[type] : stage1Color;
+}
+const BOSS2_WEB_COLOR = '#3ad9ff';
+const BOSS2_VENOM_COLOR = '#8fff6a';
+const BOSS2_LEG_COLOR = '#ff9a3c';
+const BOSS2_WEB_STRANDS = 8;
+const BOSS2_WEB_RING_INTERVAL_MS = 500;
+const BOSS2_WEB_SPEED = 150;
+const BOSS2_WEB_PHASE_MS = 1000; // 요청사항: 1초 쏘고 각도를 반바퀴(180도) 돌려서 1초, 총 3회(3초)
+// 거미줄(Web Shot): 보스 중심에서 8방향 방사형으로 탄 링을 바깥으로 반복 발사.
+// baseAngleOffset: 1초 단위 phase가 바뀔 때마다 180도씩 번갈아 뒤집혀 전체 패턴이 반전됨.
+function fireBossWebRing(e){
+  const phaseIdx = Math.floor((e.webPhaseElapsed || 0) / BOSS2_WEB_PHASE_MS);
+  const base = Math.PI/2 + (phaseIdx % 2) * Math.PI; // 아래 방향부터 시작, 홀수 phase면 180도 반전
+  for(let i=0;i<BOSS2_WEB_STRANDS;i++){
+    const ang = (Math.PI*2/BOSS2_WEB_STRANDS)*i + base;
+    bullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*BOSS2_WEB_SPEED,vy:Math.sin(ang)*BOSS2_WEB_SPEED,r:5,color:BOSS2_WEB_COLOR});
+  }
+  playBossShotSound();
+}
+const BOSS2_VENOM_INTERVAL_MS = 1400;
+const BOSS2_VENOM_LIFE_MS = 3000; // 요청사항: 독액 탄은 생성 후 3초가 지나면 화면에 남아 있어도 사라짐
+// 독액 낙하(Venom Drip): 보스 아래쪽에서 가늘고 느린 독탄 3~5발이 랜덤 x좌표로 낙하.
+// 요청사항: 거의 화면 맨 아래까지 흐르듯 떨어지다가 3초 뒤 소멸, trail(흐르는 산성 자국)로 시각화,
+// 화면에 독탄이 남아있는 동안은 추가 독공격을 하지 않음(venomActive 플래그로 보스 쪽에서 게이트).
+function fireBossVenomDrip(e){
+  const count = 8; // 요청사항: 화면에 한 번에 8군데로 독액을 뿌림(기존 3~5발에서 상향)
+  const margin = 70;
+  // 3초(BOSS2_VENOM_LIFE_MS) 안에 화면 아래쪽 끝 근처까지 도달하도록 속도 산정.
+  const travelDist = H - e.y - e.size*0.3 - 40; // 생성 위치에서 화면 하단 40px 위까지
+  const baseSpeed = Math.max(140, (travelDist / (BOSS2_VENOM_LIFE_MS/1000)) * 0.92);
+  // 8군데가 균등하게 흩어지도록 화면을 8등분한 구간 안에서 각각 랜덤 x를 뽑음(완전 랜덤이면
+  // 일부 구간에 몰리고 일부가 비어 "8군데"라는 느낌이 안 날 수 있어 구간 분산을 보장).
+  const slotW = (W - margin*2) / count;
+  for(let i=0;i<count;i++){
+    const x = margin + slotW*i + Math.random()*slotW;
+    bullets.push({ x, y: e.y + e.size*0.3, vx:0, vy: baseSpeed + Math.random()*20, r: 4, color: BOSS2_VENOM_COLOR,
+      maxLifeMs: BOSS2_VENOM_LIFE_MS, kind:'venomTrail', trail:[] });
+  }
+  playBossShotSound();
+}
+const BOSS2_LEG_VOLLEY_INTERVAL_MS = 220;
+const BOSS2_LEG_VOLLEY_SPEED = 180;
+const BOSS2_LEG_VOLLEY_HOMING_STRENGTH = 1.8; // rad/s, 완전 유도가 아닌 약한 유도(값이 작을수록 더 느리게 꺾임)
+const BOSS2_LEG_VOLLEY_HOMING_DURATION_MS = 900; // 발사 후 이 시간 동안만 유도, 이후엔 직진
+// 다리 연계 사격(Leg Volley): 보스 다리 끝 좌표에서 발사되어 퍼져나가며, 완전 조준이 아닌
+// 약한 유도성(발사 초반에만 서서히 플레이어 쪽으로 꺾임)을 가짐. 옅은 궤적(trail)으로 흐름을 표시.
+function fireBossLegVolley(e){
+  const legs = getBoss2LegPositions(e);
+  const leg = legs[e.legVolleyIdx % legs.length];
+  e.legVolleyIdx++;
+  // 초기 발사 방향은 다리가 뻗은 쪽(보스 중심 반대 방향)으로 "퍼지듯" 나가고, 그 뒤 서서히 유도됨.
+  const outDx = leg.x - e.x, outDy = leg.y - e.y;
+  const outD = Math.hypot(outDx, outDy) || 1;
+  bullets.push({ kind:'legVolley', x: leg.x, y: leg.y,
+    vx: outDx/outD*BOSS2_LEG_VOLLEY_SPEED, vy: outDy/outD*BOSS2_LEG_VOLLEY_SPEED,
+    r:6, color: BOSS2_LEG_COLOR, age:0, trail:[] });
+  playBossShotSound();
 }
 
 // 레이저 충전 이펙트: 주둥이 위치에서 맴도는(회전) 보라 광구, t는 0~1 진행률.
@@ -1598,6 +1730,22 @@ function drawBossSprite(e, size){
   drawImageWithHitFlash(img, e.x - w/2, bottomY - h, w, h, e);
 }
 
+// 보스2(거미형) 몸체 정사각형 스프라이트 그리기. 다리 보행 프레임은 이동 중일 때만 index.html의
+// update() 쪽에서 e.legFrameIdx를 갱신하고, 정지(fire) 중에는 멈춘 그대로 유지됨.
+function drawBoss2Sprite(e, size){
+  const img = boss2Frames[e.legFrameIdx] || boss2Frames[0];
+  if(!img || !img.complete || img.naturalWidth === 0) return;
+  drawImageWithHitFlash(img, e.x - size/2, e.y - size/2, size, size, e);
+}
+// 보스2 다리 끝 좌표(상대 오프셋, size=220 기준으로 비율 맞춰 스케일). 거미줄/다리 연계 사격 발사 원점으로 사용.
+const BOSS2_LEG_OFFSETS_BASE = [
+  {x:-0.43,y:-0.25},{x:-0.45,y:-0.045},{x:-0.43,y:0.16},{x:-0.36,y:0.34},
+  {x: 0.43,y:-0.25},{x: 0.45,y:-0.045},{x: 0.43,y:0.16},{x: 0.36,y:0.34}
+];
+function getBoss2LegPositions(e){
+  return BOSS2_LEG_OFFSETS_BASE.map(off=>({ x: e.x + off.x*e.size, y: e.y + off.y*e.size }));
+}
+
 function drawFlameTrail(e, size){
   // 진행 방향 반대쪽으로 뻗는 촛불 모양의 가는 화염
   const speed = Math.hypot(e.vx, e.vy) || 1;
@@ -1638,15 +1786,16 @@ let screenFlash = 0; // 0~1, 화면 전체 화이트 플래시 남은 진행률 
 const SCREEN_FLASH_DURATION = 0.5; // 초
 
 function spawnExplosion(type, x, y){
-  if(hitFrames[type]){ // normal1/2/3/4/6/7/boss1: 프레임 스프라이트 시트 애니메이션 (기종별 색상·크기·프레임수)
+  const lookupType = type === 'boss2' ? 'boss1' : type; // 보스2는 전용 폭발 에셋이 없어 보스1 것을 재사용
+  if(hitFrames[lookupType]){ // normal1/2/3/4/6/7/boss1: 프레임 스프라이트 시트 애니메이션 (기종별 색상·크기·프레임수)
     let size = 90;
     let maxLife = 0.5;
     let opacity = 1; // 폭발 전체 불투명도 (0~1), 기종별로 조절 가능
-    if(type === 'normal7'){ size = 150; maxLife = 0.6; }
-    else if(type === 'boss1'){ size = 320; maxLife = 1.05; opacity = 0.70; screenFlash = SCREEN_FLASH_DURATION; } // 보스는 파편이 훨씬 크고 오래 지속(6프레임) + 화면 전체 화이트 플래시
-    const frameCount = hitFrameCounts[type] || 5;
+    if(lookupType === 'normal7'){ size = 150; maxLife = 0.6; }
+    else if(lookupType === 'boss1'){ size = 320; maxLife = 1.05; opacity = 0.70; screenFlash = SCREEN_FLASH_DURATION; } // 보스는 파편이 훨씬 크고 오래 지속(6프레임) + 화면 전체 화이트 플래시
+    const frameCount = hitFrameCounts[lookupType] || 5;
     explosions.push({
-      x, y, life: 0, maxLife, kind:'sprite', frames: hitFrames[type],
+      x, y, life: 0, maxLife, kind:'sprite', frames: hitFrames[lookupType],
       frameCount, size, opacity
     });
   }
@@ -1843,6 +1992,48 @@ function pixelHitsPlayer(itemX, itemY, itemType){
   return false;
 }
 
+// 범용 픽셀 충돌 검사: 플레이어 스프라이트(96px)와 임의의 적/오브젝트 이미지가 실제 알파 픽셀
+// 단위로 겹치는지 검사(pixelHitsPlayer와 동일한 방식을 적 본체 충돌 판정에도 재사용하기 위해 분리).
+function pixelHitsPlayerGeneric(targetImg, targetX, targetY, targetSize){
+  const playerData = _getAlphaData(assets['player'], 96);
+  const targetData = _getAlphaData(targetImg, targetSize);
+  if(!playerData || !targetData){
+    const dx = targetX - player.x, dy = targetY - player.y;
+    return Math.hypot(dx, dy) < (30 + targetSize/2);
+  }
+  const pLeft = player.x - 48, pTop = player.y - 48;
+  const tLeft = targetX - targetSize/2, tTop = targetY - targetSize/2;
+  const left = Math.max(pLeft, tLeft);
+  const top = Math.max(pTop, tTop);
+  const right = Math.min(pLeft + 96, tLeft + targetSize);
+  const bottom = Math.min(pTop + 96, tTop + targetSize);
+  if(left >= right || top >= bottom) return false;
+  const step = 2;
+  for(let y = top; y < bottom; y += step){
+    const py = Math.floor(y - pTop), ty = Math.floor(y - tTop);
+    for(let x = left; x < right; x += step){
+      const px = Math.floor(x - pLeft), tx = Math.floor(x - tLeft);
+      const pAlpha = playerData.data[(py*96 + px)*4 + 3];
+      if(pAlpha === 0) continue;
+      const tAlpha = targetData.data[(ty*targetSize + tx)*4 + 3];
+      if(tAlpha > 0) return true;
+    }
+  }
+  return false;
+}
+
+// 적 본체 렌더 크기 매핑(drawSprite 등에서 사용하는 값과 동일하게 유지). 보스는 e.size를 그대로 사용.
+const ENEMY_BODY_SIZE = { normal1:64, normal2:64, normal3:74, normal4:64, normal6:60, normal7:104, normal8:90 };
+// 요청사항: 적 기체 본체에 플레이어 스프라이트가 픽셀 단위로 닿으면 즉시 그 적을 폭발(격파)시키고
+// 플레이어도 피격 처리. 몸통박치기 전용이었던 일반6뿐 아니라 전체 일반 적에 공통 적용.
+function pixelHitsEnemyBody(e){
+  if(e.type === 'boss1' || e.type === 'boss2') return false; // 보스는 레이저/탄 전용 판정 유지(몸통 충돌 제외)
+  const img = assets[e.type];
+  const size = ENEMY_BODY_SIZE[e.type] || 64;
+  if(!img) return false;
+  return pixelHitsPlayerGeneric(img, e.x, e.y, size);
+}
+
 // 주인공 피격 시 폭발(스프라이트 시트, 흰색+청색 계열, normal1 시트를 재색상화)
 function spawnPlayerHitExplosion(x, y){
   const frameCount = hitFrameCounts.player || 5;
@@ -1935,7 +2126,7 @@ const BOSS_HP_BAR_LABEL = 'BOSS';
 const BOSS_HP_BAR_ALPHA = 0.55; // 바 전체 반투명도
 
 function drawBossHpBar(boss){
-  if(!boss || boss.type !== 'boss1') return;
+  if(!boss || (boss.type !== 'boss1' && boss.type !== 'boss2')) return;
   const maxHp = boss.maxHp || boss.hp || 1;
   const ratio = Math.max(0, Math.min(1, boss.hp / maxHp));
 

@@ -70,11 +70,11 @@ let stage2TrackSequence = [
 // 오브젝트 기본 크기 배율(원본 이미지 × 이 값 × 개별 scale). stage_editor.html의 OBJ_BASE_SCALE[2]와 반드시 동일하게 유지.
 const STAGE2_OBJ_BASE_SCALE = 0.7;
 let stage2ScrollY = 0;
-let STAGE2_SCROLL_SPEED = 100; // px/s, 지면 타일 스크롤 속도(에디터 기본값과 동일, 맵 에디터 내보내기 파일로 덮어써질 수 있음)
+let STAGE2_SCROLL_SPEED = 500; // px/s, 지면 타일 스크롤 속도(요청사항: 5배 상향, 기존 100)
 // 오브젝트(터렛/타워/암석 등) 레이어 전용 스크롤 좌표/속도. 지면과 분리해서 서로 다른 속도로 흘려
 // 패럴랙스 깊이감을 줄 수 있음(통합 타임라인 에디터의 "레이어별 스크롤 속도" 설정으로 조절).
 let stage2ObjScrollY = 0;
-let STAGE2_OBJ_SCROLL_SPEED = 100; // px/s, 기본값은 지면과 동일(에디터에서 값을 바꾸면 지면과 다른 속도로 흐름)
+let STAGE2_OBJ_SCROLL_SPEED = 500; // px/s, 기본값은 지면과 동일(요청사항: 5배 상향, 기존 100)
 
 // 초기 배치: 에디터에 등록된 오브젝트 배치를 그대로 옮김
 // z: 그리기 순서(숫자가 클수록 나중에/위에 그려짐). opacity: 불투명도.
@@ -165,7 +165,7 @@ const STAGE2_LAVA_X_MIN = 190, STAGE2_LAVA_X_MAX = 290;
 const STAGE2_PROC_POOLS = {
   plain: [
     ['bunkerTurret',0.55,'base'],['missileSilo',0.5,'base'],['radarTower',0.65,'base'],['alienLandingPad',0.85,'base'],
-    ['bioPipeline',1.2,'pipe'],['crashedShip',0.75,'wreck'],['salvageRobot',0.6,'wreck'],['cargoContainer',0.6,'wreck'],
+    ['bioPipeline',1.2,'pipe'],['crashedShip',0.75,'wreck'],['salvageRobot',0.45,'wreck'],['cargoContainer',0.6,'crate'],
     ['escapePod',0.6,'wreck'],['beastFossil',0.9,'fossil'],['rockBoulders',0.7,'rockFree'],['rockPillar',0.75,'rockFree'],
     ['rockCrystalMound',0.5,'crystal'],['alienFlora',0.42,'rockFree'],['meteorCrater',0.7,'flat']
   ],
@@ -211,7 +211,11 @@ function stage2ProcSpawnOne(yOffset){
   do { pick = pool[Math.floor(Math.random() * pool.length)]; } while(stage2ProcRecentTypes.includes(pick[0]) && guard++ < 8);
   const [type, baseScale, kind] = pick;
   const img = stage2ObjImgs[type];
-  const scale = +(baseScale * (0.8 + Math.random() * 0.4)).toFixed(2);
+  // 요청사항: 오브젝트 크기가 너무 일정했음 — 평균을 절반 정도로 낮추고(SIZE_MUL),
+  // 개체별 변동폭도 크게 넓혀(0.35~1.5배) 큰 것/작은 것이 골고루 섞여 보이게 함.
+  const STAGE2_OBJ_SIZE_MUL = 0.5; // 전체 평균 크기 절반
+  const sizeVariance = 0.35 + Math.random() * 1.15; // 0.35~1.5배, 넓은 분산
+  const scale = +(baseScale * STAGE2_OBJ_SIZE_MUL * sizeVariance).toFixed(2);
   const halfW = img && img.naturalWidth ? img.width * scale * STAGE2_OBJ_BASE_SCALE / 2 : 60;
   const halfH = img && img.naturalWidth ? img.height * scale * STAGE2_OBJ_BASE_SCALE / 2 : 60;
   // 3구역(좌/중/우) 중 최근에 덜 쓴 구역 우선. 용암 지대면 가운데 구역 금지.
@@ -229,14 +233,23 @@ function stage2ProcSpawnOne(yOffset){
         cx = z === 0 ? Math.min(cx, STAGE2_LAVA_X_MIN - halfW) : Math.max(cx, STAGE2_LAVA_X_MAX + halfW);
       }
       // 같은 줄(세로 200px 이내)에 이미 있는 오브젝트와 가로 170px 이상 떨어져야 함
-      const clash = stage2ProcObjs.some(o => Math.abs(o.y - y) < 200 && Math.abs(o.x - cx) < 170);
+      let clash = stage2ProcObjs.some(o => Math.abs(o.y - y) < 200 && Math.abs(o.x - cx) < 170);
+      // 분화구(flat kind)는 "다른 어떤 오브젝트와도 절대 겹치지 않음" 규칙 — 세로 200px 제한 없이
+      // 모든 기존 오브젝트와 넉넉한 간격(두 반경의 합 + 여유)을 둬서 겹침 자체를 원천 차단.
+      if(!clash && kind === 'flat'){
+        clash = stage2ProcObjs.some(o => {
+          const oImg = stage2ObjImgs[o.type];
+          const oHalf = oImg && oImg.naturalWidth ? Math.max(oImg.width, oImg.height) * o.scale * STAGE2_OBJ_BASE_SCALE / 2 : 60;
+          return Math.hypot(o.x - cx, o.y - y) < (halfW + oHalf + 30);
+        });
+      }
       if(!clash){ x = cx; stage2ProcZoneUse[z]++; break; }
     }
     if(x !== null) break;
   }
   if(x === null) return false; // 자리가 없으면 이번엔 건너뜀(간격 규칙 우선)
   let rot;
-  if(kind === 'base') rot = [0, 90, 180, 270][Math.floor(Math.random() * 4)] + Math.round((Math.random() - 0.5) * 12);
+  if(kind === 'base' || kind === 'crate') rot = [0, 90, 180, 270][Math.floor(Math.random() * 4)] + Math.round((Math.random() - 0.5) * 12);
   else if(kind === 'pipe') rot = Math.random() < 0.5 ? 0 : 90;
   else if(kind === 'crystal') rot = Math.round((Math.random() - 0.5) * 100); // -50~50도
   else if(kind === 'fossil'){
@@ -244,9 +257,11 @@ function stage2ProcSpawnOne(yOffset){
     rot = [0, 90, 180][Math.floor(Math.random() * 3)] + Math.round((Math.random() - 0.5) * 36);
   }
   else rot = Math.round(Math.random() * 360); // flat/wreck/rockFree: 완전 자유 회전
-  const near = kind === 'wreck' && Math.random() < 0.25; // 가까운 잔해: 더 빨리 스쳐 지나감
-  stage2ProcObjs.push({ type, x: Math.round(x), y, scale: near ? +(scale * 1.15).toFixed(2) : scale, rot,
-    brightness: +(0.85 + Math.random() * 0.25).toFixed(2), speedMul: near ? 1.35 : 1, z: near ? 2 : 1 });
+  // 지면 스테이지에서는 모든 오브젝트가 타일(지면)과 반드시 같은 속도로 흘러야 바닥에 붙어있는
+  // 것처럼 보임. 과거 "가까운 잔해"(near, speedMul 1.35배) 패럴랙스 효과가 지면과 다른 속도로
+  // 스크롤되어 공중에 뜬 것처럼 보이는 근본 원인이었으므로 완전히 제거(speedMul은 항상 1).
+  stage2ProcObjs.push({ type, x: Math.round(x), y, scale, rot,
+    brightness: +(0.85 + Math.random() * 0.25).toFixed(2), speedMul: 1, z: 1 });
   stage2ProcRecentTypes.push(type);
   if(stage2ProcRecentTypes.length > 2) stage2ProcRecentTypes.shift();
   return true;
@@ -264,6 +279,17 @@ function stage2ProcUpdate(dy){
     stage2ProcNextGap = (110 + Math.random() * 90) * (cluster > 1 ? 1.6 : 1);
   }
 }
+// 바닥 그림자가 필요한 오브젝트 타입(접지 없이 떠다니는 것처럼 보이던 것들). 신규 추가 시 여기만 수정.
+const STAGE2_GROUNDED_SHADOW_TYPES = new Set(['crashedShip', 'escapePod', 'cargoContainer', 'salvageRobot']);
+function drawStage2GroundShadow(ctx, x, y, w, h, alpha){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.ellipse(x, y + h * 0.32, w * 0.42, h * 0.14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 function drawStage2ProcObjects(ea){
   const list = stage2ProcObjs.slice().sort((a, b) => a.z - b.z);
   for(const o of list){
@@ -273,11 +299,36 @@ function drawStage2ProcObjects(ea){
     if(o.y + h < -80 || o.y - h > H + 80) continue;
     ctx.save();
     ctx.globalAlpha = ea;
+    // 바닥 그림자가 없으면 회전 시 공중에 뜬 것처럼 보이는 문제가 있어, 지면 접지 느낌을 주는
+    // 타원 그림자를 회전과 무관하게 깔아줌(위 고정 배치 쪽과 동일한 처리).
+    if(STAGE2_GROUNDED_SHADOW_TYPES.has(o.type)){
+      drawStage2GroundShadow(ctx, o.x, o.y, w, h, ea * 0.4);
+    }
     ctx.translate(o.x, o.y);
     ctx.rotate(o.rot * Math.PI / 180);
     ctx.drawImage(getBrightnessImage(img, o.brightness), -w / 2, -h / 2, w, h);
     ctx.restore();
   }
+}
+
+// ---- 보스전 배경 잠금 ----
+// WARNING!부터 클리어까지: 스크롤을 완전히 멈추고 오브젝트도 숨겨서 깨끗한 화면 위로 보스가
+// 걸어 내려오게 함. preBossWait 단계(화면의 적이 사라져 보스 대기 중)에는 즉시 멈추지 않고,
+// 요청사항에 따라 용암협곡(lavaRiver/transition)을 자연스럽게 지나 평지(plain)로 돌아올 때까지
+// 계속 스크롤하다가, 화면 맨 위 타일이 plain이 되는 순간부터 멈춤.
+let stage2ReachedPlainForBoss = false;
+function stage2InBossPhase(){
+  if(typeof stagePhase === 'undefined' || typeof currentStage === 'undefined' || currentStage !== 2) return false;
+  if(stagePhase === 'warning' || stagePhase === 'bossIntro' || stagePhase === 'boss' || stagePhase === 'clear') return true;
+  if(stagePhase === 'preBossWait'){
+    if(!stage2ReachedPlainForBoss){
+      const top = stage2TileAtTop();
+      if(top.key === 'plain') stage2ReachedPlainForBoss = true;
+    }
+    return stage2ReachedPlainForBoss;
+  }
+  stage2ReachedPlainForBoss = false; // spawn 단계로 되돌아오면(스테이지 재시작 등) 플래그 리셋
+  return false;
 }
 
 // 발사 시퀀스 종료 직후 배경이 갑자기 튀어나오지 않도록 서서히 페이드인시키는 내부 타이머.
@@ -292,10 +343,13 @@ let stage2WasHidden = true;
 function drawStage2Background(dt, alpha) {
   const a = (alpha === undefined) ? 1 : alpha;
   const totalH = stage2TrackLength();
-  stage2ScrollY = (stage2ScrollY + STAGE2_SCROLL_SPEED * dt) % totalH;
-  stage2ObjScrollY += STAGE2_OBJ_SCROLL_SPEED * dt; // 절차 생성 모드: 고정 배치는 한 번만 지나감(%totalH 안 함)
-  if(!STAGE2_PROC_ENABLED) stage2ObjScrollY %= totalH;
-  stage2ProcUpdate(STAGE2_OBJ_SCROLL_SPEED * dt);
+  const bossFrozen = stage2InBossPhase(); // WARNING!부터 클리어까지: 스크롤 완전 정지(요청사항)
+  if(!bossFrozen){
+    stage2ScrollY = (stage2ScrollY + STAGE2_SCROLL_SPEED * dt) % totalH;
+    stage2ObjScrollY += STAGE2_OBJ_SCROLL_SPEED * dt; // 절차 생성 모드: 고정 배치는 한 번만 지나감(%totalH 안 함)
+    if(!STAGE2_PROC_ENABLED) stage2ObjScrollY %= totalH;
+    stage2ProcUpdate(STAGE2_OBJ_SCROLL_SPEED * dt);
+  }
 
   if(a <= 0){
     stage2WasHidden = true;
@@ -340,6 +394,8 @@ function drawStage2Background(dt, alpha) {
   });
 
   // 2. 네오지오 오브젝트 (z 순서대로, 회전/스케일/불투명도 반영, 지면과 동일하게 위→아래로 흐르도록 +stage2ScrollY 사용)
+  // 보스전(WARNING!~클리어)에는 바닥을 완전히 비워 보스가 깨끗한 화면으로 걸어 내려오게 함(요청사항)
+  if(!bossFrozen){
   const sortedObjects = [...stage2WorldObjects].sort((a, b) => (a.z || 0) - (b.z || 0));
   sortedObjects.forEach(o => {
     const img = stage2ObjImgs[o.type];
@@ -367,6 +423,11 @@ function drawStage2Background(dt, alpha) {
       if (sy + h >= -80 && sy - h <= H + 80) {
         ctx.save();
         ctx.globalAlpha = opacity * ea; // 발사 시퀀스의 전체 숨김/페이드인(ea)과 오브젝트 개별 불투명도(opacity)를 함께 반영
+        // 바닥 그림자가 없으면 회전이 걸릴 때 공중에 뜬 것처럼 보이는 문제가 있어, 지면에 접지된
+        // 느낌을 주는 타원 그림자를 회전과 무관하게 깔아줌(그림자 자체는 회전하지 않음).
+        if (STAGE2_GROUNDED_SHADOW_TYPES.has(o.type)) {
+          drawStage2GroundShadow(ctx, o.x, sy, w, h, (opacity * ea) * 0.4);
+        }
         ctx.translate(o.x, sy);
         ctx.rotate(rad);
         ctx.drawImage(getBrightnessImage(img, o.brightness), -w / 2, -h / 2, w, h);
@@ -377,6 +438,7 @@ function drawStage2Background(dt, alpha) {
 
   // 2-1. 절차 생성 오브젝트(규칙 기반 랜덤, 무한히 이어짐)
   if(STAGE2_PROC_ENABLED) drawStage2ProcObjects(ea);
+  } // !bossFrozen
 
   // 3. 화산 행성 대기 헤이즈(스테이지1과 색조 통일)
   const grad = ctx.createLinearGradient(0, 0, 0, H);

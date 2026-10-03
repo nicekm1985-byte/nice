@@ -8,6 +8,39 @@
   html,body{margin:0;background:#04040a;overflow:hidden;height:100%;}
   canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
   #touchPad{ display:none; }
+  /* Control Zone 디자인: 게임 컨셉(스페이스/엔지니어링 패널)에 맞춘 그레이 톤 — 모서리 브래킷 + 중앙 점선 그리드 + 미세 네온 글로우. */
+  #touchPad{
+    position:relative;
+    background: linear-gradient(180deg, #141822 0%, #1c222e 40%, #10131a 100%);
+    border-top: 1px solid rgba(170,190,215,0.25);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 10px 24px -14px rgba(120,160,210,0.25);
+  }
+  #touchPad::before{
+    content:'';
+    position:absolute; left:0; right:0; top:0; height:1px;
+    background: linear-gradient(90deg, transparent, rgba(140,180,230,0.6), transparent);
+  }
+  #touchPad::after{
+    content:'';
+    position:absolute; left:10%; right:10%; top:50%; height:1px;
+    background: repeating-linear-gradient(90deg, rgba(150,180,210,0.18) 0 4px, transparent 4px 10px);
+  }
+  #touchPadLabel{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    color:#9fb3cc; letter-spacing:3px; font-size:10px; font-family:"Trebuchet MS", Arial, sans-serif;
+    text-shadow: 0 0 8px rgba(140,180,230,0.5);
+    pointer-events:none; user-select:none;
+  }
+  #touchPad .cz-corner{
+    position:absolute; width:14px; height:14px; border-color:rgba(150,180,220,0.5);
+    pointer-events:none;
+  }
+  #touchPad .cz-corner.tl{ top:6px; left:6px; border-top:1.5px solid; border-left:1.5px solid; }
+  #touchPad .cz-corner.tr{ top:6px; right:6px; border-top:1.5px solid; border-right:1.5px solid; }
+  #touchPad .cz-corner.bl{ bottom:6px; left:6px; border-bottom:1.5px solid; border-left:1.5px solid; }
+  #touchPad .cz-corner.br{ bottom:6px; right:6px; border-bottom:1.5px solid; border-right:1.5px solid; }
   @media (max-width: 768px){
     body{display:flex;flex-direction:column;align-items:center;justify-content:center;}
     canvas{
@@ -170,11 +203,11 @@
   <div class="gameOverText">GAME OVER</div>
 </div>
 <button id="pauseBtn">M</button>
-<button id="versionBtn">Ver 1.042</button>
+<button id="versionBtn">Ver 1.05</button>
 <div id="patchNotesOverlay">
   <div id="patchNotesBox">
     <h2 id="patchNotesHeader">업데이트 노트</h2>
-    <div class="patchVersion">Ver 1.042</div>
+    <div class="patchVersion">Ver 1.05</div>
 
     <h3>스테이지 클리어 연출 추가</h3>
     <p>보스를 격파하면 클리어 음악과 함께 "STAGE CLEAR"가 표시되고, 기체가 행성 쪽으로 가속하며 사라지는 연출 후 타이틀로 돌아갑니다.</p>
@@ -226,6 +259,7 @@
         <button id="devJumpStage1Btn">스테이지 1</button>
         <button id="devJumpStage1BossBtn">스테이지 1 보스</button>
         <button id="devJumpStage2Btn">스테이지 2</button>
+        <button id="devJumpStage2BossBtn">스테이지 2 보스</button>
       </div>
     </div>
   </div>
@@ -237,7 +271,11 @@
   <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
 </div>
 <canvas id="c" width="480" height="720"></canvas>
-<div id="touchPad"></div>
+<div id="touchPad">
+  <span class="cz-corner tl"></span><span class="cz-corner tr"></span>
+  <span class="cz-corner bl"></span><span class="cz-corner br"></span>
+  <span id="touchPadLabel">CONTROL ZONE</span>
+</div>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -335,7 +373,7 @@ function killEnemy(e){
   e.dead = true;
   addScore(e.score || 0);
   spawnExplosion(e.type, e.x, e.y);
-  if(e.type === 'boss1'){
+  if(e.type === 'boss1' || e.type === 'boss2'){
     playBossHitSound(); stopBossLaserSound();
     // 보스가 터질 때 화면에 남아있던 다른 적(보스전 중이므로 spiral/일반8)도 함께 폭발시킴
     enemies.forEach(other=>{
@@ -584,19 +622,19 @@ touchPad.addEventListener('touchstart', e=>{
   if(e.touches.length >= 2) useBomb();
 }, {passive:true});
 </script>
-<script src="bg.js?v=202610032010"></script>
-<script src="stage1layers.js?v=202610032010"></script>
-<script src="assets/bg/stage1new/stage1_launch.js?v=202610032010"></script>
-<script src="stage1bg.js?v=202610032010"></script>
-<script src="assets/bg/stage1new/stage1_layout.js?v=202610032010"></script>
-<script src="assets/bg/stage1new/stage1_schedule.js?v=202610032010"></script>
-<script src="assets/bg/stage1new/stage1_bgm.js?v=202610032010"></script>
-<script src="stage2bg.js?v=202610032010"></script>
-<script src="assets/bg/stage2new/stage2_layout.js?v=202610032010"></script>
-<script src="assets/bg/stage2new/stage2_schedule.js?v=202610032010"></script>
-<script src="assets/bg/stage2new/stage2_bgm.js?v=202610032010"></script>
-<script src="characters.js?v=202610032010"></script>
-<script src="stage.js?v=202610032010"></script>
+<script src="bg.js?v=202610051300"></script>
+<script src="stage1layers.js?v=202610051300"></script>
+<script src="assets/bg/stage1new/stage1_launch.js?v=202610051300"></script>
+<script src="stage1bg.js?v=202610051300"></script>
+<script src="assets/bg/stage1new/stage1_layout.js?v=202610051300"></script>
+<script src="assets/bg/stage1new/stage1_schedule.js?v=202610051300"></script>
+<script src="assets/bg/stage1new/stage1_bgm.js?v=202610051300"></script>
+<script src="stage2bg.js?v=202610051300"></script>
+<script src="assets/bg/stage2new/stage2_layout.js?v=202610051300"></script>
+<script src="assets/bg/stage2new/stage2_schedule.js?v=202610051300"></script>
+<script src="assets/bg/stage2new/stage2_bgm.js?v=202610051300"></script>
+<script src="characters.js?v=202610051300"></script>
+<script src="stage.js?v=202610051300"></script>
 <script>
 // ---- 일시정지/메뉴 ----
 // M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
@@ -783,6 +821,10 @@ document.getElementById('devJumpStage2Btn').addEventListener('click', ()=>{
   devEnterGameState();
   startStage(2);
 });
+document.getElementById('devJumpStage2BossBtn').addEventListener('click', ()=>{
+  devEnterGameState();
+  devJumpToStageBoss(2);
+});
 document.getElementById('patchNotesHeader').addEventListener('click', (e)=>{
   e.stopPropagation();
   devModeClickCount++;
@@ -917,14 +959,15 @@ function update(currentTime){
     else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
   }
 
-  // 일반4/5 전용 스폰: 6초마다 1편대(번갈아 등장, 동시 상한과 무관하게 정해진 주기 유지)
+  // 일반4/5 전용 스폰: 10초마다 1편대, 4 또는 5 중 랜덤으로 하나만 등장
   if(stagePhase === 'spawn' && (enabledTypes.normal4 || enabledTypes.normal5)){
     normal45SpawnTimer += dtMs;
     if(normal45SpawnTimer >= NORMAL45_SPAWN_INTERVAL){
       normal45SpawnTimer = 0;
-      const use5 = enabledTypes.normal5 && (normal45NextIs5 || !enabledTypes.normal4);
+      let use5;
+      if(enabledTypes.normal4 && enabledTypes.normal5) use5 = Math.random() < 0.5;
+      else use5 = enabledTypes.normal5;
       if(use5) spawnNormal5(); else spawnNormal4();
-      normal45NextIs5 = !use5;
     }
   }
 
@@ -948,43 +991,82 @@ function update(currentTime){
     }
   }
 
+  // 적 기체끼리 겹치는 것을 막기 위한 소프트 분리(separation): 서로 가까운 두 적이 있으면
+  // 매 프레임 조금씩 밀어냄(델타타임 기반). 자체 이동 벡터가 중요한 타입(편대/돌진/보스)은
+  // 패턴이 깨지지 않도록 대상에서 제외하고, 제자리/수직 하강 계열 적끼리만 적용.
+  const SEPARATION_TYPES = ['normal1','normal2','normal3','normal7','normal8'];
+  const SEPARATION_MIN_DIST = 70; // px
+  const SEPARATION_PUSH_SPEED = 160; // px/s
+  for(let i=0;i<enemies.length;i++){
+    const a = enemies[i];
+    if(!SEPARATION_TYPES.includes(a.type)) continue;
+    for(let j=i+1;j<enemies.length;j++){
+      const b = enemies[j];
+      if(!SEPARATION_TYPES.includes(b.type)) continue;
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const dist = Math.hypot(dx, dy);
+      if(dist > 0.001 && dist < SEPARATION_MIN_DIST){
+        const push = (SEPARATION_MIN_DIST - dist) / SEPARATION_MIN_DIST * SEPARATION_PUSH_SPEED * dt;
+        const ux = dx/dist, uy = dy/dist;
+        a.x += ux*push*0.5; a.y += uy*push*0.5;
+        b.x -= ux*push*0.5; b.y -= uy*push*0.5;
+        // 일반2는 사인 웨이브가 매 프레임 e.x = e.baseX + sin(...)로 x를 강제 재설정하므로
+        // baseX도 함께 밀어줘야 push가 다음 프레임에 무효화되지 않음.
+        if(a.type === 'normal2') a.baseX += ux*push*0.5;
+        if(b.type === 'normal2') b.baseX -= ux*push*0.5;
+      }
+    }
+  }
+
   enemies.forEach(e=>{
     e.cool += dtMs;
     updateHitFlash(e, dtMs); // 피격 플래시 감쇠(모든 적 공통, 델타타임 기반)
     if(e.type==='normal1'){
-      e.x += e.zdir * 140 * dt; // 지그재그 (일정 속도 좌우 이동, 즉시 반전)
-      e.y += e.vy * dt;
-      const margin = 90; // 화면 끝까지 가지 않도록 여유 마진
-      if(e.x < margin){ e.x = margin; e.zdir = 1; }
-      if(e.x > W-margin){ e.x = W-margin; e.zdir = -1; }
+      e.y += e.vy * dt; // 직선 하강(지그재그 제거)
       drawSprite(e, 'normal1', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 100); // 한 발씩 조준 (기체색: 녹색)
+        fireStraightDown(e, getEnemyColor('normal1', '#4dff8f'), 100); // 수직 단발(조준 아님, 항상 아래 방향)
       }
-    } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
+    } else if(e.type==='normal2'){ // 좌우 사인 웨이브 이동 + 조준 단발
+      e.sineTime = (e.sineTime || 0) + dt;
+      const sineAmp = 90, sineFreq = 1.6; // px, rad/s 환산용(아래서 *2*PI)
+      e.x = e.baseX + Math.sin(e.sineTime * sineFreq) * sineAmp;
       e.y += e.vy * dt;
       drawSprite(e, 'normal2', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, '#4dff8f', 100);
+        fireAimed(e, getEnemyColor('normal1', '#4dff8f'), 100); // 조준 단발(일반1과 동일 색상 매핑 사용)
       }
     } else if(e.type==='normal3'){
       e.y += e.vy * dt;
       drawSprite(e, 'normal3', 74);
-      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+      // 스테이지2에서는 발사 간격을 2배로 늘림(요청사항). fireRate 자체는 공용이라 건드리지 않고
+      // 이 분기에서만 실질 쿨다운 임계값을 2배로 적용.
+      const effectiveFireRate = currentStage >= 2 ? e.fireRate * 2 : e.fireRate;
+      if(e.cool >= effectiveFireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        if(currentStage >= 2) fireScrewCylinder(e, '#3ad9ff'); // 스테이지2부터: 9발 원통형 좁은 회전 탄막
+        if(currentStage >= 2) fireScrewCylinder(e, getEnemyColor('normal3', '#3ad9ff')); // 스테이지2부터: 6발 원통형 회전 탄막
         else fireSpread2(e, '#3ad9ff', 151, 25); // 스테이지1: 기존 25도 스프레드 2발 (기체색: 청록/시안)
       }
     } else if(e.type==='normal4'){
       e.x += e.vx * dt;
       e.y += e.vy * dt;
-      drawSprite(e, 'normal4', 80);
+      // 일반5는 일반4와 동일 스프라이트를 공유하되 vx가 음수(왼쪽으로 진행)일 때 좌우 반전해서
+      // 그려 실제로 반대쪽을 보고 있는 것처럼 보이게 함(신규 좌우 비대칭 디자인 적용 이후 필요).
+      if(e.vx < 0){
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.scale(-1, 1);
+        drawSprite({...e, x:0, y:0}, 'normal4', 64); // 크기 20% 축소(기존 80px)
+        ctx.restore();
+      } else {
+        drawSprite(e, 'normal4', 64); // 크기 20% 축소(기존 80px)
+      }
       // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
       if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
         e.fired = true;
-        fireFanN(e, '#c9a3ff', 134, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
+        fireFanN(e, getEnemyColor('normal4', '#c9a3ff'), 134, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라, 스테이지2는 민트그린)
       }
     } else if(e.type==='normal7'){
       if(!e.settled){
@@ -995,7 +1077,7 @@ function update(currentTime){
       // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
       if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireFan3(e, '#ff9a3c', 150); // 3발 부채꼴 (기체색: 오렌지). 탄속 67 → 150px/s(너무 느리다는 피드백)
+        fireFan3(e, getEnemyColor('normal7', '#ff9a3c'), 150); // 3발 부채꼴 (기체색: 오렌지, 스테이지2는 보라). 탄속 67 → 150px/s(너무 느리다는 피드백)
       }
     } else if(e.type==='normal8'){
       if(!e.settled){
@@ -1022,7 +1104,7 @@ function update(currentTime){
       // 정지 후 퇴장 시작 전까지 나선형(spiral) 탄막 반복 발사
       if(e.settled && !e.retreating && e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireSpiral(e, '#ff4dd8', 133); // 마젠타/핑크 (기체 포인트 컬러와 일치), 기존 190px/s에서 30% 감소
+        fireSpiral(e, getEnemyColor('normal8', '#ff4dd8'), 133); // 마젠타/핑크 (기체 포인트 컬러와 일치, 스테이지2는 시안), 기존 190px/s에서 30% 감소
       }
     } else if(e.type==='normal6'){
       // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
@@ -1113,16 +1195,16 @@ function update(currentTime){
         } else if(e.moveState === 'fire'){
           e.fireCool += dtMs;
           e.fireElapsed += dtMs;
-          if(e.fireRound < 10 && e.fireCool >= 420){
+          if(e.fireRound < 10 && e.fireCool >= 650){
             e.fireCool = 0;
             e.fireRound++;
-            fireBossQuadArc(e, '#b060ff', 154); // 40도 부채꼴 4갈래, 갈래당 10발(0.42초 간격, 주인공 히트박스 여유 확보 위해 기존 0.3초에서 확대), 보스 눈 색상과 맞춘 보라
+            fireBossQuadArc(e, '#b060ff', 154); // 40도 부채꼴 4갈래, 갈래당 10발(간격 넓힘: 420->650ms, 요청사항), 보스 눈 색상과 맞춘 보라
           }
           // 2번째 이동 완료 후부터 레이저: 주둥이에서 0.6초간 충전(맴돌기) 후 0.65초간 발사(스윕 속도 살짝 느리게), 3번째 이동 완료 후부터는 발사 중 좌우 스윕
           if(e.moveCount >= 2){
             const muzzle = getBossMuzzle(e);
             const LASER_CHARGE_MS = 600;
-            const LASER_DURATION_MS = 1100; // 50도를 쓸고 지나가는 시간(주인공 방향으로 와서 지나쳐 50도 끝까지)
+            const LASER_DURATION_MS = 2200; // 사용자 요청으로 스윕 속도 절반으로 낮춤(기존 1100ms -> 2200ms, 50도를 쓸고 지나가는 시간)
             if(e.fireElapsed < LASER_CHARGE_MS){
               stopBossLaserSound(); // 충전 단계에는 레이저 발사음 없음
               drawBossLaserCharge(muzzle.x, muzzle.y, e.fireElapsed / LASER_CHARGE_MS, true);
@@ -1132,7 +1214,7 @@ function update(currentTime){
               // 주인공 앞에서 멈추지 않고 주인공을 통과해 50도를 끝까지 채움. 방향은 발사 시작 순간 1회 결정.
               if(!e.sweepCenterSet){
                 const side = Math.abs(player.x - muzzle.x) < 4 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(player.x - muzzle.x);
-                e.sweepCenterAngle = side * 50 * Math.PI/180; // 최종 각도 50도(수직 아래 기준, +는 화면 오른쪽)
+                e.sweepCenterAngle = side * 35 * Math.PI/180; // 최종 각도 35도(수직 아래 기준, +는 화면 오른쪽, 사용자 요청으로 40도->35도)
                 e.sweepCenterSet = true;
               }
               const sweepProgress = Math.min(1, (e.fireElapsed - LASER_CHARGE_MS) / LASER_DURATION_MS); // 0~1
@@ -1147,29 +1229,141 @@ function update(currentTime){
           } else {
             stopBossLaserSound(); // 아직 레이저를 쓰지 않는 이동 회차
           }
-          if(e.fireRound >= 10){
-            e.moveState = 'move';
+          // 요청사항: 보스 HP가 50% 이하가 되면, 한 번의 'fire' 단계에서 패턴 세트(부채꼴탄 10라운드+레이저)를
+          // 1회가 아니라 2회 반복한 뒤에야 이동으로 전환. e.fireSetCount로 완료한 세트 수를 추적.
+          const requiredSets = (e.hp <= e.maxHp * 0.5) ? 2 : 1;
+          const laserDone = e.moveCount < 2 || e.fireElapsed >= 600 + 2200; // 레이저 미사용 회차는 바로 완료로 간주
+          if(e.fireRound >= 10 && laserDone){
+            e.fireSetCount = (e.fireSetCount || 0) + 1;
+            if(e.fireSetCount < requiredSets){
+              // 다음 세트를 이어서 바로 진행(이동 없이 그 자리에서 다시 발사 라운드 시작)
+              e.fireRound = 0;
+              e.fireCool = 0;
+              e.fireElapsed = 0;
+              e.sweepCenterSet = false;
+            } else {
+              e.fireSetCount = 0;
+              e.moveState = 'move';
+            }
           }
         }
       }
       drawBossSprite(e, e.size);
+    } else if(e.type==='boss2'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        // 하강(등장) 중에도 다리 보행 애니메이션이 계속 돌도록 함(요청사항).
+        e.legFrameTimer += dtMs;
+        if(e.legFrameTimer >= BOSS2_FRAME_INTERVAL_MS){
+          e.legFrameTimer = 0;
+          e.legFrameIdx = (e.legFrameIdx + 1) % boss2Frames.length;
+        }
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else {
+        const margin = 40;
+        if(e.moveState === 'move'){
+          e.moveElapsed += dtMs;
+          e.legFrameTimer += dtMs; // 다리 보행 애니메이션은 이동 중일 때만 진행
+          if(e.legFrameTimer >= BOSS2_FRAME_INTERVAL_MS){
+            e.legFrameTimer = 0;
+            e.legFrameIdx = (e.legFrameIdx + 1) % boss2Frames.length;
+          }
+          if(e.moveTargetX === null){
+            let tx;
+            let attempts = 0;
+            do {
+              tx = margin + Math.random()*(W - margin*2);
+              attempts++;
+            } while(Math.abs(tx - e.x) < e.minMoveDist && attempts < 10);
+            e.moveTargetX = tx;
+          }
+          const dx = e.moveTargetX - e.x;
+          const dist = Math.abs(dx);
+          const step = e.moveSpeed * dt;
+          if(step >= dist) e.x = e.moveTargetX; else e.x += Math.sign(dx) * step;
+          // 요청사항: 이동은 항상 2초(e.MOVE_DURATION_MS) 유지 후 정지 발사로 전환(목표 도착 여부와 무관하게 시간 기준)
+          if(e.moveElapsed >= e.MOVE_DURATION_MS){
+            e.moveState = 'fire';
+            e.moveTargetX = null;
+            e.moveElapsed = 0;
+            e.fireElapsed = 0;
+            e.webFireTimer = 0; e.webFireIdx = 0; e.webPhaseElapsed = 0;
+            e.venomFireTimer = 0;
+            e.legVolleyFireTimer = 0; e.legVolleyIdx = 0;
+            // 패턴 선택: 1회차는 web/venom/legVolley를 한 번씩 단독으로, 그 이후부터는 2개 랜덤 조합
+            if(!e.usedSoloIntro){
+              e.currentPatterns = [BOSS2_PATTERN_SEQUENCE_SOLO[e.soloPatternIdx]];
+              e.soloPatternIdx++;
+              if(e.soloPatternIdx >= BOSS2_PATTERN_SEQUENCE_SOLO.length) e.usedSoloIntro = true;
+            } else {
+              const combo = BOSS2_PATTERN_COMBOS[Math.floor(Math.random()*BOSS2_PATTERN_COMBOS.length)];
+              e.currentPatterns = combo;
+            }
+          }
+        } else if(e.moveState === 'fire'){
+          e.fireElapsed += dtMs;
+          // 선택된 패턴들을 동시에(요청사항) 각자의 주기로 반복 발사
+          if(e.currentPatterns.includes('web')){
+            // 요청사항: 1초 쏘고 각도를 180도 반전해서 1초, 다시 반전해서 1초, 총 3회(3초)만 진행.
+            e.webPhaseElapsed = (e.webPhaseElapsed || 0) + dtMs;
+            if(e.webPhaseElapsed < BOSS2_WEB_PHASE_MS * 3){
+              e.webFireTimer += dtMs;
+              if(e.webFireTimer >= BOSS2_WEB_RING_INTERVAL_MS){ e.webFireTimer = 0; fireBossWebRing(e); }
+            }
+          }
+          if(e.currentPatterns.includes('venom')){
+            // 요청사항: 화면에 독탄이 하나라도 남아있는 동안은 추가 독공격을 하지 않음(소멸 후에만 재발사).
+            const venomAlive = bullets.some(b => b.kind === 'venomTrail');
+            if(!venomAlive){
+              e.venomFireTimer += dtMs;
+              if(e.venomFireTimer >= BOSS2_VENOM_INTERVAL_MS){ e.venomFireTimer = 0; fireBossVenomDrip(e); }
+            } else {
+              e.venomFireTimer = 0; // 독탄이 남아있는 동안은 쿨다운도 쌓이지 않게 리셋
+            }
+          }
+          if(e.currentPatterns.includes('legVolley')){
+            e.legVolleyFireTimer += dtMs;
+            if(e.legVolleyFireTimer >= BOSS2_LEG_VOLLEY_INTERVAL_MS){ e.legVolleyFireTimer = 0; fireBossLegVolley(e); }
+          }
+          // 발사 구간 유지 시간: web 패턴은 3회(3초) 전부 보여줘야 하므로 최소 3200ms 보장, 그 외 패턴
+          // 단독은 2.4초, 2개 조합이면 조금 더 길게(3.4초) 보여주고 다시 이동으로 전환.
+          let fireDuration = e.currentPatterns.length >= 2 ? 3400 : 2400;
+          if(e.currentPatterns.includes('web')) fireDuration = Math.max(fireDuration, 3200);
+          // 요청사항: 보스 HP가 50% 이하가 되면 같은 패턴 세트를 1회가 아니라 2회 반복한 뒤에야 이동으로 전환.
+          if(e.fireElapsed >= fireDuration){
+            const requiredSets = (e.hp <= e.maxHp * 0.5) ? 2 : 1;
+            e.fireSetCount = (e.fireSetCount || 0) + 1;
+            if(e.fireSetCount < requiredSets){
+              // 같은 패턴 세트를 그 자리에서 한 번 더 반복(이동 없이 발사 타이머만 리셋)
+              e.fireElapsed = 0;
+              e.webFireTimer = 0; e.webPhaseElapsed = 0;
+              e.venomFireTimer = 0;
+              e.legVolleyFireTimer = 0;
+            } else {
+              e.fireSetCount = 0;
+              e.moveState = 'move';
+            }
+          }
+        }
+      }
+      drawBoss2Sprite(e, e.size);
     }
   });
 
   // 플레이어 레이저 vs 모든 적 공통 충돌 판정
   enemies.forEach(e=>{
     if(e.dead) return;
-    if(e.type === 'boss1' && !e.settled) return; // 보스는 등장(하강) 중에는 피격 무효, 정지해서 첫 움직임을 시작한 순간부터 유효
-    if(e.type !== 'boss1' && !isEnemyOnScreen(e)) return; // 일반 적은 화면 밖(스폰 직후 진입 중)에서는 피격 무효
+    if((e.type === 'boss1' || e.type === 'boss2') && !e.settled) return; // 보스는 등장(하강) 중에는 피격 무효, 정지해서 첫 움직임을 시작한 순간부터 유효
+    if(e.type !== 'boss1' && e.type !== 'boss2' && !isEnemyOnScreen(e)) return; // 일반 적은 화면 밖(스폰 직후 진입 중)에서는 피격 무효
     for(const b of playerBullets){
       if(b.hit) continue;
       const dx = b.x - e.x, dy = b.y - e.y;
-      const hitRadius = e.type === 'boss1' ? 100 : 60;
+      const hitRadius = (e.type === 'boss1' || e.type === 'boss2') ? 100 : 60;
       if(Math.hypot(dx,dy) < hitRadius){
         e.hp--;
         b.hit = true;
-        // 요청에 따라 일반7/일반8(spiral)/보스1에만 피격 시 아주 살짝 밝아지는 플래시 적용
-        if(e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1'){
+        // 요청에 따라 일반7/일반8(spiral)/보스1/보스2에만 피격 시 아주 살짝 밝아지는 플래시 적용
+        if(e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1' || e.type === 'boss2'){
           triggerHitFlash(e);
         }
         if(e.hp <= 0) killEnemy(e);
@@ -1180,7 +1374,7 @@ function update(currentTime){
   playerBullets = playerBullets.filter(b=> !b.hit);
   enemies = enemies.filter(e=> !e.dead);
 
-  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || (e.type === 'normal8' ? e.y > -80 : e.y < H+40));
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.type === 'boss2' || (e.type === 'normal8' ? e.y > -80 : e.y < H+40));
   // 일반4/5: 진행 방향 쪽(반대편)으로 빠져나갔거나 화면 위로 나갔을 때만 제거(등장 전 화면 밖 대기 중에는 유지)
   enemies = enemies.filter(e=> e.type !== 'normal4' || !((e.vx > 0 && e.x > W+80) || (e.vx < 0 && e.x < -80) || e.y < -100));
   enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
@@ -1208,9 +1402,60 @@ function update(currentTime){
     if(b.kind === 'screw'){
       b.age += dt;
       const travel = b.vy * b.age;
-      const rot = Math.sin(b.baseAngle + b.omega * b.age) * b.radius; // 수평 좌우 회전 오프셋
-      b.x = b.ox + rot;
-      b.y = b.oy + travel;
+      const rot = Math.sin(b.baseAngle + b.omega * b.age) * b.radius; // 회전 오프셋
+      // wobbleDirX/Y가 있으면 회전축을 그 방향으로 기울여 적용(없으면 기존처럼 순수 수평 좌우 회전)
+      if(b.wobbleDirX !== undefined){
+        b.x = b.ox + b.wobbleDirX * rot;
+        b.y = b.oy + b.wobbleDirY * rot + travel;
+      } else {
+        b.x = b.ox + rot;
+        b.y = b.oy + travel;
+      }
+    } else if(b.kind === 'venomTrail'){
+      // 보스 독액: 흐르는 느낌을 내기 위해 지나온 자리에 옅은 산성 자국(trail)을 남기며 낙하.
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      b.trail.push({x:b.x, y:b.y, a:1});
+      b.trail.forEach(p=>{ p.a -= dt*0.9; });
+      b.trail = b.trail.filter(p=>p.a>0);
+      b.trail.forEach(p=>{
+        ctx.save();
+        ctx.globalAlpha = p.a*0.3;
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, b.r*0.9, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      });
+    } else if(b.kind === 'legVolley'){
+      // 다리 연계 사격: 발사 초반(BOSS2_LEG_VOLLEY_HOMING_DURATION_MS) 동안만 플레이어 방향으로
+      // 서서히(완전 유도 아님) 방향을 꺾고, 그 이후엔 그 방향 그대로 직진. 옅은 궤적도 함께 표시.
+      b.age += dtMs;
+      if(b.age < BOSS2_LEG_VOLLEY_HOMING_DURATION_MS){
+        const speed = Math.hypot(b.vx, b.vy) || 1;
+        const curAngle = Math.atan2(b.vy, b.vx);
+        const targetAngle = Math.atan2(player.y - b.y, player.x - b.x);
+        let diff = targetAngle - curAngle;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        const maxTurn = BOSS2_LEG_VOLLEY_HOMING_STRENGTH * dt;
+        const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+        const newAngle = curAngle + turn;
+        b.vx = Math.cos(newAngle) * speed;
+        b.vy = Math.sin(newAngle) * speed;
+      }
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      b.trail.push({x:b.x, y:b.y, a:1});
+      b.trail.forEach(p=>{ p.a -= dt*1.6; }); // 독액보다 더 빠르게 옅어지는 약한 궤적
+      b.trail = b.trail.filter(p=>p.a>0);
+      b.trail.forEach(p=>{
+        ctx.save();
+        ctx.globalAlpha = p.a*0.25;
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, b.r*0.55, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      });
     } else {
       b.x += b.vx * dt; b.y += b.vy * dt;
     }
@@ -1219,8 +1464,9 @@ function update(currentTime){
   // 수명 제한: 혹시 비정상적으로 느린 속도로 생성된 탄이 화면 안에 영원히 머무는 일이 없도록
   // 모든 적 탄환은 생성 후 BULLET_MAX_LIFE_MS를 넘기면 자연 소멸(일반적인 탄속에서는 그 전에
   // 화면 밖으로 나가므로 평소엔 영향 없음, 느린 탄에 대해서만 안전장치로 작동).
+  // 개별 탄(예: 보스 독액)이 b.maxLifeMs를 지정하면 그 값을 우선 사용(요청사항: 독액은 3초 후 소멸).
   bullets.forEach(b=>{ b.lifeMs = (b.lifeMs || 0) + dtMs; });
-  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20 && b.lifeMs < BULLET_MAX_LIFE_MS);
+  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20 && b.lifeMs < (b.maxLifeMs != null ? b.maxLifeMs : BULLET_MAX_LIFE_MS));
 
   // 주인공 피격 판정 (적 탄환 vs 실제 타원형 히트박스)
   // WARNING! 표시 중(stagePhase==='warning')과 보스 폭발 이후 클리어 연출 중(stagePhase==='clear')에는
@@ -1232,9 +1478,36 @@ function update(currentTime){
     if(isInsidePlayerHitbox(b.x, b.y)){
       b.hitPlayer = true;
       handlePlayerHit();
+      return;
+    }
+    // 요청사항: 독액(venomTrail)은 머리(현재 위치)뿐 아니라 지나온 자리(trail)에도 타격 판정을 둠.
+    // trail의 각 점은 시간이 지나며 옅어지는데(p.a), 너무 옅어진 끝부분은 판정에서 제외해 자연스럽게 함.
+    if(b.kind === 'venomTrail' && b.trail){
+      for(const p of b.trail){
+        if(p.a < 0.3) continue;
+        if(isInsidePlayerHitbox(p.x, p.y)){
+          b.hitPlayer = true;
+          handlePlayerHit();
+          break;
+        }
+      }
     }
   });
   bullets = bullets.filter(b=> !b.hitPlayer);
+
+  // 적 기체 본체 vs 플레이어 픽셀 충돌 판정(요청사항): 닿으면 그 적은 즉시 폭발(격파)시키고
+  // 플레이어도 피격 처리. 보스/화면 밖 대기 중인 적은 제외.
+  if(stagePhase !== 'warning' && stagePhase !== 'clear'){
+    enemies.forEach(e=>{
+      if(e.dead) return;
+      if(e.type === 'boss1' || e.type === 'boss2') return;
+      if(typeof isEnemyOnScreen === 'function' && !isEnemyOnScreen(e)) return;
+      if(pixelHitsEnemyBody(e)){
+        killEnemy(e);
+        handlePlayerHit();
+      }
+    });
+  }
 
   playerCool += dtMs;
   if(playerCool >= getPlayerFireRate()){
@@ -1260,7 +1533,7 @@ function update(currentTime){
   drawBombHud();
   updateLifeBonusPopup(dtMs);
   drawLifeBonusPopup();
-  drawBossHpBar(enemies.find(e=>e.type==='boss1'));
+  drawBossHpBar(enemies.find(e=>e.type==='boss1' || e.type==='boss2'));
   if(stagePhase === 'warning'){
     drawBossWarning(bossWarningTimer, BOSS_WARNING_DURATION_MS, BOSS_WARNING_BLINK_COUNT);
   }

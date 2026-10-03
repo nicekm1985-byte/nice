@@ -62,8 +62,8 @@ const BULLET_FADE_MS = 500; // 화면에 남은 적 탄환이 페이드아웃되
 const BOSS_WARNING_BLINK_COUNT = 5; // 2초 동안 5회 깜빡임
 const MAX_NORMAL8_ON_SCREEN = 2; // spiral(일반8) 화면 내 동시 존재 상한 (스테이지1/보스전 공통)
 
-// 보스전 spiral(일반8) 전용 등장 스케줄: 보스 등장 시점부터 10초/30초 후 각 2기씩(총 2회, 4기) 동시 등장.
-// 두 기는 보스와 겹치지 않도록 좌우로 벌려서 배치(spawnBossSpiralPair 참고).
+// 보스전 전용 등장 스케줄: 보스 등장 시점부터 10초/30초 후 각 2기씩(총 2회, 4기) 동시 등장.
+// 요청에 따라 spiral(일반8) 대신 normal3(정찰 드론)를 좌우로 벌려 등장시킴.
 const BOSS_SPIRAL_SPAWN_TIMES_MS = [10000, 30000];
 let bossSpiralSpawnIdx = 0; // 다음에 소환할 인덱스(0,1 순서로 진행)
 let bossPhaseElapsed = 0; // ms, 보스 단계 진입 이후 누적 경과
@@ -134,12 +134,14 @@ const stageConfigs = {
   1: {
     get bossTriggerMs(){ return getScheduleData(1).bossTriggerMs; },
     bossSpawnFn: spawnBoss1, // 이 스테이지에서 소환할 보스 스폰 함수
-    spawnScheduleFn: updateStage1Spawns
+    spawnScheduleFn: updateStage1Spawns,
+    bossAddType: 'normal8' // 보스전 중 추가 등장시킬 타입(spiral)
   },
   2: {
     get bossTriggerMs(){ return getScheduleData(2).bossTriggerMs; },
-    bossSpawnFn: spawnBoss1, // 스테이지2 전용 보스 제작 전까지 보스1 재사용
-    spawnScheduleFn: updateStage1Spawns // 스테이지2도 동일한 데이터 기반 스케줄러 재사용(STAGE2_SCHEDULE_DATA가 phases:[]이면 아무 일도 안 함)
+    bossSpawnFn: spawnBoss2, // 스테이지2 전용 보스(거미형)
+    spawnScheduleFn: updateStage1Spawns, // 스테이지2도 동일한 데이터 기반 스케줄러 재사용(STAGE2_SCHEDULE_DATA가 phases:[]이면 아무 일도 안 함)
+    bossAddType: 'normal3' // 요청에 따라 보스2 전투 중에는 spiral 대신 normal3(정찰 드론)를 등장시킴
   }
 };
 
@@ -168,8 +170,11 @@ function getStageBgmAudioForTrack(stageNum, trackKey, src){
 }
 // 현재 재생 중인 모든 스테이지 BGM 트랙(일반 진행용)을 정지. 보스 BGM은 별도(bossBgmAudio)로 관리되므로 대상에서 제외.
 function pauseAllStageBgmTracks(stageNum){
-  const cache = stageBgmAudioCache[stageNum];
-  Object.values(cache).forEach(audio => audio.pause());
+  // 모든 스테이지의 캐시를 전부 정지(스테이지 전환 시 이전 스테이지 BGM이 겹쳐 들리는 문제 방지).
+  // stageNum 인자는 하위 호환을 위해 유지하되 실제로는 전체 스테이지를 순회함.
+  Object.values(stageBgmAudioCache).forEach(cache=>{
+    Object.values(cache).forEach(audio => audio.pause());
+  });
 }
 // elapsedMs 시점에 맞는 BGM 구간을 찾아 필요 시 트랙을 전환(같은 트랙이 계속 이어지는 경우엔 끊지 않음).
 function updateStageBgmSegments(elapsedMs){
@@ -183,10 +188,14 @@ function updateStageBgmSegments(elapsedMs){
   if(idx < 0) return;
   const seg = segs[idx];
   const trackKeyStr = (!seg.track || seg.track === 0) ? null : String(seg.track);
+  // 스테이지 번호까지 포함한 복합 키로 비교해야, 스테이지1의 트랙'1'(main.mp3)과 스테이지2의
+  // 트랙'1'(main2.mp3)처럼 트랙 번호는 같지만 실제로는 다른 곡인 경우를 "같은 트랙"으로 오인해
+  // 전환을 건너뛰는 일이 없음(과거 스테이지2 진입 시 main.mp3가 계속 나오던 버그의 원인).
+  const compositeKey = trackKeyStr ? (currentStage + ':' + trackKeyStr) : null;
   // 이미 이 트랙이 끊기지 않고 재생 중이면(예: 발사대 연출에서 미리 틀어둔 스테이지1 BGM이
   // startStage() 진입 시점에도 그대로 흐르고 있는 경우) 처음부터 다시 재생하지 않고 그대로 이어감.
   // (startStage()가 stage1CurBgmSegIdx를 -1로 리셋해도 트랙/재생 상태만으로 판단하므로 영향 없음)
-  if(trackKeyStr === stageBgmCurTrack){
+  if(compositeKey === stageBgmCurTrack){
     const cache = stageBgmAudioCache[currentStage];
     const curAudio = trackKeyStr ? cache[trackKeyStr] : null;
     if(!trackKeyStr || (curAudio && !curAudio.paused)){
@@ -203,7 +212,7 @@ function updateStageBgmSegments(elapsedMs){
   audio.volume = getBgmVolume();
   audio.currentTime = 0;
   audio.play().catch(()=>{});
-  stageBgmCurTrack = trackKeyStr;
+  stageBgmCurTrack = compositeKey;
 }
 
 // ---- BGM 전환 (스테이지 진행용 <-> 보스전용) ----
@@ -267,7 +276,7 @@ let stageClearActive = false; // 격파 직후부터 true(BGM 정지 등 즉시 
 // 순간 다른 위치로 순간이동하듯 튀지 않고 그대로 이어지게 함. 개발자 모드처럼 발사 연출 없이 곧바로
 // 진입하는 경우(이전에 흘러온 배경이 없음)에는 false(기본값)로 호출해 처음 위치로 초기화.
 function startStage(stageNum, skipBgReset){
-  if(typeof normal45SpawnTimer !== 'undefined'){ normal45SpawnTimer = 0; normal45NextIs5 = false; }
+  if(typeof normal45SpawnTimer !== 'undefined'){ normal45SpawnTimer = 0; }
   // 이전 스테이지(보스전)에 남아 있던 적·적 탄환 제거. 클리어 연출 중 투명하게 페이드됐던 탄이
   // bulletFadeAlpha=1 리셋과 함께 다시 보이며 날아오던 문제 방지.
   if(typeof enemies !== 'undefined') enemies = [];
@@ -349,7 +358,9 @@ function triggerBossPhase(){
   enemies = enemies.filter(e => false); // 화면의 모든 적 즉시 제거
   bullets = []; // 화면의 모든 적 탄환 즉시 제거
   bulletFadeAlpha = 1; // 페이드 상태 리셋(이후 보스전 탄환은 다시 평상시 불투명도로 그려짐)
-  // 보스전에는 spiral(일반8)만 등장해야 하므로, 공용 스폰 사이클이 도는 일반 적 타입을 전부 비활성화
+  const cfg = stageConfigs[currentStage];
+  const addType = (cfg && cfg.bossAddType) || 'normal8';
+  // 보스전에는 bossAddType 하나만 등장해야 하므로, 공용 스폰 사이클이 도는 일반 적 타입을 전부 비활성화
   enabledTypes.normal1 = false;
   enabledTypes.normal2 = false;
   enabledTypes.normal3 = false;
@@ -357,24 +368,33 @@ function triggerBossPhase(){
   enabledTypes.normal5 = false;
   enabledTypes.normal6 = false;
   enabledTypes.normal7 = false;
-  enabledTypes.normal8 = true; // spiral은 보스전 전용 타이머(updateBossSpiralSpawns)로 별도 소환
+  enabledTypes.normal8 = false;
+  enabledTypes[addType] = true; // updateBossSpiralSpawns(stage.js)가 보스 등장 10초/30초 후 별도 소환
   normal8SpawnTimer = 0;
   normal7Alive = false;
   normal7RespawnTimer = 0;
   switchToBossBgm();
-  const cfg = stageConfigs[currentStage];
   if(cfg && cfg.bossSpawnFn) cfg.bossSpawnFn();
 }
 
-// 보스전 spiral(일반8) 스폰: 보스 등장 시점부터 10초/30초 후 각 2기씩 소환 시도(좌우로 벌려서 배치, 보스와 안 겹침).
-// 화면 내 spiral이 이미 있으면(2대 상한) 다음 프레임에 재시도.
+// 보스전 전용 스폰: 보스 등장 시점부터 10초/30초 후 각 2기씩 소환 시도(좌우로 벌려서 배치, 보스와 안 겹침).
+// 스테이지1은 spiral(일반8), 스테이지2는 normal3(정찰 드론, 요청사항)를 사용.
+// 화면 내 동시 존재 개체가 있으면(상한) 다음 프레임에 재시도.
 function updateBossSpiralSpawns(){
+  const cfg = stageConfigs[currentStage];
   if(bossSpiralSpawnIdx >= BOSS_SPIRAL_SPAWN_TIMES_MS.length) return;
   const nextTime = BOSS_SPIRAL_SPAWN_TIMES_MS[bossSpiralSpawnIdx];
   if(bossPhaseElapsed >= nextTime){
-    const normal8Count = enemies.filter(e => e.type === 'normal8').length;
-    if(normal8Count === 0){
-      spawnBossSpiralPair(); // 2기를 좌우로 벌려서 동시 소환
+    const useNormal3 = cfg && cfg.bossAddType === 'normal3';
+    // 요청사항: 보스가 독액(venom) 공격 중일 때는 normal3가 등장하지 않도록 함.
+    if(useNormal3){
+      const boss2 = enemies.find(e => e.type === 'boss2');
+      if(boss2 && boss2.currentPatterns && boss2.currentPatterns.includes('venom')) return;
+    }
+    const type = useNormal3 ? 'normal3' : 'normal8';
+    const count = enemies.filter(e => e.type === type).length;
+    if(count === 0){
+      if(useNormal3) spawnBossNormal3Pair(); else spawnBossSpiralPair(); // 2기를 좌우로 벌려서 동시 소환
       bossSpiralSpawnIdx++;
     }
   }
@@ -427,14 +447,14 @@ function updateStage(dtMs){
     bossPhaseElapsed += dtMs;
     updateBossSpiralSpawns();
     // 보스 스폰 함수가 enemies에 push한 개체가 실제로 배열에 들어온 시점부터 'boss' 단계로 전이
-    if(enemies.some(e => e.type === 'boss1')){
+    if(enemies.some(e => e.type === 'boss1' || e.type === 'boss2')){
       stagePhase = 'boss';
     }
   } else if(stagePhase === 'boss'){
     bossPhaseElapsed += dtMs;
     updateBossSpiralSpawns();
     // 보스가 배열에서 사라졌다면(격파 처리 완료) 클리어 단계로 전이
-    if(!enemies.some(e => e.type === 'boss1')){
+    if(!enemies.some(e => e.type === 'boss1' || e.type === 'boss2')){
       triggerStageClear();
     }
   } else if(stagePhase === 'clear'){
@@ -449,6 +469,8 @@ function updateStage(dtMs){
       playStageClearMusic(); // STAGE N CLEAR 표시와 동시에 클리어 음악 재생 시작
     } else if(clearSubPhase === 'music' && clearSubPhaseElapsed >= CLEAR_MUSIC_MS){
       clearSubPhase = 'fly'; clearSubPhaseElapsed = 0;
+      // 비행 시작 좌표를 현재 플레이어 위치(격파 시점 그대로)로 캡처 — 중앙으로 순간이동하지 않도록.
+      if(typeof clearFlyStartX !== 'undefined'){ clearFlyStartX = player.x; clearFlyStartY = player.y; }
     } else if(clearSubPhase === 'fly' && clearSubPhaseElapsed >= CLEAR_FLY_MS){
       // 다음 스테이지가 있으면 TO BE CONTINUED 없이 바로 암전 후 다음 스테이지로
       clearSubPhase = currentStage < 2 ? 'fadeout' : 'toBeContinued'; clearSubPhaseElapsed = 0;
