@@ -1,8 +1,8 @@
 const STAGE2_BGM_DATA = {
   "tracks": {
-    "1": "sound/main_dnb.wav",
+    "1": "sound/main2.mp3",
     "2": "sound/main_ambient_dnb.wav",
-    "3": "sound/main.m4a"
+    "3": "sound/main_dnb.wav"
   },
   "segments": [
     {

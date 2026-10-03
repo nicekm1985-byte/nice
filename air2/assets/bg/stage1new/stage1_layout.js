@@ -5,7 +5,7 @@ const STAGE1_LAYOUT_DATA = {
     {
       "name": "먼 별",
       "kind": "stars",
-      "speed": 12,
+      "speed": 120,
       "brightness": 1,
       "opacity": 1,
       "visible": true,
@@ -2467,7 +2467,7 @@ const STAGE1_LAYOUT_DATA = {
     {
       "name": "중간 별",
       "kind": "stars",
-      "speed": 35,
+      "speed": 350,
       "brightness": 1.3,
       "opacity": 1,
       "visible": true,
@@ -3231,22 +3231,6 @@ const STAGE1_LAYOUT_DATA = {
           "swayAmp": 12,
           "swaySpeed": 0.55,
           "motionSeed": 3.83
-        },
-        {
-          "type": "distantSun",
-          "x": 380,
-          "y": 4159.999999999999,
-          "speedMul": 1,
-          "scale": 0.55,
-          "rot": 0,
-          "opacity": 0.8,
-          "brightness": 0.9,
-          "z": 6,
-          "floatAmp": 0,
-          "floatSpeed": 1,
-          "swayAmp": 0,
-          "swaySpeed": 1,
-          "motionSeed": 0.69
         },
         {
           "type": "navBuoy",

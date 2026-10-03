@@ -72,9 +72,9 @@ const STAGE2_LAYOUT_DATA = {
   "objects": [
     {
       "type": "alienLandingPad",
-      "x": 118,
-      "y": 560,
-      "scale": 0.9,
+      "x": 330,
+      "y": 640,
+      "scale": 0.75,
       "rot": 12,
       "opacity": 1,
       "brightness": 1,
@@ -88,9 +88,9 @@ const STAGE2_LAYOUT_DATA = {
     },
     {
       "type": "crashedShip",
-      "x": 370,
-      "y": 260,
-      "scale": 0.7,
+      "x": 360,
+      "y": 300,
+      "scale": 0.58,
       "rot": -28,
       "opacity": 1,
       "brightness": 1,
@@ -104,9 +104,9 @@ const STAGE2_LAYOUT_DATA = {
     },
     {
       "type": "rockBoulders",
-      "x": 205,
-      "y": 30,
-      "scale": 0.55,
+      "x": 120,
+      "y": 40,
+      "scale": 0.62,
       "rot": 40,
       "opacity": 1,
       "brightness": 0.9,
@@ -138,7 +138,7 @@ const STAGE2_LAYOUT_DATA = {
       "type": "salvageRobot",
       "x": 70,
       "y": 17320,
-      "scale": 0.55,
+      "scale": 0.4,
       "rot": 15,
       "opacity": 1,
       "brightness": 1,
@@ -680,9 +680,9 @@ const STAGE2_LAYOUT_DATA = {
     },
     {
       "type": "alienLandingPad",
-      "x": 334,
-      "y": 1356.162235504018,
-      "scale": 0.8,
+      "x": 70,
+      "y": 1420,
+      "scale": 0.95,
       "rot": 16,
       "opacity": 1,
       "brightness": 1,
@@ -696,9 +696,9 @@ const STAGE2_LAYOUT_DATA = {
     },
     {
       "type": "salvageRobot",
-      "x": 74,
-      "y": 899.1984949912876,
-      "scale": 0.55,
+      "x": 200,
+      "y": 980,
+      "scale": 0.4,
       "rot": -20,
       "opacity": 1,
       "brightness": 1,
@@ -712,9 +712,9 @@ const STAGE2_LAYOUT_DATA = {
     },
     {
       "type": "radarTower",
-      "x": 304,
-      "y": 460.02290811389685,
-      "scale": 0.64,
+      "x": 90,
+      "y": 520,
+      "scale": 0.7,
       "rot": 22,
       "opacity": 1,
       "brightness": 1,
@@ -743,6 +743,6 @@ const STAGE2_LAYOUT_DATA = {
       "speedMul": 1
     }
   ],
-  "scrollSpeed": 100,
-  "objScrollSpeed": 100
+  "scrollSpeed": 500,
+  "objScrollSpeed": 500
 };

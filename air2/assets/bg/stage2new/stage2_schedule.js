@@ -27,8 +27,7 @@ const STAGE2_SCHEDULE_DATA = {
         "normal2",
         "normal3",
         "normal4",
-        "normal5",
-        "normal6"
+        "normal5"
       ],
       "cap": 8
     },
@@ -40,7 +39,6 @@ const STAGE2_SCHEDULE_DATA = {
         "normal3",
         "normal4",
         "normal5",
-        "normal6",
         "normal7",
         "normal8"
       ],
@@ -52,7 +50,6 @@ const STAGE2_SCHEDULE_DATA = {
         "normal3",
         "normal4",
         "normal5",
-        "normal6",
         "normal7",
         "normal8"
       ],
@@ -66,7 +63,6 @@ const STAGE2_SCHEDULE_DATA = {
         "normal3",
         "normal4",
         "normal5",
-        "normal6",
         "normal7",
         "normal8"
       ],
@@ -80,7 +76,6 @@ const STAGE2_SCHEDULE_DATA = {
         "normal3",
         "normal4",
         "normal5",
-        "normal6",
         "normal7",
         "normal8"
       ],
