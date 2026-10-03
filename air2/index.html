@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Air2</title>
+<style>
+  html,body{margin:0;background:#04040a;overflow:hidden;height:100%;}
+  canvas{display:block;margin:0 auto;background:radial-gradient(ellipse at center, #0a0a20 0%, #000000 100%);cursor:none;}
+  #touchPad{ display:none; }
+  @media (max-width: 768px){
+    body{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    canvas{
+      width:min(100vw, 66.6vh);height:min(150vw, 100vh);
+      touch-action:none;
+    }
+    #touchPad{
+      display:block;width:min(100vw, 66.6vh);height:12vh;max-height:100px;flex-shrink:0;
+      touch-action:none;
+    }
+  }
+  #continueOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.9);z-index:40;
+    flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  }
+  #continueOverlay .continueText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:34px;color:#8fe3ff;text-shadow:0 0 18px #5ad1ff, 0 0 4px #ffffff;
+    letter-spacing:2px;
+  }
+  #continueOverlay .continueCountdown{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:48px;color:#fff3d0;text-shadow:0 0 16px #ffd76a;
+  }
+  #continueOverlay .continueHint{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-size:14px;color:#8fe3ff;
+    opacity:0.85;
+  }
+  #gameOverOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.95);z-index:46;
+    align-items:center;justify-content:center;
+  }
+  #gameOverOverlay .gameOverText{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:38px;color:#ff5a5a;text-shadow:0 0 20px #ff2d2d, 0 0 6px #ffffff;
+    letter-spacing:2px;
+  }
+  #pauseBtn{
+    position:fixed;top:8px;right:8px;z-index:50;
+    width:38px;height:38px;border-radius:8px;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#8fe3ff;background:rgba(10,10,20,0.75);border:2px solid #5ad1ff;
+    cursor:pointer;box-shadow:0 0 10px rgba(90,209,255,0.5);
+  }
+  #pauseMenuOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.85);z-index:48;
+    flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  }
+  #pauseMenuOverlay .pauseTitle{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;
+    font-size:26px;color:#8fe3ff;text-shadow:0 0 16px #5ad1ff;letter-spacing:2px;
+  }
+  .pauseMenuBtn{
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:16px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:10px 26px;cursor:pointer;box-shadow:0 0 12px rgba(255,215,106,0.5);
+    min-width:160px;
+  }
+  .pauseMenuBtn:hover{ background:#26264a; }
+  #versionBtn{
+    display:none;position:fixed;top:8px;left:8px;z-index:50;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-size:12px;
+    color:#8fe3ff;background:rgba(10,10,20,0.6);border:1px solid rgba(90,209,255,0.6);
+    border-radius:6px;padding:4px 10px;cursor:pointer;
+  }
+  #versionBtn:hover{ background:rgba(20,20,40,0.8); }
+  #patchNotesOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.9);z-index:60;
+    align-items:center;justify-content:center;
+  }
+  #patchNotesBox{
+    width:min(86vw, 420px);max-height:78vh;overflow-y:auto;
+    background:#12121e;border:2px solid #5ad1ff;border-radius:14px;
+    padding:22px 20px;box-shadow:0 0 24px rgba(90,209,255,0.35);
+    font-family:"Trebuchet MS", Arial, sans-serif;color:#e8f4ff;
+    scrollbar-width:thin;scrollbar-color:#5ad1ff #1a1a2e; /* Firefox용 가는 스크롤바 */
+  }
+  #patchNotesBox::-webkit-scrollbar{ width:5px; } /* Safari/Chrome용 가는 스크롤바 */
+  #patchNotesBox::-webkit-scrollbar-track{ background:#1a1a2e;border-radius:6px; }
+  #patchNotesBox::-webkit-scrollbar-thumb{ background:#5ad1ff;border-radius:6px; }
+  #patchNotesBox h2{
+    margin:0 0 4px;font-size:20px;color:#8fe3ff;text-shadow:0 0 10px #5ad1ff;
+  }
+  #patchNotesBox .patchVersion{
+    font-size:12px;color:#9db3c8;margin-bottom:16px;
+  }
+  #patchNotesBox h3{
+    font-size:14px;color:#ffd76a;margin:16px 0 6px;
+  }
+  #patchNotesBox p{
+    font-size:13px;line-height:1.5;margin:0 0 4px;color:#dfe9f5;
+  }
+  #patchNotesCloseBtn{
+    margin-top:18px;width:100%;
+    font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:15px;
+    color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a;border-radius:10px;
+    padding:10px 0;cursor:pointer;
+  }
+  #patchNotesCloseBtn:hover{ background:#26264a; }
+
+  /* ---- 개발자 사운드 테스트 모드 ---- */
+  #devModeOverlay{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(4,4,10,0.94);z-index:70;
+    align-items:center;justify-content:center;
+  }
+  #devModeBox{
+    width:min(92vw, 440px);max-height:84vh;overflow-y:auto;
+    background:#12121e;border:2px solid #ff9a3c;border-radius:14px;
+    padding:18px 16px;box-shadow:0 0 24px rgba(255,154,60,0.35);
+    font-family:"Trebuchet MS", Arial, sans-serif;color:#e8f4ff;
+    scrollbar-width:thin;scrollbar-color:#ff9a3c #1a1a2e;
+    touch-action:manipulation; /* 연속 탭(빠른 클릭)에도 더블탭 확대 방지 */
+    -webkit-user-select:none;user-select:none; /* 더블클릭 시 텍스트 선택/확대 유발 방지 */
+  }
+  #devModeBox::-webkit-scrollbar{ width:5px; }
+  #devModeBox::-webkit-scrollbar-track{ background:#1a1a2e;border-radius:6px; }
+  #devModeBox::-webkit-scrollbar-thumb{ background:#ff9a3c;border-radius:6px; }
+  #devModeBox h2{ margin:0 0 14px;font-size:17px;color:#ffb347;text-shadow:0 0 8px #ff9a3c; }
+  .devRow{
+    display:flex;align-items:center;gap:6px;padding:8px 0;
+    border-bottom:1px solid #24243a;font-size:12px;
+  }
+  .devRow .devLabel{ flex:0 0 92px;color:#ffe9c8;font-weight:bold; }
+  .devRow .devVal{ flex:0 0 62px;color:#8fe3ff;text-align:center;font-family:monospace; }
+  .devRow button{
+    background:#1a2a3a;color:#dff3ff;border:1px solid #3a5a7a;border-radius:6px;
+    padding:5px 8px;cursor:pointer;font-size:12px;flex:0 0 auto;
+  }
+  .devRow button:hover{ background:#254060; }
+  .devRow .devDirty{ color:#ff5a5a;font-size:11px;flex:0 0 14px;text-align:center; }
+  #devModeActions{ display:flex;gap:10px;margin-top:16px; }
+  #devModeApplyBtn, #devModeCloseBtn{
+    flex:1;font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:14px;
+    padding:10px 0;cursor:pointer;border-radius:10px;
+  }
+  #devModeApplyBtn{ color:#0a0a14;background:#8fe3a3;border:2px solid #4dff8f; }
+  #devModeApplyBtn:hover{ background:#a8f0b8; }
+  #devModeCloseBtn{ color:#fff3d0;background:#1a1a2e;border:2px solid #ffd76a; }
+  #devModeCloseBtn:hover{ background:#26264a; }
+  #devStageJumpActions{ display:flex;gap:8px;flex-wrap:wrap; }
+  #devStageJumpActions button{
+    flex:1 1 auto;min-width:90px;font-family:"Trebuchet MS", Arial, sans-serif;font-weight:bold;font-size:12px;
+    padding:9px 6px;cursor:pointer;border-radius:8px;color:#0a0a14;background:#8fc7ff;border:2px solid #3d9fff;
+  }
+  #devStageJumpActions button:hover{ background:#a8d4ff; }
+</style>
+</head>
+<body>
+<div id="continueOverlay">
+  <div class="continueText">CONTINUE</div>
+  <div class="continueCountdown" id="continueCountdownNum">10</div>
+  <div class="continueHint">아무 키나 눌러서 계속하기</div>
+</div>
+<div id="gameOverOverlay">
+  <div class="gameOverText">GAME OVER</div>
+</div>
+<button id="pauseBtn">M</button>
+<button id="versionBtn">Ver 1.042</button>
+<div id="patchNotesOverlay">
+  <div id="patchNotesBox">
+    <h2 id="patchNotesHeader">업데이트 노트</h2>
+    <div class="patchVersion">Ver 1.042</div>
+
+    <h3>스테이지 클리어 연출 추가</h3>
+    <p>보스를 격파하면 클리어 음악과 함께 "STAGE CLEAR"가 표시되고, 기체가 행성 쪽으로 가속하며 사라지는 연출 후 타이틀로 돌아갑니다.</p>
+
+    <h3>사운드 밸런스 재정비</h3>
+    <p>효과음과 배경음악의 볼륨 균형을 다시 다듬었고, 모바일 환경에서 더 잘 들리도록 별도로 조정했습니다.</p>
+
+    <h3>보스 폭발 시 잔여 적도 함께 격파</h3>
+    <p>보스가 터질 때 화면에 남아있던 다른 적도 함께 폭발하도록 개선했습니다.</p>
+
+    <h3>더 웅장해진 오프닝</h3>
+    <p>발사대를 박차고 나가는 연출이 훨씬 부드럽고 박진감 있게 바뀌었습니다. 초고속으로 가속하는 순간의 짜릿함을 느껴보세요.</p>
+
+    <h3>보스 등장이 더 긴장감 있게</h3>
+    <p>이제 보스는 갑자기 튀어나오지 않습니다. 화면이 잠잠해지면 "WARNING!" 경고와 함께 서서히 하늘에서 내려옵니다.</p>
+
+    <h3>반짝이는 우주 배경</h3>
+    <p>배경의 별과 우주 먼지가 더 다양하고 예쁘게 바뀌었습니다.</p>
+
+    <h3>더 공정해진 전투</h3>
+    <p>화면 밖에 있는 적이 억울하게 미리 맞아 죽는 문제를 고쳤습니다. 이제 눈에 보여야 맞습니다.</p>
+
+    <h3>은은한 피격 효과</h3>
+    <p>적을 맞췄을 때 살짝 반짝이는 효과가 추가되어 손맛이 더 살아났습니다.</p>
+
+    <h3>보스 전투 밸런스 조정</h3>
+    <p>보스 탄막 속도를 조절해서 좀 더 여유 있게 피할 수 있습니다.</p>
+
+    <h3>사운드 대폭 개선</h3>
+    <p>레이저 소리가 더 부드럽고 귀에 편안해졌습니다. 배경음악 볼륨을 키웠고, 중간에 끊기던 문제도 고쳤습니다. 전체적으로 효과음 밸런스를 다듬었습니다.</p>
+
+    <h3>버그 수정</h3>
+    <p>게임 시작이 안 되던 심각한 오류를 발견하고 바로 고쳤습니다.</p>
+
+    <button id="patchNotesCloseBtn">닫기</button>
+  </div>
+</div>
+<div id="devModeOverlay">
+  <div id="devModeBox">
+    <h2>🛠 개발자 사운드 테스트</h2>
+    <div id="devModeList"></div>
+    <div id="devModeActions">
+      <button id="devModeApplyBtn">게임에 적용</button>
+      <button id="devModeCloseBtn">닫기</button>
+    </div>
+    <div id="devStageJumpSection">
+      <h2 style="margin-top:16px;">🚀 스테이지 바로 진입</h2>
+      <div id="devStageJumpActions">
+        <button id="devJumpStage1Btn">스테이지 1</button>
+        <button id="devJumpStage1BossBtn">스테이지 1 보스</button>
+        <button id="devJumpStage2Btn">스테이지 2</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="pauseMenuOverlay">
+  <div class="pauseTitle">PAUSED</div>
+  <button id="muteToggleBtn" class="pauseMenuBtn">음소거</button>
+  <button id="touchModeToggleBtn" class="pauseMenuBtn">터치 방식 전환</button>
+  <button id="resumeBtn" class="pauseMenuBtn">계속하기</button>
+</div>
+<canvas id="c" width="480" height="720"></canvas>
+<div id="touchPad"></div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const touchPad = document.getElementById('touchPad');
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
+
+// 캔버스 좌표계로 클라이언트 좌표 변환 (터치 여백(touchPad)에서 터치해도 캔버스 최하단 y로 클램프)
+function toCanvasXY(clientX, clientY){
+  const r = canvas.getBoundingClientRect();
+  const x = (clientX - r.left) * (W / r.width);
+  const y = (clientY - r.top) * (H / r.height);
+  return { x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) };
+}
+
+// 터치 조작 방식: 'relative'(기본, 손가락 이동한 만큼만 따라옴) 또는 'absolute'(터치한 지점으로 즉시 이동).
+// M 메뉴의 "터치 방식 전환" 버튼으로 토글, localStorage에 저장해 다음 접속에도 유지.
+let touchMoveMode = localStorage.getItem('air2_touchMoveMode') || 'relative';
+
+let lastTouchXY = null;
+function handleTouchStart(clientX, clientY){
+  if(touchMoveMode === 'absolute'){
+    const p = toCanvasXY(clientX, clientY);
+    spawnTeleportFlash(p.x, p.y); // 순간이동 지점에 "짠" 하는 플래시 이펙트
+    player.x = p.x; player.y = p.y;
+  } else {
+    lastTouchXY = { x: clientX, y: clientY };
+  }
+}
+function handleTouchMove(clientX, clientY){
+  if(touchMoveMode === 'absolute'){
+    const p = toCanvasXY(clientX, clientY);
+    player.x = p.x; player.y = p.y;
+    return;
+  }
+  if(!lastTouchXY){ lastTouchXY = { x: clientX, y: clientY }; return; }
+  const r = canvas.getBoundingClientRect();
+  const scaleX = W / r.width, scaleY = H / r.height;
+  const dx = (clientX - lastTouchXY.x) * scaleX;
+  const dy = (clientY - lastTouchXY.y) * scaleY;
+  lastTouchXY = { x: clientX, y: clientY };
+  player.x = Math.max(0, Math.min(W, player.x + dx));
+  player.y = Math.max(0, Math.min(H, player.y + dy));
+}
+
+// 순간이동(절대 좌표 모드) 시 도착 지점에 짧게 번쩍이는 링 이펙트 (실제 시간 기반, dt 무관)
+let teleportFlashes = [];
+function spawnTeleportFlash(x, y){
+  teleportFlashes.push({ x, y, start: Date.now() });
+}
+const TELEPORT_FLASH_DURATION_MS = 260;
+function drawTeleportFlashes(){
+  const now = Date.now();
+  teleportFlashes = teleportFlashes.filter(f => now - f.start < TELEPORT_FLASH_DURATION_MS);
+  teleportFlashes.forEach(f=>{
+    const t = (now - f.start) / TELEPORT_FLASH_DURATION_MS; // 0~1
+    const radius = 8 + t * 34;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - t);
+    ctx.strokeStyle = '#8fe3ff';
+    ctx.shadowColor = '#5ad1ff';
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, radius, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+
+// 개발용 6등분 그리드 계산에도 쓰이는 존 상수 (그리드 자체는 디버그 전용이라 이 파일엔 그리지 않음)
+const ZONE_COUNT = 6;
+const ZONE_HEIGHT = H / ZONE_COUNT;
+function getZoneIndex(y){
+  const idx = Math.floor(y / ZONE_HEIGHT);
+  return Math.max(0, Math.min(ZONE_COUNT-1, idx));
+}
+function isNoFireZone(y){
+  return getZoneIndex(y) === ZONE_COUNT - 1; // 맨 아래(Zone-6)
+}
+// 적이 화면 안에 실제로 진입했는지 판정(스폰 직후 화면 밖에서 등장하며 들어오는 도중에는
+// 아직 보이지 않으므로 피격 무효 처리하기 위한 헬퍼). 여백(margin)은 스프라이트가 화면
+// 경계에 살짝 걸치기 시작하는 시점부터 맞을 수 있도록 스프라이트 크기의 절반 정도로 둠.
+const ENEMY_ONSCREEN_MARGIN = 50;
+function isEnemyOnScreen(e){
+  return e.x > -ENEMY_ONSCREEN_MARGIN && e.x < W + ENEMY_ONSCREEN_MARGIN
+      && e.y > -ENEMY_ONSCREEN_MARGIN && e.y < H + ENEMY_ONSCREEN_MARGIN;
+}
+
+// 적 격파 공통 처리(레이저/폭탄 공용): 점수, 폭발, 효과음, 보스 격파 시 남은 적 동반 폭발
+function killEnemy(e){
+  if(e.dead) return;
+  e.dead = true;
+  addScore(e.score || 0);
+  spawnExplosion(e.type, e.x, e.y);
+  if(e.type === 'boss1'){
+    playBossHitSound(); stopBossLaserSound();
+    // 보스가 터질 때 화면에 남아있던 다른 적(보스전 중이므로 spiral/일반8)도 함께 폭발시킴
+    enemies.forEach(other=>{
+      if(other === e || other.dead) return;
+      other.dead = true;
+      addScore(other.score || 0);
+      spawnExplosion(other.type, other.x, other.y);
+    });
+  } else {
+    playEnemyHitSound(e.type); // 격파(폭발) 효과음
+  }
+  // R/W 아이템은 격파와 완전히 무관하게 stage.js에서 시간 기반으로 독립 등장
+  if(e.type === 'normal7'){
+    normal7Alive = false;
+    normal7RespawnTimer = NORMAL7_RESPAWN_DELAY;
+  }
+}
+
+// ---- 타이틀 화면 ----
+// 게임 시작 시(스코어 초기화 상태) 화면 중앙에 "Space War" 제목 + 하단에 깜빡이는
+// "PUSH ANY KEY" 버튼을 표시. 키보드/마우스/터치 아무 입력이나 오면 타이틀을 닫고
+// 배경음악을 시작하며(startBgm은 characters.js), 이후 입력부터는 정상 플레이 입력으로 동작.
+let titleScreenActive = true;
+let patchNotesOpen = false; // 패치노트 모달이 열려있는 동안은 타이틀 입력(dismissTitleScreen)을 막기 위한 플래그
+
+function dismissTitleScreen(){
+  if(!titleScreenActive) return;
+  if(patchNotesOpen) return; // 패치노트를 보는 중에는 게임 시작 입력 무시
+  if(devModeOverlay.style.display === 'flex') return; // 개발자 모드를 보는 중에도 게임 시작 입력 무시
+  titleScreenActive = false;
+  versionBtn.style.display = 'none'; // 게임 시작 후에는 버전 버튼 숨김
+  unlockAllAudio(); // 사용자 제스처 콜스택 안에서 모든 효과음을 미리 언락(첫 플레이부터 정상 재생되도록)
+  // 발사대 연출 동안은 BGM 없음. 연출이 끝나 startStage(1)이 호출될 때 stage.js의 switchToStageBgm()이 스테이지 BGM 시작.
+  startLaunchSequence(); // 발사 연출(발사대에서 이탈) 재생 후, 그 끝에서 startStage(1) 호출됨
+}
+
+// 타이틀 로고: 그라디언트 + 네온 글로우 + 살짝 흔들리는 하이라이트로 "세련된" 느낌.
+function drawTitleLogo(){
+  const cx = W/2, cy = H/2 - 40;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 54px "Trebuchet MS", Arial, sans-serif';
+
+  // 은은하게 오르내리는 글로우 강도 (실제 시간 기반, dt 무관)
+  const glowPulse = 0.6 + 0.4 * Math.sin(Date.now()/900);
+
+  // 뒤쪽 큰 블러 글로우 레이어
+  ctx.shadowColor = '#5ad1ff';
+  ctx.shadowBlur = 34 * glowPulse;
+  const grad = ctx.createLinearGradient(cx, cy - 34, cx, cy + 34);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, '#8fe3ff');
+  grad.addColorStop(1, '#2f7dff');
+  ctx.fillStyle = grad;
+  ctx.fillText('SPACE WAR', cx, cy);
+
+  // 얇은 화이트 코어 라인으로 한 번 더 겹쳐 그려 선명도 보강
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('SPACE WAR', cx, cy);
+  ctx.restore();
+
+  // 서브 타이틀 라인 장식(밑줄 느낌의 얇은 네온 바)
+  ctx.save();
+  const lineW = 220;
+  const lineGrad = ctx.createLinearGradient(cx - lineW/2, cy, cx + lineW/2, cy);
+  lineGrad.addColorStop(0, 'rgba(90,209,255,0)');
+  lineGrad.addColorStop(0.5, 'rgba(143,227,255,0.9)');
+  lineGrad.addColorStop(1, 'rgba(90,209,255,0)');
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - lineW/2, cy + 42);
+  ctx.lineTo(cx + lineW/2, cy + 42);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// "PUSH ANY KEY" 버튼: 0.5초 간격으로 완전히 켜짐/꺼짐을 반복하는 깜빡임(하드 블링크).
+function drawPushAnyKey(){
+  const cx = W/2, cy = H/2 + 130;
+  const blinkOn = Math.floor(Date.now() / 500) % 2 === 0; // 0.5초마다 on/off 전환
+  if(!blinkOn) return;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 20px "Trebuchet MS", Arial, sans-serif';
+  ctx.shadowColor = '#ffd76a';
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#fff3d0';
+  ctx.fillText('PUSH ANY KEY', cx, cy);
+  ctx.restore();
+}
+
+function drawTitleScreen(){
+  drawStarBackground(0); // dt=0으로 호출해 배경 스크롤을 정지시킨 채로 그림(위치는 유지, 진행만 멈춤)
+  drawTitleLogo();
+  drawPushAnyKey();
+}
+
+// "STAGE N" 타이틀: 발사 시퀀스 마지막(title 단계)에 화면 중앙에 표시, 타이틀 로고와 동일한 폰트/글로우 스타일.
+function drawStageTitle(stageNum){
+  const cx = W/2, cy = H/2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 54px "Trebuchet MS", Arial, sans-serif';
+  const glowPulse = 0.6 + 0.4 * Math.sin(Date.now()/300);
+  ctx.shadowColor = '#5ad1ff';
+  ctx.shadowBlur = 34 * glowPulse;
+  const grad = ctx.createLinearGradient(cx, cy - 34, cx, cy + 34);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, '#8fe3ff');
+  grad.addColorStop(1, '#2f7dff');
+  ctx.fillStyle = grad;
+  ctx.fillText('STAGE ' + stageNum, cx, cy);
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('STAGE ' + stageNum, cx, cy);
+  ctx.restore();
+}
+
+// "STAGE N CLEAR": 스테이지 클리어 연출(clearSubPhase==='music') 중 화면 중앙에 표시.
+// drawStageTitle과 동일한 글로우 스타일이되 문구만 다름.
+function drawStageClearText(stageNum){
+  const cx = W/2, cy = H/2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 44px "Trebuchet MS", Arial, sans-serif';
+  const glowPulse = 0.6 + 0.4 * Math.sin(Date.now()/300);
+  ctx.shadowColor = '#ffd76a';
+  ctx.shadowBlur = 30 * glowPulse;
+  const grad = ctx.createLinearGradient(cx, cy - 28, cx, cy + 28);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.45, '#ffe9a8');
+  grad.addColorStop(1, '#ffb347');
+  ctx.fillStyle = grad;
+  const text = 'STAGE ' + stageNum + ' CLEAR';
+  ctx.fillText(text, cx, cy);
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
+
+// "TO BE CONTINUED": clearSubPhase==='toBeContinued' 구간 동안 화면 중앙에 표시.
+function drawToBeContinuedText(){
+  const cx = W/2, cy = H/2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 34px "Trebuchet MS", Arial, sans-serif';
+  ctx.shadowColor = '#8fe3ff';
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = '#eaf7ff';
+  ctx.fillText('TO BE CONTINUED', cx, cy);
+  ctx.restore();
+}
+
+window.addEventListener('keydown', ()=> dismissTitleScreen());
+canvas.addEventListener('mousedown', ()=> dismissTitleScreen());
+canvas.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
+touchPad.addEventListener('touchstart', ()=> dismissTitleScreen(), {passive:true});
+
+// 컨티뉴 화면 표시 중 아무 키/마우스/터치 입력이 오면 이어하기 (characters.js의 resumeFromContinue() 사용)
+// #continueOverlay는 z-index가 캔버스보다 높아 터치가 오버레이 자신에게 먼저 잡히므로, 오버레이 요소에도 직접 리스너를 건다.
+window.addEventListener('keydown', ()=> resumeFromContinue());
+canvas.addEventListener('mousedown', ()=> resumeFromContinue());
+canvas.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+touchPad.addEventListener('touchstart', ()=> resumeFromContinue(), {passive:true});
+const continueOverlayEl = document.getElementById('continueOverlay');
+continueOverlayEl.addEventListener('mousedown', ()=> resumeFromContinue());
+continueOverlayEl.addEventListener('touchstart', (e)=>{ e.preventDefault(); resumeFromContinue(); }, {passive:false});
+
+// GAME OVER 표시 3초 경과 시 characters.js의 updateGameOverScreen()이 이 함수를 호출해 타이틀로 복귀.
+// index.html은 타이틀 화면이 이 파일 자체에 있으므로 새로고침으로 깨끗하게 초기 상태로 되돌림.
+function returnToTitleAfterGameOver(){
+  window.location.reload();
+}
+
+// 조작 입력은 발사 시퀀스가 끝난 뒤에만(launchSequenceActive === false) 반영되도록 가드.
+// 또한 스테이지 클리어 연출(STAGE N CLEAR 표시 이후, clearSubPhase !== 'wait')부터는 조작 불가.
+function isPlayerControlLocked(){
+  return launchSequenceActive || (stagePhase === 'clear' && clearSubPhase !== 'wait');
+}
+canvas.addEventListener('mousemove', e=>{
+  if(isPlayerControlLocked()) return;
+  const p = toCanvasXY(e.clientX, e.clientY);
+  player.x = p.x; player.y = p.y;
+});
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  resumeAudioContextFromGesture(); // 매 터치마다 확실한 제스처 콜스택 안에서 오디오 언락 재시도
+  if(isPlayerControlLocked()) return;
+  const t = e.touches[0];
+  handleTouchStart(t.clientX, t.clientY);
+}, {passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(isPlayerControlLocked()) return;
+  const t = e.touches[0];
+  handleTouchMove(t.clientX, t.clientY);
+}, {passive:false});
+// 캔버스 아래 여백(touchPad)에서도 동일한 상대 이동 방식 적용
+touchPad.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  resumeAudioContextFromGesture(); // 매 터치마다 확실한 제스처 콜스택 안에서 오디오 언락 재시도
+  if(isPlayerControlLocked()) return;
+  const t = e.touches[0];
+  handleTouchStart(t.clientX, t.clientY);
+}, {passive:false});
+touchPad.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(isPlayerControlLocked()) return;
+  const t = e.touches[0];
+  handleTouchMove(t.clientX, t.clientY);
+}, {passive:false});
+canvas.addEventListener('touchend', ()=>{ lastTouchXY = null; resumeAudioContextFromGesture(); }, {passive:true});
+touchPad.addEventListener('touchend', ()=>{ lastTouchXY = null; resumeAudioContextFromGesture(); }, {passive:true});
+// iOS Safari는 touchstart를 AudioContext 언락에 필요한 "충분한" 사용자 제스처로 인정하지 않는
+// 경우가 있어(실제 <button> click만 확실히 인정) click 이벤트에도 동일하게 재시도를 건다.
+canvas.addEventListener('click', ()=> resumeAudioContextFromGesture());
+touchPad.addEventListener('click', ()=> resumeAudioContextFromGesture());
+
+// 폭탄 사용: 마우스 좌+우 버튼 동시 클릭 또는 2손가락 터치
+let mouseButtonsDown = new Set();
+canvas.addEventListener('mousedown', e=>{
+  mouseButtonsDown.add(e.button);
+  if(mouseButtonsDown.has(0) && mouseButtonsDown.has(2)) useBomb();
+});
+canvas.addEventListener('mouseup', e=>{
+  mouseButtonsDown.delete(e.button);
+});
+canvas.addEventListener('contextmenu', e=> e.preventDefault()); // 우클릭 메뉴 방지(폭탄 입력용)
+canvas.addEventListener('touchstart', e=>{
+  if(e.touches.length >= 2) useBomb();
+}, {passive:true});
+touchPad.addEventListener('touchstart', e=>{
+  if(e.touches.length >= 2) useBomb();
+}, {passive:true});
+</script>
+<script src="bg.js?v=202610030120"></script>
+<script src="stage1layers.js?v=202610030120"></script>
+<script src="assets/bg/stage1new/stage1_launch.js?v=202610030120"></script>
+<script src="stage1bg.js?v=202610030120"></script>
+<script src="assets/bg/stage1new/stage1_layout.js?v=202610030120"></script>
+<script src="assets/bg/stage1new/stage1_schedule.js?v=202610030120"></script>
+<script src="assets/bg/stage1new/stage1_bgm.js?v=202610030120"></script>
+<script src="stage2bg.js?v=202610030120"></script>
+<script src="assets/bg/stage2new/stage2_layout.js?v=202610030120"></script>
+<script src="assets/bg/stage2new/stage2_schedule.js?v=202610030120"></script>
+<script src="assets/bg/stage2new/stage2_bgm.js?v=202610030120"></script>
+<script src="characters.js?v=202610030120"></script>
+<script src="stage.js?v=202610030120"></script>
+<script>
+// ---- 일시정지/메뉴 ----
+// M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
+// 메뉴에는 음소거 토글 버튼이 있으며(characters.js의 toggleMute() 재사용), "계속하기"로 해제.
+let gamePaused = false;
+
+function updateMuteBtnLabel(){
+  document.getElementById('muteToggleBtn').textContent = audioMuted ? '음소거 해제' : '음소거';
+}
+
+function updateTouchModeBtnLabel(){
+  document.getElementById('touchModeToggleBtn').textContent =
+    touchMoveMode === 'absolute' ? '터치 방식: 순간이동' : '터치 방식: 드래그';
+}
+
+function openPauseMenu(){
+  if(gamePaused) return; // 타이틀 화면에서도 메뉴는 열림(스테이지1은 startStage(1) 시점에만 시작되므로 안전)
+  resumeAudioContextFromGesture(); // 버튼 클릭은 확실한 사용자 제스처이므로 언락 재시도
+  gamePaused = true;
+  updateMuteBtnLabel();
+  updateTouchModeBtnLabel();
+  document.getElementById('pauseMenuOverlay').style.display = 'flex';
+}
+
+function closePauseMenu(){
+  resumeAudioContextFromGesture(); // 버튼 클릭은 확실한 사용자 제스처이므로 언락 재시도
+  gamePaused = false;
+  document.getElementById('pauseMenuOverlay').style.display = 'none';
+  lastTime = 0; // 재개 시 dt가 튀지 않도록 타임스탬프 리셋
+}
+
+document.getElementById('pauseBtn').addEventListener('click', openPauseMenu);
+
+// ---- 버전 표시 / 패치노트 모달 (타이틀 화면에서만 노출) ----
+const versionBtn = document.getElementById('versionBtn');
+const patchNotesOverlay = document.getElementById('patchNotesOverlay');
+versionBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  patchNotesOpen = true;
+  patchNotesOverlay.style.display = 'flex';
+});
+document.getElementById('patchNotesCloseBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  patchNotesOpen = false;
+  patchNotesOverlay.style.display = 'none';
+});
+versionBtn.style.display = 'block'; // 타이틀 화면 시작 시 표시
+
+// ---- 개발자 사운드 테스트 모드 ----
+// 패치노트 모달 상단(h2) 10회 클릭 시 진입. 항목별 재생/정지 + 볼륨 up/down + 현재 값 모니터링.
+// "게임에 적용" 버튼을 눌러야 실제 게임 볼륨 변수(characters.js/stage.js의 let 상수)에 반영됨.
+let devModeClickCount = 0;
+const devModeOverlay = document.getElementById('devModeOverlay');
+const devModeList = document.getElementById('devModeList');
+const VOLUME_STEP = 0.02; // up/down 버튼 1회당 조절 단위
+
+// 각 항목: get/set으로 실제 변수를 명시적으로 연결(동적 변수명 접근 대신 안전하게 직접 참조)
+const devSoundItems = [
+  { label: '레이저', get: ()=>LASER_SOUND_BASE_VOLUME, set: v=>{ LASER_SOUND_BASE_VOLUME = v; }, play: ()=>playLaserSound(), stop: null },
+  { label: '적 폭발음', get: ()=>ENEMY_HIT_SOUND_VOLUME, set: v=>{ ENEMY_HIT_SOUND_VOLUME = v; }, play: ()=>playEnemyHitSound(), stop: null },
+  { label: '주인공 피격', get: ()=>PLAYER_HIT_SOUND_VOLUME, set: v=>{ PLAYER_HIT_SOUND_VOLUME = v; }, play: ()=>playPlayerHitSound(), stop: null },
+  { label: '보스 폭발음', get: ()=>BOSS_HIT_SOUND_VOLUME, set: v=>{ BOSS_HIT_SOUND_VOLUME = v; }, play: ()=>playBossHitSound(), stop: null },
+  { label: '아이템 획득', get: ()=>ITEM_PICKUP_SOUND_VOLUME, set: v=>{ ITEM_PICKUP_SOUND_VOLUME = v; }, play: ()=>playItemPickupSound(), stop: null },
+  { label: 'Spiral 발사음', get: ()=>SPIRAL_SHOOT_SOUND_VOLUME, set: v=>{ SPIRAL_SHOOT_SOUND_VOLUME = v; }, play: ()=>playSpiralShootSound(), stop: null },
+  { label: '보스 탄소리', get: ()=>BOSS_SHOT_SOUND_VOLUME, set: v=>{ BOSS_SHOT_SOUND_VOLUME = v; }, play: ()=>playBossShotSound(), stop: null },
+  { label: '보스 레이저', get: ()=>BOSS_LASER_SOUND_VOLUME, set: v=>{ BOSS_LASER_SOUND_VOLUME = v; }, play: ()=>startBossLaserSound(), stop: ()=>stopBossLaserSound() },
+  { label: '메인 BGM 모바일배율', get: ()=>BGM_MOBILE_VOLUME_SCALE, set: v=>{ BGM_MOBILE_VOLUME_SCALE = v; }, play: ()=>startBgm(), stop: ()=>{ if(bgmAudio) bgmAudio.pause(); }, isScale:true },
+  { label: '보스BGM 모바일배율', get: ()=>BOSS_BGM_MOBILE_VOLUME_SCALE, set: v=>{ BOSS_BGM_MOBILE_VOLUME_SCALE = v; }, play: ()=>switchToBossBgm(), stop: ()=>{ if(bossBgmAudio) bossBgmAudio.pause(); }, isScale:true },
+  { label: '효과음 모바일배율', get: ()=>SFX_MOBILE_VOLUME_SCALE, set: v=>{ SFX_MOBILE_VOLUME_SCALE = v; }, play: ()=>playLaserSound(), stop: null, isScale:true },
+  { label: '클리어음악배율', get: ()=>STAGE_CLEAR_MUSIC_VOLUME_SCALE, set: v=>{ STAGE_CLEAR_MUSIC_VOLUME_SCALE = v; }, play: ()=>playStageClearMusic(), stop: ()=>stopStageClearMusic(), isScale:true }
+];
+
+// 패널을 열 때 현재 실제 값으로 pendingValue를 초기화(적용 전까지는 이 값만 미리듣기/표시에 사용).
+let devPendingValues = [];
+
+function renderDevModeList(){
+  devModeList.innerHTML = '';
+  devSoundItems.forEach((item, idx)=>{
+    if(devPendingValues[idx] === undefined) devPendingValues[idx] = item.get();
+    const row = document.createElement('div');
+    row.className = 'devRow';
+    const label = document.createElement('span');
+    label.className = 'devLabel';
+    label.textContent = item.label;
+    const valSpan = document.createElement('span');
+    valSpan.className = 'devVal';
+    const updateValSpan = ()=>{
+      const dirty = Math.abs(devPendingValues[idx] - item.get()) > 0.0001;
+      valSpan.textContent = devPendingValues[idx].toFixed(3);
+      valSpan.style.color = dirty ? '#ffd76a' : '#8fe3ff';
+    };
+    updateValSpan();
+
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '−';
+    downBtn.onclick = ()=>{
+      devPendingValues[idx] = Math.max(0, devPendingValues[idx] - VOLUME_STEP);
+      updateValSpan();
+    };
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '+';
+    upBtn.onclick = ()=>{
+      devPendingValues[idx] = Math.min(item.isScale ? 10 : 1, devPendingValues[idx] + VOLUME_STEP);
+      updateValSpan();
+    };
+    let originalBeforePlay = null; // 루프 재생 시작 직전의 원래 값(정지 시 복원용)
+    const playBtn = document.createElement('button');
+    playBtn.textContent = '▶';
+    playBtn.onclick = ()=>{
+      const original = item.get();
+      item.set(devPendingValues[idx]); // 미리듣기: pending 값을 잠깐 실제 변수에 반영해서 재생
+      resumeAudioContextFromGesture();
+      item.play();
+      if(!item.stop){
+        // 1회성 재생(레이저/폭발음 등)은 재생 콜스택이 끝난 즉시 원래 값으로 복원해
+        // "게임에 적용" 전까지는 실제 게임 값에 영향을 주지 않음.
+        item.set(original);
+      } else {
+        originalBeforePlay = original; // 루프성 항목은 정지 버튼에서 복원하도록 기억
+      }
+    };
+    row.appendChild(label);
+    row.appendChild(valSpan);
+    row.appendChild(downBtn);
+    row.appendChild(upBtn);
+    row.appendChild(playBtn);
+    if(item.stop){
+      const stopBtn = document.createElement('button');
+      stopBtn.textContent = '■';
+      stopBtn.onclick = ()=>{
+        item.stop();
+        if(originalBeforePlay !== null){ item.set(originalBeforePlay); originalBeforePlay = null; } // 실제 게임 값 복원
+      };
+      row.appendChild(stopBtn);
+    }
+    devModeList.appendChild(row);
+  });
+}
+
+function openDevMode(){
+  devPendingValues = devSoundItems.map(item => item.get()); // 현재 실제 값으로 초기화
+  renderDevModeList();
+  devModeOverlay.style.display = 'flex';
+}
+document.getElementById('devModeApplyBtn').addEventListener('click', ()=>{
+  devSoundItems.forEach((item, idx)=>{ item.set(devPendingValues[idx]); });
+  // 볼륨 상수(let)만 바꿔서는 이미 재생 중인 <audio> 엘리먼트의 volume이 갱신되지 않으므로,
+  // 현재 흐르고 있는 BGM류는 새 값으로 즉시 다시 계산해서 반영.
+  if(bgmAudio) bgmAudio.volume = getBgmVolume();
+  if(bossBgmAudio) bossBgmAudio.volume = getBossBgmVolume();
+  if(stageClearMusicAudio) stageClearMusicAudio.volume = getStageClearMusicVolume();
+  renderDevModeList();
+  alert('게임에 적용되었습니다.');
+});
+document.getElementById('devModeCloseBtn').addEventListener('click', ()=>{
+  devModeOverlay.style.display = 'none';
+});
+
+// ---- 개발자 모드: 스테이지 바로 진입 ----
+// 타이틀/발사 연출을 모두 건너뛰고 곧바로 게임 플레이 상태(적 스폰 활성화, 조작 가능)로 전환.
+function devEnterGameState(){
+  devModeOverlay.style.display = 'none';
+  patchNotesOverlay.style.display = 'none';
+  patchNotesOpen = false;
+  titleScreenActive = false;
+  versionBtn.style.display = 'none';
+  launchSequenceActive = false; // 발사 연출 스킵
+  gamePaused = false;
+  continueScreenActive = false;
+  gameOverActive = false;
+  player.y = H - 80; // 발사 연출 없이 곧바로 기본 플레이 위치
+  unlockAllAudio();
+  startBgm();
+}
+document.getElementById('devJumpStage1Btn').addEventListener('click', ()=>{
+  devEnterGameState();
+  startStage(1);
+});
+document.getElementById('devJumpStage1BossBtn').addEventListener('click', ()=>{
+  devEnterGameState();
+  devJumpToStageBoss(1);
+});
+document.getElementById('devJumpStage2Btn').addEventListener('click', ()=>{
+  devEnterGameState();
+  startStage(2);
+});
+document.getElementById('patchNotesHeader').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  devModeClickCount++;
+  if(devModeClickCount >= 10){
+    devModeClickCount = 0;
+    openDevMode();
+  }
+});
+
+document.getElementById('resumeBtn').addEventListener('click', closePauseMenu);
+document.getElementById('muteToggleBtn').addEventListener('click', ()=>{
+  toggleMute();
+  updateMuteBtnLabel();
+});
+document.getElementById('touchModeToggleBtn').addEventListener('click', ()=>{
+  touchMoveMode = touchMoveMode === 'absolute' ? 'relative' : 'absolute';
+  localStorage.setItem('air2_touchMoveMode', touchMoveMode);
+  lastTouchXY = null; // 모드 전환 시 이전 델타 기준점 초기화
+  updateTouchModeBtnLabel();
+});
+let bullets = [];
+let playerBullets = [];
+let enemies = [];
+let lastTime = 0;
+
+function update(currentTime){
+  if(!lastTime) lastTime = currentTime;
+  let dt = (currentTime - lastTime) / 1000;
+  lastTime = currentTime;
+  dt = Math.min(dt, 0.05);
+  const dtMs = dt * 1000;
+
+  if(continueScreenActive){
+    updateContinueScreen(dtMs); // 10초 카운트다운, 0초 도달 시 GAME OVER로 전이
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(gameOverActive){
+    updateGameOverScreen(dtMs); // 3초 경과 시 타이틀로 자동 이동
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(gamePaused){
+    requestAnimationFrame(update); // 화면은 마지막 프레임 그대로 유지, 로직/그리기 갱신 정지
+    return;
+  }
+
+  ctx.clearRect(0,0,W,H);
+
+  if(titleScreenActive){
+    drawTitleScreen(); // 스코어는 초기값(0)인 상태로 대기, BGM/배경스크롤 정지. 입력 시 dismissTitleScreen()으로 게임 화면 전환
+    requestAnimationFrame(update);
+    return;
+  }
+
+  if(launchSequenceActive){
+    silenceUnintendedAudio(); // 발사대 연출 중 의도하지 않은 음악 재생 차단
+    const launchState = getLaunchRenderState(); // 먼저 현재 상태로 그린 뒤에 시간 진행(전이) 처리 → 번쩍임 방지
+    // 모든 스테이지 공통: STAGE N 타이틀이 뜬 뒤(발사 시퀀스 완전 종료 후)부터 배경 오브젝트 등장, 그 전까지는 항상 숨김(alpha=0)
+    if(launchStageNum === 1){
+      // 스테이지1: 레이어 배경(stage1layers.js). warp 레이어(먼지/파편)가 배속에 맞춰 세로 스트릭으로 늘어남(워프 느낌)
+      drawStage1Layers(dt, launchState.bgSpeedMul, launchState.bgAlpha, 0);
+    } else {
+      // 스테이지2: 발사대 없이 처음부터 지면 위 비행(STAGE 2 타이틀 동안에도 지면이 흐르고 오브젝트 표시)
+      if(typeof drawStage2Background === 'function') drawStage2Background(dt);
+    }
+    if(launchStageNum === 1) drawStation(launchState.stationOffset);
+    drawPlayerWithEffects();
+    if(launchPhase === 'title') drawStageTitle(launchStageNum);
+    updateLaunchSequence(dtMs);
+    requestAnimationFrame(update);
+    return; // 발사 연출 중에는 스폰/적 로직 완전히 정지
+  }
+
+  if(currentStage === 2){
+    drawStage2Background(dt); // 화산 행성 지면(타일)+오브젝트 배경
+  } else {
+    drawStage1Layers(dt); // 스테이지1 레이어 배경(별/반짝이/먼지/파편/오브젝트, 통합 타임라인 에디터에서 편집)
+  }
+
+  updateStage(dtMs); // 스테이지1 등장 스케줄/보스 트리거/클리어 판정
+
+  // 'clear' 단계의 'wait' 이후(music/fly/toBeContinued/fadeout)는 적 스폰 등 일반 게임 로직을 멈추고
+  // 배경+주인공(비행 연출)+텍스트만 그리는 전용 렌더 경로로 처리.
+  if(stagePhase === 'clear' && clearSubPhase !== 'wait'){
+    if(clearSubPhase === 'fly'){
+      drawPlayerWithEffects(); // getClearFlyRenderState()를 참조해 가속 축소 비행하는 모습을 그림
+    } else if(clearSubPhase === 'music'){
+      drawPlayerWithEffects();
+      drawStageClearText(currentStage);
+    } else if(clearSubPhase === 'toBeContinued'){
+      drawToBeContinuedText();
+    } else if(clearSubPhase === 'fadeout'){
+      if(currentStage >= 2) drawToBeContinuedText(); // 마지막 스테이지에서만 TO BE CONTINUED
+      const t = Math.min(1, clearSubPhaseElapsed / CLEAR_FADEOUT_MS); // 0->1, 3초에 걸쳐 서서히 어두워짐
+      ctx.save();
+      ctx.fillStyle = '#000000';
+      ctx.globalAlpha = t;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    if(clearSubPhase === 'done'){
+      stopStageClearMusic();
+      if(currentStage < 2){
+        startLaunchSequence(currentStage + 1); // 다음 스테이지로 이어서 발사 연출 재생 후 startStage() 호출됨
+      } else {
+        window.location.reload(); // 마지막 스테이지 클리어 시 타이틀 화면으로 복귀
+      }
+      requestAnimationFrame(update);
+      return;
+    }
+    requestAnimationFrame(update);
+    return; // 클리어 연출 중에는 일반 게임 로직/스폰 정지
+  }
+
+  spawnTimer += dtMs;
+  if(stagePhase === 'spawn' && spawnTimer > NORMAL_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    spawnTimer = 0;
+    const type = spawnCycle[cycleIdx % spawnCycle.length];
+    cycleIdx++;
+    if(type==='normal1' && enabledTypes.normal1) spawnNormal1();
+    else if(type==='normal2' && enabledTypes.normal2) spawnNormal2();
+    else if(type==='normal3' && enabledTypes.normal3) spawnNormal3();
+    else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
+    else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
+    else if(type==='normal6' && enabledTypes.normal6) spawnNormal6();
+  }
+
+  // 일반4/5 전용 스폰: 6초마다 1편대(번갈아 등장, 동시 상한과 무관하게 정해진 주기 유지)
+  if(stagePhase === 'spawn' && (enabledTypes.normal4 || enabledTypes.normal5)){
+    normal45SpawnTimer += dtMs;
+    if(normal45SpawnTimer >= NORMAL45_SPAWN_INTERVAL){
+      normal45SpawnTimer = 0;
+      const use5 = enabledTypes.normal5 && (normal45NextIs5 || !enabledTypes.normal4);
+      if(use5) spawnNormal5(); else spawnNormal4();
+      normal45NextIs5 = !use5;
+    }
+  }
+
+  // spiral(일반8) 전용 스폰: 1기 등장 후 10초 뒤 다음 등장 (화면 내 최대 MAX_NORMAL8_ON_SCREEN대)
+  normal8SpawnTimer += dtMs;
+  if(enabledTypes.normal8 && normal8SpawnTimer > NORMAL8_SPAWN_INTERVAL && enemies.filter(en=>en.type==='normal8').length < MAX_NORMAL8_ON_SCREEN){
+    normal8SpawnTimer = 0;
+    spawnNormal8();
+  }
+
+  normal7SpawnTimer += dtMs;
+  if(enabledTypes.normal7 && !normal7Alive && normal7RespawnTimer === 0 && normal7SpawnTimer > NORMAL7_SPAWN_INTERVAL && enemies.length < stageSpawnCap){
+    normal7SpawnTimer = 0;
+    spawnNormal7();
+  }
+  if(enabledTypes.normal7 && normal7RespawnTimer > 0){
+    normal7RespawnTimer -= dtMs;
+    if(normal7RespawnTimer <= 0){
+      normal7RespawnTimer = 0;
+      spawnNormal7();
+    }
+  }
+
+  enemies.forEach(e=>{
+    e.cool += dtMs;
+    updateHitFlash(e, dtMs); // 피격 플래시 감쇠(모든 적 공통, 델타타임 기반)
+    if(e.type==='normal1'){
+      e.x += e.zdir * 140 * dt; // 지그재그 (일정 속도 좌우 이동, 즉시 반전)
+      e.y += e.vy * dt;
+      const margin = 90; // 화면 끝까지 가지 않도록 여유 마진
+      if(e.x < margin){ e.x = margin; e.zdir = 1; }
+      if(e.x > W-margin){ e.x = W-margin; e.zdir = -1; }
+      drawSprite(e, 'normal1', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 100); // 한 발씩 조준 (기체색: 녹색)
+      }
+    } else if(e.type==='normal2'){ // 지그재그 없이 직선 하강만
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal2', 64);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireAimed(e, '#4dff8f', 100);
+      }
+    } else if(e.type==='normal3'){
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal3', 74);
+      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireSpread2(e, '#3ad9ff', 151, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
+      }
+    } else if(e.type==='normal4'){
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawSprite(e, 'normal4', 80);
+      // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
+      if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
+        e.fired = true;
+        fireFanN(e, '#c9a3ff', 134, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라)
+      }
+    } else if(e.type==='normal7'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      }
+      drawSprite(e, 'normal7', 104);
+      // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
+      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireFan3(e, '#ff9a3c', 150); // 3발 부채꼴 (기체색: 오렌지). 탄속 67 → 150px/s(너무 느리다는 피드백)
+      }
+    } else if(e.type==='normal8'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else if(!e.retreating){
+        e.stayTimer += dtMs;
+        if(e.stayTimer >= NORMAL8_STAY_MS){
+          e.retreating = true; // 5초 체류 후 위로 퇴장 시작
+        }
+      } else {
+        e.y -= NORMAL8_RETREAT_SPEED * dt; // 위로 다시 들어감
+      }
+      // 바람개비처럼 계속 제자리 회전(시각 연출)
+      e.spinAngle = (e.spinAngle || 0) + NORMAL8_SPIN_SPEED * dt;
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(e.spinAngle);
+      const img8 = assets['normal8'];
+      if(img8 && img8.complete && img8.naturalWidth > 0){
+        drawImageWithHitFlash(img8, -45, -45, 90, 90, e);
+      }
+      ctx.restore();
+      // 정지 후 퇴장 시작 전까지 나선형(spiral) 탄막 반복 발사
+      if(e.settled && !e.retreating && e.cool >= e.fireRate && !isNoFireZone(e.y)){
+        e.cool = 0;
+        fireSpiral(e, '#ff4dd8', 133); // 마젠타/핑크 (기체 포인트 컬러와 일치), 기존 190px/s에서 30% 감소
+      }
+    } else if(e.type==='normal6'){
+      // Zone-1(인덱스 0)까지는 직선 하강, Zone-2~5(인덱스 1~4)에서는 플레이어 방향으로 서서히 조준, Zone-6(인덱스 5)부터는 유도 상실
+      const zoneIdx = getZoneIndex(e.y);
+      if(zoneIdx >= 1 && zoneIdx < 5){
+        e.homing = true;
+      }
+      if(zoneIdx >= 5){
+        e.homing = false; // Zone-6부터 유도 기능 상실, 직진만 유지
+      }
+      if(e.homing){
+        const dx = player.x - e.x, dy = player.y - e.y;
+        const d = Math.hypot(dx,dy) || 1;
+        let targetVx = dx/d*e.speed, targetVy = dy/d*e.speed;
+
+        // 목표 방향이 수직(아래) 기준 최대 각도(MAX_TURN_DEG)를 넘지 않도록 클램프
+        const MAX_TURN_DEG = 35;
+        const maxRad = MAX_TURN_DEG * Math.PI/180;
+        const targetAngle = Math.atan2(targetVy, targetVx); // 목표 방향각
+        const downAngle = Math.PI/2; // 아래 방향 기준각
+        let diff = targetAngle - downAngle;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        diff = Math.max(-maxRad, Math.min(maxRad, diff));
+        const clampedAngle = downAngle + diff;
+        targetVx = Math.cos(clampedAngle) * e.speed;
+        targetVy = Math.sin(clampedAngle) * e.speed;
+
+        // turnRateBase는 60fps(16.667ms) 프레임당 적용률로 정의됨 -> dt에 맞게 지수적으로 환산
+        const turnRateBase = 0.06;
+        const alpha = 1 - Math.pow(1 - turnRateBase, dt * 60);
+        e.vx += (targetVx - e.vx) * alpha;
+        e.vy += (targetVy - e.vy) * alpha;
+        // 속력을 speed로 재정규화
+        const curSpeed = Math.hypot(e.vx, e.vy) || 1;
+        e.vx = e.vx / curSpeed * e.speed;
+        e.vy = e.vy / curSpeed * e.speed;
+      }
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      drawFlameTrail(e, 60); // 화염을 스프라이트 뒤에(먼저) 그림
+      const angle = Math.atan2(e.vy, e.vx) + Math.PI/2; // 스프라이트 기본 방향(아래)이 0도 기준
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.rotate(angle);
+      const img = assets['normal6'];
+      if(img && img.complete && img.naturalWidth > 0){
+        ctx.drawImage(img, -30, -30, 60, 60);
+        // 피격 플래시 제거됨
+      }
+      ctx.restore();
+      // 탄은 쏘지 않음
+    } else if(e.type==='boss1'){
+      if(!e.settled){
+        e.y += e.vy * dt;
+        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+      } else {
+        // 좌우 이동↔정지 발사 상태 머신
+        const margin = 40; // 화면 끝까지 가지 않도록 여유 마진
+        if(e.moveState === 'move'){
+          if(e.moveTargetX === null){
+            let tx;
+            let attempts = 0;
+            do {
+              tx = margin + Math.random()*(W - margin*2);
+              attempts++;
+            } while(Math.abs(tx - e.x) < e.minMoveDist && attempts < 10);
+            e.moveTargetX = tx;
+          }
+          const dx = e.moveTargetX - e.x;
+          const dist = Math.abs(dx);
+          const step = e.moveSpeed * dt;
+          if(step >= dist){
+            e.x = e.moveTargetX;
+            e.moveState = 'fire';
+            e.moveTargetX = null;
+            e.fireRound = 0;
+            e.fireCool = 0;
+            e.fireElapsed = 0;
+            e.moveCount++;
+            e.sweepThisRound = true; // 레이저는 항상 좌/우 50도 스윕
+            e.sweepCenterAngle = 0; // 스윕 시작 시(충전 종료 시점)에 계산됨
+            e.sweepCenterSet = false;
+          } else {
+            e.x += Math.sign(dx) * step;
+          }
+        } else if(e.moveState === 'fire'){
+          e.fireCool += dtMs;
+          e.fireElapsed += dtMs;
+          if(e.fireRound < 10 && e.fireCool >= 420){
+            e.fireCool = 0;
+            e.fireRound++;
+            fireBossQuadArc(e, '#b060ff', 154); // 40도 부채꼴 4갈래, 갈래당 10발(0.42초 간격, 주인공 히트박스 여유 확보 위해 기존 0.3초에서 확대), 보스 눈 색상과 맞춘 보라
+          }
+          // 2번째 이동 완료 후부터 레이저: 주둥이에서 0.6초간 충전(맴돌기) 후 0.65초간 발사(스윕 속도 살짝 느리게), 3번째 이동 완료 후부터는 발사 중 좌우 스윕
+          if(e.moveCount >= 2){
+            const muzzle = getBossMuzzle(e);
+            const LASER_CHARGE_MS = 600;
+            const LASER_DURATION_MS = 1100; // 50도를 쓸고 지나가는 시간(주인공 방향으로 와서 지나쳐 50도 끝까지)
+            if(e.fireElapsed < LASER_CHARGE_MS){
+              stopBossLaserSound(); // 충전 단계에는 레이저 발사음 없음
+              drawBossLaserCharge(muzzle.x, muzzle.y, e.fireElapsed / LASER_CHARGE_MS, true);
+            } else if(e.fireElapsed < LASER_CHARGE_MS + LASER_DURATION_MS){
+              startBossLaserSound(); // 실제 레이저가 나가는 동안 계속 루프 재생
+              // 스윕: 정중앙(아래 0도)에서 시작해 주인공이 있는 쪽(왼쪽/오른쪽)으로 50도까지 쓸고 지나감.
+              // 주인공 앞에서 멈추지 않고 주인공을 통과해 50도를 끝까지 채움. 방향은 발사 시작 순간 1회 결정.
+              if(!e.sweepCenterSet){
+                const side = Math.abs(player.x - muzzle.x) < 4 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(player.x - muzzle.x);
+                e.sweepCenterAngle = side * 50 * Math.PI/180; // 최종 각도 50도(수직 아래 기준, +는 화면 오른쪽)
+                e.sweepCenterSet = true;
+              }
+              const sweepProgress = Math.min(1, (e.fireElapsed - LASER_CHARGE_MS) / LASER_DURATION_MS); // 0~1
+              const ease = sweepProgress * sweepProgress * (3 - 2 * sweepProgress); // 시작/끝은 부드럽게, 가운데는 빠르게
+              const laserAngle = e.sweepCenterAngle * ease;
+              drawBossLaser(muzzle.x, muzzle.y, laserAngle);
+              // 레이저 피격: 맞으면 탄환과 똑같이 폭발 + 라이프 감소(이후 2초 무적이라 연속 피격 없음)
+              if(stagePhase === 'boss' && bossLaserHitsPlayer(muzzle.x, muzzle.y, laserAngle)) handlePlayerHit();
+            } else {
+              stopBossLaserSound(); // 발사 지속시간이 끝나면 정지
+            }
+          } else {
+            stopBossLaserSound(); // 아직 레이저를 쓰지 않는 이동 회차
+          }
+          if(e.fireRound >= 10){
+            e.moveState = 'move';
+          }
+        }
+      }
+      drawBossSprite(e, e.size);
+    }
+  });
+
+  // 플레이어 레이저 vs 모든 적 공통 충돌 판정
+  enemies.forEach(e=>{
+    if(e.dead) return;
+    if(e.type === 'boss1' && !e.settled) return; // 보스는 등장(하강) 중에는 피격 무효, 정지해서 첫 움직임을 시작한 순간부터 유효
+    if(e.type !== 'boss1' && !isEnemyOnScreen(e)) return; // 일반 적은 화면 밖(스폰 직후 진입 중)에서는 피격 무효
+    for(const b of playerBullets){
+      if(b.hit) continue;
+      const dx = b.x - e.x, dy = b.y - e.y;
+      const hitRadius = e.type === 'boss1' ? 100 : 60;
+      if(Math.hypot(dx,dy) < hitRadius){
+        e.hp--;
+        b.hit = true;
+        // 요청에 따라 일반7/일반8(spiral)/보스1에만 피격 시 아주 살짝 밝아지는 플래시 적용
+        if(e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1'){
+          triggerHitFlash(e);
+        }
+        if(e.hp <= 0) killEnemy(e);
+        break;
+      }
+    }
+  });
+  playerBullets = playerBullets.filter(b=> !b.hit);
+  enemies = enemies.filter(e=> !e.dead);
+
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || (e.type === 'normal8' ? e.y > -80 : e.y < H+40));
+  // 일반4/5: 진행 방향 쪽(반대편)으로 빠져나갔거나 화면 위로 나갔을 때만 제거(등장 전 화면 밖 대기 중에는 유지)
+  enemies = enemies.filter(e=> e.type !== 'normal4' || !((e.vx > 0 && e.x > W+80) || (e.vx < 0 && e.x < -80) || e.y < -100));
+  enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
+
+  // 아이템 낙하 + 획득 판정 (먼저 그려서, 아래에서 그리는 적 탄환이 그 위로 지나가도록 함)
+  items.forEach(it=>{
+    avoidBulletsForItem(it, dt);
+    it.y += it.vy * dt;
+    drawItem(it);
+    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
+      it.picked = true;
+      playItemPickupSound(); // 아이템 획득 효과음
+      if(it.type === 'R'){
+        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
+      } else if(it.type === 'W'){
+        playerHasW = true;
+      }
+    }
+  });
+  items = items.filter(it=> !it.picked && it.y < H+40);
+
+  bullets.forEach(b=>{
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    liteBullet(b.x,b.y,b.r,b.color);
+  });
+  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+
+  // 주인공 피격 판정 (적 탄환 vs 실제 타원형 히트박스)
+  // WARNING! 표시 중(stagePhase==='warning')과 보스 폭발 이후 클리어 연출 중(stagePhase==='clear')에는
+  // 화면에 남은 탄환이 페이드아웃되는 연출과 함께 피격도 무효 처리(모든 스테이지 공통).
+  // 보스 등장 이후(bossIntro/boss)에 나오는 탄환은 정상 피격.
+  bullets.forEach(b=>{
+    if(b.hitPlayer) return;
+    if(stagePhase === 'warning' || stagePhase === 'clear') return;
+    if(isInsidePlayerHitbox(b.x, b.y)){
+      b.hitPlayer = true;
+      handlePlayerHit();
+    }
+  });
+  bullets = bullets.filter(b=> !b.hitPlayer);
+
+  playerCool += dtMs;
+  if(playerCool >= getPlayerFireRate()){
+    playerCool = 0;
+    fireLaser();
+  }
+  playerBullets.forEach(b=>{
+    b.x += (b.vx || 0) * dt;
+    b.y += b.vy * dt;
+    drawLaser(b);
+  });
+  playerBullets = playerBullets.filter(b=> b.y + b.len > -20 && b.x > -20 && b.x < W+20);
+
+  drawPlayerWithEffects(); // 무적 중 깜빡임 + 떠오름 연출 포함하여 그림
+  drawTeleportFlashes(); // 순간이동 모드에서 터치 지점에 짧게 번쩍이는 이펙트
+  updatePlayerInvincibility(dtMs);
+
+  updateAndDrawExplosions(dt);
+  updateAndDrawScreenFlash(dt);
+  drawRapidHud();
+  drawScoreHud();
+  drawLifeHud();
+  drawBombHud();
+  drawBossHpBar(enemies.find(e=>e.type==='boss1'));
+  if(stagePhase === 'warning'){
+    drawBossWarning(bossWarningTimer, BOSS_WARNING_DURATION_MS, BOSS_WARNING_BLINK_COUNT);
+  }
+
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
