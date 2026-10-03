@@ -58,8 +58,49 @@ let playerLife = 2; // 잔여 라이프(화면에 보이는 기체 외 여유분
 let playerBombs = 2; // 폭탄 개수. 2손가락 터치 또는 마우스 좌/우 버튼 동시 클릭으로 사용
 let continueScreenActive = false; // true면 게임 로직 정지, 컨티뉴 화면 표시 중 (상세 디자인은 추후 논의)
 
+// 점수 임계값 돌파 시 1회성 보너스 라이프 (상한 5개까지만 적용)
+const LIFE_BONUS_THRESHOLDS = [15000, 40000, 80000, 150000];
+let nextLifeBonusIdx = 0;
+const MAX_LIFE_ICON = 5;
+let lifeBonusPopupMs = 0; // >0이면 "LIFE" 글로우 팝업 표시 중 (ms 카운트다운)
+const LIFE_BONUS_POPUP_DURATION_MS = 500;
+
 function addScore(amount){
   playerScore += amount;
+  while(nextLifeBonusIdx < LIFE_BONUS_THRESHOLDS.length && playerScore >= LIFE_BONUS_THRESHOLDS[nextLifeBonusIdx]){
+    nextLifeBonusIdx++;
+    if(playerLife < MAX_LIFE_ICON){
+      playerLife++;
+      lifeBonusPopupMs = LIFE_BONUS_POPUP_DURATION_MS;
+      playItemPickupSound();
+    }
+  }
+}
+
+// 매 프레임(델타타임 ms) 호출: LIFE 팝업 표시 타이머 감쇠
+function updateLifeBonusPopup(dtMs){
+  if(lifeBonusPopupMs > 0) lifeBonusPopupMs = Math.max(0, lifeBonusPopupMs - dtMs);
+}
+
+// SCORE 숫자 근처에 "LIFE" 글로우 작게 짧게 표시 (0.5초, WARNING!과 같은 그라디언트 글로우 스타일의 축소판)
+function drawLifeBonusPopup(){
+  if(lifeBonusPopupMs <= 0) return;
+  const t = lifeBonusPopupMs / LIFE_BONUS_POPUP_DURATION_MS; // 1→0
+  const cx = W/2, cy = 86; // SCORE 숫자(y:52) 바로 아래
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = Math.min(1, t * 2); // 끝부분에서 살짝 빠르게 사라짐
+  ctx.font = 'bold 20px "Trebuchet MS", Arial, sans-serif';
+  ctx.shadowColor = '#4dff8f';
+  ctx.shadowBlur = 16;
+  const grad = ctx.createLinearGradient(cx, cy - 10, cx, cy + 10);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.5, '#9affc2');
+  grad.addColorStop(1, '#2bff7a');
+  ctx.fillStyle = grad;
+  ctx.fillText('LIFE', cx, cy);
+  ctx.restore();
 }
 
 // 적 탄환에 피격 시 호출. 라이프가 남아있으면 1대 소진, 없으면 컨티뉴 화면 트리거.
@@ -233,6 +274,19 @@ function unlockAllAudio(){
   // 아래 프라이밍 루프의 대상이 되도록 함.
   getStageClearMusicAudio();
   if(typeof getBossBgmAudio === 'function') getBossBgmAudio();
+  // 스테이지 BGM(세그먼트 기반, STAGE{N}_BGM_DATA)도 보스 BGM과 동일한 이유로 미리 생성해둬야 함.
+  // switchToStageBgm()이 처음 호출되는 시점(발사 연출 종료 후)은 사용자 제스처 콜스택 밖이라,
+  // 거기서 처음 Audio를 생성/최초 play()하면 모바일 자동재생 정책에 막혀 BGM이 전혀 안 나옴.
+  if(typeof getBgmScheduleData === 'function' && typeof getStageBgmAudioForTrack === 'function'){
+    [1, 2].forEach(stageNum=>{
+      const bgmData = getBgmScheduleData(stageNum);
+      if(bgmData && bgmData.tracks){
+        Object.keys(bgmData.tracks).forEach(trackKey=>{
+          getStageBgmAudioForTrack(stageNum, trackKey, bgmData.tracks[trackKey]);
+        });
+      }
+    });
+  }
   // 사용자 제스처 콜스택 안에서 전부 동기적으로 처리해야 브라우저의 자동재생 잠금 해제가 정상 동작함.
   // (프레임 단위로 나눠서 처리하면 일부가 제스처 콜스택 밖에서 실행되어 muted 동기화가 깨지고,
   //  효과음이 짧게 새어나오는(예: 폭발음이 시작과 동시에 들리는) 문제가 있어 한 번에 처리로 되돌림)
@@ -245,6 +299,15 @@ function unlockAllAudio(){
     const restore = ()=>{
       if(restored) return;
       restored = true;
+      // 프라이밍 이후(비동기로 이 콜백이 실행되는 사이) 게임 코드가 이미 의도적으로 이 오디오를
+      // 재생시킨 경우(a._intentionalPlay === true, 예: 발사대 장면에서 곧바로 시작하는 스테이지1
+      // BGM) 그 재생을 건드리면 안 됨 — pause/currentTime 리셋/볼륨 덮어쓰기를 하면 방금 시작한
+      // 진짜 재생이 끊기고 볼륨도 프라이밍 전 값(보통 1)으로 되돌아가버리는 경쟁 상태가 생김.
+      // 그런 경우엔 muted 상태만 원래대로 돌려주고 나머지는 그대로 둔다.
+      if(a._intentionalPlay){
+        a.muted = wasMuted;
+        return;
+      }
       a.pause();
       a.currentTime = 0;
       a.muted = wasMuted;
@@ -367,7 +430,7 @@ function playLaserSound(){
 // 게임 시작 직후 몰리는 초기 네트워크/디코딩 부담을 줄임(지연 생성).
 // 모바일 기기 판별(BGM 볼륨을 모바일에서만 추가로 낮추는 데 사용).
 const IS_MOBILE_DEVICE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
-let BGM_MOBILE_VOLUME_SCALE = 0.18; // 사용자 요청으로 0.180으로 지정
+let BGM_MOBILE_VOLUME_SCALE = 0.8; // 사용자 요청으로 0.8로 지정(기존 0.5)
 const BGM_TO_SFX_RATIO = 0.3; // BGM은 항상 효과음 평균 볼륨의 30% 수준을 유지
 // 효과음(레이저/폭발/피격/아이템/스파이럴/보스탄/보스레이저) 평균 볼륨을 구해 그 30%를 BGM 기준 볼륨으로 사용.
 // 이 함수보다 아래에 선언된 _SOUND_VOLUME 상수들을 참조하지만, 실제 호출은 항상 스크립트 로드가
@@ -407,7 +470,7 @@ let bgmAudio = null;
 let bgmStarted = false;
 function getBgmAudio(){
   if(!bgmAudio){
-    bgmAudio = registerAudio(new Audio('sound/main.m4a'));
+    bgmAudio = registerAudio(new Audio('sound/main.mp3'));
     bgmAudio.loop = true;
     bgmAudio.volume = getBgmVolume(); // 효과음 평균 볼륨의 30% 수준을 항상 유지(모바일에서는 추가로 30% 하향)
     // 일부 브라우저(Safari 등)는 대용량 오디오에서 loop 속성이 씹혀 재생이 끝나면
@@ -959,17 +1022,24 @@ Object.entries(itemAssets).forEach(([key, src])=>{
 // 폭탄 HUD 아이콘 스프라이트 (item_r/item_w와 동일 프레임 틀, 색상만 붉은 계열로 변경 + 알파벳 B)
 const bombIconImg = new Image();
 bombIconImg.src = 'assets/optimized/item_bomb_sm.png';
-let items = []; // {type:'R'|'W', x, y, vy}
+itemImgs['B'] = bombIconImg; // 낙하 아이템도 동일 비주얼 재사용
+let items = []; // {type:'R'|'W'|'B', x, y, vy}
 const ITEM_FALL_SPEED = 90; // px/s
 const ITEM_SIZE_R = 90; // px (20% 축소, 기존 112px)
 const ITEM_SIZE_W = 115; // px, R보다 더 크게 (20% 축소, 기존 144px)
+const ITEM_SIZE_B = 90; // px, 폭탄 아이템(R과 동일 크기)
+const BOMB_MAX_STOCK = 4; // 폭탄 보유 상한
 let playerRStack = 0; // 0~4, R 아이템 스택 개수 (스택당 탄속 +35% + 발사 주기 단축, 최대 4개면 +140%)
 let playerHasW = false; // W 아이템 획득 여부 (3방향 스프레드), 획득하면 더 이상 W 아이템 드랍 안 됨
-// R/W는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_R_SPAWN_*, STAGE1_W_SPAWN_* 참고)
+// R/W/B는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_R_SPAWN_*, STAGE1_W_SPAWN_*, STAGE1_B_SPAWN_* 참고)
+
+function itemSizeFor(type){
+  return type === 'W' ? ITEM_SIZE_W : (type === 'B' ? ITEM_SIZE_B : ITEM_SIZE_R);
+}
 
 function spawnItem(type, x, y){
   // 등장 시 근처 적 탄환과 겹치지 않도록 x좌표를 살짝 밀어냄 (겹침 회피)
-  const size = type === 'W' ? ITEM_SIZE_W : ITEM_SIZE_R;
+  const size = itemSizeFor(type);
   const avoidRadius = size/2 + 20; // 탄환 반경(6px) 포함 여유
   const margin = size/2 + 10;
   let attempts = 0;
@@ -984,11 +1054,11 @@ function spawnItem(type, x, y){
 function drawItem(it){
   const img = itemImgs[it.type];
   if(!img || !img.complete || img.naturalWidth === 0) return;
-  const size = it.type === 'W' ? ITEM_SIZE_W : ITEM_SIZE_R;
+  const size = itemSizeFor(it.type);
   // 발광했다 안했다 하는 펄스 연출 (실제 시간 기반, dt 무관)
   const pulse = 0.5 + 0.5 * Math.sin(Date.now()/220 + (it.pulseSeed || 0));
   ctx.save();
-  ctx.shadowColor = it.type === 'R' ? '#ff9a3c' : '#c77dff';
+  ctx.shadowColor = it.type === 'R' ? '#ff9a3c' : (it.type === 'B' ? '#ff4d4d' : '#c77dff');
   ctx.shadowBlur = 8 + pulse * 22;
   ctx.globalAlpha = 0.75 + pulse * 0.25;
   ctx.drawImage(img, it.x - size/2, it.y - size/2, size, size);
@@ -999,7 +1069,7 @@ const ITEM_AVOID_SPEED = 220; // px/s, 아이템이 탄환을 피하는 좌우 �
 
 // 낙하 중에도 매 프레임 근처 적 탄환을 좌우로 피하도록 스티어링 (즉시 텔레포트가 아닌 dt 기반 이동)
 function avoidBulletsForItem(it, dt){
-  const size = it.type === 'W' ? ITEM_SIZE_W : ITEM_SIZE_R;
+  const size = itemSizeFor(it.type);
   const avoidRadius = size/2 + 20;
   let pushX = 0;
   if(typeof bullets !== 'undefined'){
@@ -1165,6 +1235,7 @@ function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2
 }
 
 // ---- 탄 발사 패턴 ----
+const BULLET_MAX_LIFE_MS = 6000; // 적 탄환 최대 생존 시간(ms). 느린 탄이 화면에 비정상적으로 오래 머무는 것을 막는 안전장치.
 
 function liteBullet(x,y,r,color){
   ctx.save();
@@ -1182,7 +1253,20 @@ function liteBullet(x,y,r,color){
 function fireAimed(e, color, speed){ // speed: px/s
   const dx = player.x - e.x, dy = player.y - e.y;
   const d = Math.hypot(dx,dy) || 1;
-  bullets.push({x:e.x,y:e.y,vx:dx/d*speed,vy:dy/d*speed,r:6,color});
+  let ux = dx/d, uy = dy/d;
+  // 일반1/2처럼 조준 단발을 쏘는 적은 플레이어가 거의 수평 방향(같은 높이)에 있으면 탄의 vy가
+  // 거의 0이 되어 화면을 매우 느리게 가로지르다 끝까지 가지 못하고(수명 제한 등으로) 사라지는
+  // 문제가 있었음. 아래 방향 성분을 최소 MIN_DOWNWARD_RATIO만큼 보장하고, 그 경우엔 탄속도
+  // SLOW_ANGLE_SPEED_BOOST만큼 증폭해 화면 맨 아래까지 확실히, 빠르게 도달하도록 함.
+  const MIN_DOWNWARD_RATIO = 0.45;
+  let actualSpeed = speed;
+  if(uy < MIN_DOWNWARD_RATIO){
+    uy = MIN_DOWNWARD_RATIO;
+    const horizMag = Math.sqrt(Math.max(0, 1 - uy*uy));
+    ux = (ux === 0 ? 0 : Math.sign(ux)) * horizMag;
+    actualSpeed = speed * 1.8; // 보정이 걸린 경우에만 탄속 80% 증폭(원래 조준이 아래쪽이면 그대로 유지)
+  }
+  bullets.push({x:e.x,y:e.y,vx:ux*actualSpeed,vy:uy*actualSpeed,r:6,color});
   playEnemyShootSound();
 }
 
@@ -1202,6 +1286,24 @@ function fireSpread2(e, color, speed, spreadDeg){
   const a2 = base + spreadRad/2;
   bullets.push({x:e.x,y:e.y,vx:Math.cos(a1)*speed,vy:Math.sin(a1)*speed,r:6,color});
   bullets.push({x:e.x,y:e.y,vx:Math.cos(a2)*speed,vy:Math.sin(a2)*speed,r:6,color});
+  playEnemyShootSound();
+}
+
+// 스테이지2부터 일반3이 사용하는 신규 탄막: 9발이 좁은 반경(18px)으로 좌우 수평 회전하며
+// 내려오는 "원통형(링 전체 회전)" 탄막. 샘플(normal3_screw_narrow_sample.html)에서 확정한
+// 수치(9발, omega 5rad/s, radius 18px, speed 140px/s, 수평축) 그대로 적용.
+// kind:'screw' 플래그를 둬서 index.html의 bullets 갱신 루프에서 일반 vx/vy 직선 이동이 아니라
+// 각도 기반 공식으로 매 프레임 위치를 재계산하도록 분기함.
+function fireScrewCylinder(e, color){
+  const strands = 9, omega = 5, radius = 18, speed = 140;
+  const baseAngle = Math.random() * Math.PI * 2;
+  for(let i=0;i<strands;i++){
+    bullets.push({
+      kind:'screw', ox:e.x, oy:e.y, x:e.x, y:e.y,
+      vy: speed, omega, radius, baseAngle: baseAngle + (Math.PI*2/strands)*i,
+      age: 0, r:6, color
+    });
+  }
   playEnemyShootSound();
 }
 
@@ -1708,7 +1810,7 @@ function _getAlphaData(img, size){
 // 두 사각형의 겹치는 영역을 2px 간격으로 순회하며 두 이미지 모두 alpha>0인 지점이 있으면 true.
 // 픽셀 데이터를 얻을 수 없는 환경(예: file:// 보안 제약)에서는 원형 근사 판정으로 대체.
 function pixelHitsPlayer(itemX, itemY, itemType){
-  const size = itemType === 'W' ? ITEM_SIZE_W : ITEM_SIZE_R;
+  const size = itemSizeFor(itemType);
   const playerData = _getAlphaData(assets['player'], 96);
   const itemImg = itemImgs[itemType];
   const itemData = _getAlphaData(itemImg, size);

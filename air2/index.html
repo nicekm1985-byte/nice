@@ -368,7 +368,9 @@ function dismissTitleScreen(){
   titleScreenActive = false;
   versionBtn.style.display = 'none'; // 게임 시작 후에는 버전 버튼 숨김
   unlockAllAudio(); // 사용자 제스처 콜스택 안에서 모든 효과음을 미리 언락(첫 플레이부터 정상 재생되도록)
-  // 발사대 연출 동안은 BGM 없음. 연출이 끝나 startStage(1)이 호출될 때 stage.js의 switchToStageBgm()이 스테이지 BGM 시작.
+  // 발사대 연출 시작 시점부터 스테이지1 BGM이 흐르도록 함(이전엔 연출이 끝난 뒤에야 재생 시작).
+  currentStage = 1;
+  switchToStageBgm();
   startLaunchSequence(); // 발사 연출(발사대에서 이탈) 재생 후, 그 끝에서 startStage(1) 호출됨
 }
 
@@ -582,19 +584,19 @@ touchPad.addEventListener('touchstart', e=>{
   if(e.touches.length >= 2) useBomb();
 }, {passive:true});
 </script>
-<script src="bg.js?v=202610030120"></script>
-<script src="stage1layers.js?v=202610030120"></script>
-<script src="assets/bg/stage1new/stage1_launch.js?v=202610030120"></script>
-<script src="stage1bg.js?v=202610030120"></script>
-<script src="assets/bg/stage1new/stage1_layout.js?v=202610030120"></script>
-<script src="assets/bg/stage1new/stage1_schedule.js?v=202610030120"></script>
-<script src="assets/bg/stage1new/stage1_bgm.js?v=202610030120"></script>
-<script src="stage2bg.js?v=202610030120"></script>
-<script src="assets/bg/stage2new/stage2_layout.js?v=202610030120"></script>
-<script src="assets/bg/stage2new/stage2_schedule.js?v=202610030120"></script>
-<script src="assets/bg/stage2new/stage2_bgm.js?v=202610030120"></script>
-<script src="characters.js?v=202610030120"></script>
-<script src="stage.js?v=202610030120"></script>
+<script src="bg.js?v=202610031930"></script>
+<script src="stage1layers.js?v=202610031930"></script>
+<script src="assets/bg/stage1new/stage1_launch.js?v=202610031930"></script>
+<script src="stage1bg.js?v=202610031930"></script>
+<script src="assets/bg/stage1new/stage1_layout.js?v=202610031930"></script>
+<script src="assets/bg/stage1new/stage1_schedule.js?v=202610031930"></script>
+<script src="assets/bg/stage1new/stage1_bgm.js?v=202610031930"></script>
+<script src="stage2bg.js?v=202610031930"></script>
+<script src="assets/bg/stage2new/stage2_layout.js?v=202610031930"></script>
+<script src="assets/bg/stage2new/stage2_schedule.js?v=202610031930"></script>
+<script src="assets/bg/stage2new/stage2_bgm.js?v=202610031930"></script>
+<script src="characters.js?v=202610031930"></script>
+<script src="stage.js?v=202610031930"></script>
 <script>
 // ---- 일시정지/메뉴 ----
 // M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
@@ -825,6 +827,10 @@ function update(currentTime){
     return;
   }
 
+  // 전역 안전장치: 보스 전투 단계('boss')가 아닌 모든 상황에서는 보스 레이저 발사음이
+  // 절대 남아있지 않도록 매 프레임 강제 정지(상태 머신 전이 타이밍 틈새로 사운드가 안 멈추는 버그 방지).
+  if(stagePhase !== 'boss') stopBossLaserSound();
+
   if(gamePaused){
     requestAnimationFrame(update); // 화면은 마지막 프레임 그대로 유지, 로직/그리기 갱신 정지
     return;
@@ -968,7 +974,8 @@ function update(currentTime){
       drawSprite(e, 'normal3', 74);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireSpread2(e, '#3ad9ff', 151, 25); // 25도 스프레드 2발 (기체색: 청록/시안)
+        if(currentStage >= 2) fireScrewCylinder(e, '#3ad9ff'); // 스테이지2부터: 9발 원통형 좁은 회전 탄막
+        else fireSpread2(e, '#3ad9ff', 151, 25); // 스테이지1: 기존 25도 스프레드 2발 (기체색: 청록/시안)
       }
     } else if(e.type==='normal4'){
       e.x += e.vx * dt;
@@ -1076,6 +1083,7 @@ function update(currentTime){
         // 좌우 이동↔정지 발사 상태 머신
         const margin = 40; // 화면 끝까지 가지 않도록 여유 마진
         if(e.moveState === 'move'){
+          stopBossLaserSound(); // 이동 중에는 레이저 발사음이 절대 울리지 않도록 방어적 정지(사운드 끊김 버그 방지)
           if(e.moveTargetX === null){
             let tx;
             let attempts = 0;
@@ -1189,16 +1197,30 @@ function update(currentTime){
         playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
       } else if(it.type === 'W'){
         playerHasW = true;
+      } else if(it.type === 'B'){
+        playerBombs = Math.min(BOMB_MAX_STOCK, playerBombs + 1);
       }
     }
   });
   items = items.filter(it=> !it.picked && it.y < H+40);
 
   bullets.forEach(b=>{
-    b.x += b.vx * dt; b.y += b.vy * dt;
+    if(b.kind === 'screw'){
+      b.age += dt;
+      const travel = b.vy * b.age;
+      const rot = Math.sin(b.baseAngle + b.omega * b.age) * b.radius; // 수평 좌우 회전 오프셋
+      b.x = b.ox + rot;
+      b.y = b.oy + travel;
+    } else {
+      b.x += b.vx * dt; b.y += b.vy * dt;
+    }
     liteBullet(b.x,b.y,b.r,b.color);
   });
-  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+  // 수명 제한: 혹시 비정상적으로 느린 속도로 생성된 탄이 화면 안에 영원히 머무는 일이 없도록
+  // 모든 적 탄환은 생성 후 BULLET_MAX_LIFE_MS를 넘기면 자연 소멸(일반적인 탄속에서는 그 전에
+  // 화면 밖으로 나가므로 평소엔 영향 없음, 느린 탄에 대해서만 안전장치로 작동).
+  bullets.forEach(b=>{ b.lifeMs = (b.lifeMs || 0) + dtMs; });
+  bullets = bullets.filter(b=> b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20 && b.lifeMs < BULLET_MAX_LIFE_MS);
 
   // 주인공 피격 판정 (적 탄환 vs 실제 타원형 히트박스)
   // WARNING! 표시 중(stagePhase==='warning')과 보스 폭발 이후 클리어 연출 중(stagePhase==='clear')에는
@@ -1236,6 +1258,8 @@ function update(currentTime){
   drawScoreHud();
   drawLifeHud();
   drawBombHud();
+  updateLifeBonusPopup(dtMs);
+  drawLifeBonusPopup();
   drawBossHpBar(enemies.find(e=>e.type==='boss1'));
   if(stagePhase === 'warning'){
     drawBossWarning(bossWarningTimer, BOSS_WARNING_DURATION_MS, BOSS_WARNING_BLINK_COUNT);

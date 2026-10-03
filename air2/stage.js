@@ -75,6 +75,8 @@ let clearBulletFadeTimer = 0; // ms, 'clear' 단계(보스 폭발) 진입 이후
 let stage1CurPhaseIdx = -1; // 현재 적용된 phases 배열의 인덱스(중복 적용 방지, startStage에서 -1로 리셋)
 let stage1NextRSpawnMs = 0; // 다음 R 아이템 등장 예정 시각(ms)
 let stage1NextWSpawnMs = 0; // 다음 W 아이템 등장 예정 시각(ms)
+let stage1NextBSpawnMs = 45000; // 다음 폭탄 아이템 등장 예정 시각(ms). 45초 간격(요청 확정값)
+const BOMB_ITEM_INTERVAL_MS = 45000;
 
 // 매 프레임 호출: 데이터 기반(phases 배열) 시간 구간에 따라 활성 타입/상한을 갱신.
 // elapsedMs 시점에 해당하는 마지막 구간(startMs <= elapsedMs)을 찾아 그 구간의 enabled/cap을 적용.
@@ -111,6 +113,19 @@ function updateStage1Spawns(elapsedMs){
     stage1NextWSpawnMs = elapsedMs + items_.wIntervalMinMs + Math.random()*(items_.wIntervalMaxMs - items_.wIntervalMinMs);
     const margin = ITEM_SIZE_W/2 + 10;
     spawnItem('W', margin + Math.random()*(W - margin*2), -40); // 화면 상단 랜덤 x위치에서 낙하 시작
+  }
+
+  // 폭탄(B) 아이템: 45초 간격 독립 등장. 보스 전투 중(stagePhase==='boss'/'bossIntro'/'warning')에는 등장 금지,
+  // 폭탄 보유가 이미 상한(BOMB_MAX_STOCK)이면 등장 자체를 건너뛰고 다음 타이머로 넘김(낭비 방지).
+  if(items.length === 0 && elapsedMs >= stage1NextBSpawnMs){
+    const bossBusy = stagePhase === 'boss' || stagePhase === 'bossIntro' || stagePhase === 'warning';
+    if(bossBusy || playerBombs >= BOMB_MAX_STOCK){
+      stage1NextBSpawnMs = elapsedMs + BOMB_ITEM_INTERVAL_MS; // 조건 안 맞으면 다음 주기로 미룸(연속 재시도 방지)
+    } else {
+      stage1NextBSpawnMs = elapsedMs + BOMB_ITEM_INTERVAL_MS;
+      const margin = ITEM_SIZE_B/2 + 10;
+      spawnItem('B', margin + Math.random()*(W - margin*2), -40);
+    }
   }
 }
 
@@ -165,18 +180,30 @@ function updateStageBgmSegments(elapsedMs){
   for(let i=0; i<segs.length; i++){
     if(elapsedMs >= segs[i].startMs) idx = i; else break;
   }
-  if(idx < 0 || idx === stage1CurBgmSegIdx) return;
-  stage1CurBgmSegIdx = idx;
+  if(idx < 0) return;
   const seg = segs[idx];
+  const trackKeyStr = (!seg.track || seg.track === 0) ? null : String(seg.track);
+  // 이미 이 트랙이 끊기지 않고 재생 중이면(예: 발사대 연출에서 미리 틀어둔 스테이지1 BGM이
+  // startStage() 진입 시점에도 그대로 흐르고 있는 경우) 처음부터 다시 재생하지 않고 그대로 이어감.
+  // (startStage()가 stage1CurBgmSegIdx를 -1로 리셋해도 트랙/재생 상태만으로 판단하므로 영향 없음)
+  if(trackKeyStr === stageBgmCurTrack){
+    const cache = stageBgmAudioCache[currentStage];
+    const curAudio = trackKeyStr ? cache[trackKeyStr] : null;
+    if(!trackKeyStr || (curAudio && !curAudio.paused)){
+      stage1CurBgmSegIdx = idx;
+      return;
+    }
+  }
+  stage1CurBgmSegIdx = idx;
   pauseAllStageBgmTracks(currentStage);
-  if(!seg.track || seg.track === 0){ stageBgmCurTrack = null; return; } // 무음 구간
+  if(!trackKeyStr){ stageBgmCurTrack = null; return; } // 무음 구간
   const src = bgmData.tracks[seg.track];
   if(!src) return;
   const audio = getStageBgmAudioForTrack(currentStage, seg.track, src);
   audio.volume = getBgmVolume();
   audio.currentTime = 0;
   audio.play().catch(()=>{});
-  stageBgmCurTrack = String(seg.track);
+  stageBgmCurTrack = trackKeyStr;
 }
 
 // ---- BGM 전환 (스테이지 진행용 <-> 보스전용) ----
@@ -257,6 +284,7 @@ function startStage(stageNum, skipBgReset){
   const sched = getScheduleData(stageNum);
   stage1NextRSpawnMs = (sched.items && sched.items.rFirstMs) || STAGE1_SCHEDULE_DEFAULT.items.rFirstMs;
   stage1NextWSpawnMs = (sched.items && sched.items.wFirstMs) || STAGE1_SCHEDULE_DEFAULT.items.wFirstMs;
+  stage1NextBSpawnMs = BOMB_ITEM_INTERVAL_MS; // 스테이지 시작 45초 후 첫 폭탄 등장
   stage1CurBgmSegIdx = -1; // BGM 구간도 처음부터 다시 판정
   bossSpiralSpawnIdx = 0;
   bossPhaseElapsed = 0;

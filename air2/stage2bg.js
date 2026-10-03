@@ -138,14 +138,26 @@ function resetStage2Background() {
 // 절차적 오브젝트 배치 (지면 타일은 무한 반복, 오브젝트는 계속 새로 랜덤 생성)
 // 배치 기준(규칙):
 //  1. 지형별 풀: 화면 맨 위에 들어오는 지면 타일 종류(평지/전환/용암)에 맞는 오브젝트만 고름.
-//     평지 = 외계 기지·잔해·암석, 용암 = 크리스탈·흑요석·첨탑 등 위험 지형, 전환 = 둘 섞음.
+//     평지 = 외계 기지·잔해·암석·분화구, 용암 = 크리스탈·흑요석·첨탑 등 위험 지형, 전환 = 둘 섞음.
+//     분화구(meteorCrater)는 용암지대에는 노출 금지(평지 풀에만 둠) — 용암 자체가 이미 지형 특징이라 중복됨.
 //  2. 금지 구역: 용암강(가운데 x 190~290)에는 아무것도 놓지 않음(용암 타일/전환 타일 아래쪽 절반).
 //  3. 간격: 직전 오브젝트와 세로로 최소 140px, 같은 줄(세로 차 < 200px)에서는 가로로 최소 170px 떨어뜨림
 //     → 두 개가 같은 높이에 나란히 서는 배치 방지. 위치는 좌/중/우 3구역 중 최근에 덜 쓴 쪽 우선.
-//  4. 반복 방지: 직전 2개와 같은 종류는 피함. 크기 ±20%, 각도 무작위(기지 시설은 0/90/180/270 근처),
-//     밝기 0.85~1.1 범위로 매번 다르게.
+//     추가로 같은 줄에서 크기(scale)가 ±8% 이내로 비슷하면 가로 간격 기준을 260px로 확대
+//     → 같은 크기 오브젝트가 나란히 늘어서는 배치(열 맞춘 듯한 부자연스러움) 방지.
+//  4. 반복 방지: 직전 2개와 같은 종류는 피함. 크기 ±20%, 밝기 0.85~1.1 범위로 매번 다르게.
+//     회전은 오브젝트 성격별 kind로 차등 적용(지형에 어울리게):
+//       - base(터렛/타워/활주로 등 기지 시설): 0/90/270/270 근처 ±6도 — 수직 구조물이라 기울임 최소화.
+//       - pipe(배관): 0 또는 90도만 — 파이프는 수평/수직만 자연스러움.
+//       - crystal(에너지 크리스탈/수정 더미): -50~50도 범위만 — 땅에서 솟은 결정체라 뒤집히면 부자연스러움.
+//       - fossil(뼈 화석): 머리가 왼쪽(180도)/오른쪽(0도)/아래(90도)로만 향하게 ±18도 jitter,
+//         270도(머리가 위로 향함) 근처는 절대 금지 — 지면에 누운 뼈가 위로 솟아오르면 안 됨.
+//       - flat(분화구): 완전 자유 회전 — 원형 지형 자국이라 방향 무관.
+//       - wreck(추락선/잔해)·rockFree(자연 암석류): 완전 자유 회전 유지(불규칙한 자연물/사고 흔적).
 //  5. 밀도 리듬: 기본 간격 1.1~2.0초(100px/s 기준 110~200px)마다 1개, 가끔(15%) 2~3개 군집 → 빽빽함과 여백 반복.
 //  6. 빠른 스크롤감: 지면 100px/s + "가까운 잔해" 일부(25%)는 1.35배 속도로 앞에서 스쳐 지나감(패럴랙스).
+//  7. 지면 스테이지는 공중 부유가 있을 수 없으므로, 오브젝트는 둥둥 떠다니거나(float) 좌우로 흔들리지(sway)
+//     않음 — drawStage2Background에서 float/sway 오프셋 자체를 적용하지 않음(고정 배치/절차 생성 공통).
 // 에디터에서 배치한 오브젝트(STAGE2_LAYOUT_DATA.objects)는 첫 화면 연출용으로 그대로 쓰고,
 // 그 뒤부터는 이 생성기가 계속 이어서 만들어 냄(STAGE2_PROC_ENABLED=false면 기존 고정 배치만 반복).
 let STAGE2_PROC_ENABLED = true;
@@ -154,12 +166,12 @@ const STAGE2_PROC_POOLS = {
   plain: [
     ['bunkerTurret',0.55,'base'],['missileSilo',0.5,'base'],['radarTower',0.65,'base'],['alienLandingPad',0.85,'base'],
     ['bioPipeline',1.2,'pipe'],['crashedShip',0.75,'wreck'],['salvageRobot',0.6,'wreck'],['cargoContainer',0.6,'wreck'],
-    ['escapePod',0.6,'wreck'],['beastFossil',0.9,'rock'],['rockBoulders',0.7,'rock'],['rockPillar',0.75,'rock'],
-    ['rockCrystalMound',0.5,'rock'],['alienFlora',0.42,'rock']
+    ['escapePod',0.6,'wreck'],['beastFossil',0.9,'fossil'],['rockBoulders',0.7,'rockFree'],['rockPillar',0.75,'rockFree'],
+    ['rockCrystalMound',0.5,'crystal'],['alienFlora',0.42,'rockFree'],['meteorCrater',0.7,'flat']
   ],
   lava: [
-    ['energyCrystal',0.85,'rock'],['rockObsidian',0.85,'rock'],['rockSpire',0.5,'rock'],['rockBasalt',0.85,'rock'],
-    ['meteorCrater',0.7,'rock'],['crashedShip',0.65,'wreck'],['escapePod',0.55,'wreck']
+    ['energyCrystal',0.85,'crystal'],['rockObsidian',0.85,'rockFree'],['rockSpire',0.5,'rockFree'],['rockBasalt',0.85,'rockFree'],
+    ['crashedShip',0.65,'wreck'],['escapePod',0.55,'wreck']
   ]
 };
 let stage2ProcObjs = [];       // {type,x,y(화면),scale,rot,brightness,speedMul}
@@ -224,9 +236,14 @@ function stage2ProcSpawnOne(yOffset){
   }
   if(x === null) return false; // 자리가 없으면 이번엔 건너뜀(간격 규칙 우선)
   let rot;
-  if(kind === 'base') rot = [0, 90, 180, 270][Math.floor(Math.random() * 4)] + Math.round((Math.random() - 0.5) * 16);
+  if(kind === 'base') rot = [0, 90, 180, 270][Math.floor(Math.random() * 4)] + Math.round((Math.random() - 0.5) * 12);
   else if(kind === 'pipe') rot = Math.random() < 0.5 ? 0 : 90;
-  else rot = Math.round(Math.random() * 360);
+  else if(kind === 'crystal') rot = Math.round((Math.random() - 0.5) * 100); // -50~50도
+  else if(kind === 'fossil'){
+    // 머리가 왼쪽(180)/오른쪽(0)/아래(90)로만 향하게. 270(위쪽) 근처는 절대 금지.
+    rot = [0, 90, 180][Math.floor(Math.random() * 3)] + Math.round((Math.random() - 0.5) * 36);
+  }
+  else rot = Math.round(Math.random() * 360); // flat/wreck/rockFree: 완전 자유 회전
   const near = kind === 'wreck' && Math.random() < 0.25; // 가까운 잔해: 더 빨리 스쳐 지나감
   stage2ProcObjs.push({ type, x: Math.round(x), y, scale: near ? +(scale * 1.15).toFixed(2) : scale, rot,
     brightness: +(0.85 + Math.random() * 0.25).toFixed(2), speedMul: near ? 1.35 : 1, z: near ? 2 : 1 });
@@ -332,12 +349,7 @@ function drawStage2Background(dt, alpha) {
     const w = img.width * scale, h = img.height * scale;
     const rad = (o.rot || 0) * Math.PI / 180;
     const opacity = o.opacity != null ? o.opacity : 1;
-
-    // 둥실둥실(상하) / 좌우 흔들림 오프셋(실제 시간 기반, dt 무관 — 에디터의 drawWorldObject와 동일 로직)
-    const t = Date.now() / 1000;
-    const seed = o.motionSeed || 0;
-    const floatOffset = (o.floatAmp || 0) * Math.sin(t * (o.floatSpeed || 1) + seed);
-    const swayOffset = (o.swayAmp || 0) * Math.sin(t * (o.swaySpeed || 1) * 0.8 + seed + 1.7);
+    // 지면 스테이지는 공중 부유가 있을 수 없으므로 float/sway 오프셋을 적용하지 않음(규칙 7).
 
     let screenY, copies;
     if (STAGE2_PROC_ENABLED) {
@@ -355,7 +367,7 @@ function drawStage2Background(dt, alpha) {
       if (sy + h >= -80 && sy - h <= H + 80) {
         ctx.save();
         ctx.globalAlpha = opacity * ea; // 발사 시퀀스의 전체 숨김/페이드인(ea)과 오브젝트 개별 불투명도(opacity)를 함께 반영
-        ctx.translate(o.x + swayOffset, sy + floatOffset);
+        ctx.translate(o.x, sy);
         ctx.rotate(rad);
         ctx.drawImage(getBrightnessImage(img, o.brightness), -w / 2, -h / 2, w, h);
         ctx.restore();
