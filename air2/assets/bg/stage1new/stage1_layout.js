@@ -2128,14 +2128,14 @@ const STAGE1_LAYOUT_DATA = {
       "speed": 7,
       "brightness": 0.42,
       "opacity": 0.95,
-      "visible": true,
+      "visible": false,
       "warp": false,
       "id": 12,
       "objects": [
         {
           "type": "planetMars",
           "x": 20,
-          "y": 1015,
+          "y": 430,
           "speedMul": 1,
           "scale": 2.2,
           "rot": 0,
