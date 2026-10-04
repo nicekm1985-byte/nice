@@ -1263,7 +1263,7 @@ function spawnNormal6(){ // 일반6: 램(Ram), 고속 몸통박치기. Zone-1까
     vx: 0, vy: speed, // Zone-1까지는 아래로 직진
     speed,
     homing: false, // Zone-2 진입 후 true로 전환
-    hp:10, score:120
+    hp:6, score:120
   });
 }
 function spawnNormal7(){ // 일반7: Stubby
