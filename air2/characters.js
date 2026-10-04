@@ -1217,7 +1217,7 @@ function spawnNormal2(){ // 일반2: 일반1과 동일 스탯, 지그재그 없�
     positions.push(x);
     enemies.push({
       type:'normal2', x, baseX: x, y: -40 - Math.random()*260,
-      vy:110, hp:2, score:90, cool:0, fireRate:1000
+      vy:110, hp:2, score:90, cool:0, fireRate:2000
     });
   }
 }
@@ -1376,7 +1376,7 @@ function fireAimed(e, color, speed){ // speed: px/s
   // 화면 맨 아래까지 도달하는 데 너무 오래 걸려 수명 제한(BULLET_MAX_LIFE_MS) 전에 끝까지
   // 못 가고 사라지는 문제가 있었음. 실제 하강 속도(vy)가 항상 MIN_VY 이상이 되도록
   // 전체 속도를 필요한 만큼 증폭(각도는 그대로 유지, 속도 스칼라만 키움).
-  const MIN_VY = 150; // px/s, 화면 전체 세로 길이(720)를 아무리 느려도 5초 안에는 지나갈 수 있는 하한
+  const MIN_VY = 90; // px/s, 화면 전체 세로 길이(720)를 아무리 느려도 5초 안에는 지나갈 수 있는 하한
   let actualSpeed = speed;
   const vyAtBaseSpeed = Math.abs(uy) * speed;
   if(vyAtBaseSpeed < MIN_VY){
