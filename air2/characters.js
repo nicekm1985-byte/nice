@@ -1257,13 +1257,13 @@ function spawnNormal5(){ spawnNormal45(-1); }
 function spawnNormal6(){ // 일반6: 램(Ram), 고속 몸통박치기. Zone-1까지는 직선 하강, Zone-2부터는 플레이어 방향으로 서서히 조준
   const x = 60 + Math.random()*(W-120);
   const y = -40;
-  const speed = 510; // 빠른 돌진 속도, px/s
+  const speed = 400; // 빠른 돌진 속도, px/s
   enemies.push({
     type:'normal6', x, y,
     vx: 0, vy: speed, // Zone-1까지는 아래로 직진
     speed,
     homing: false, // Zone-2 진입 후 true로 전환
-    hp:6, score:120
+    hp:3, score:120
   });
 }
 function spawnNormal7(){ // 일반7: Stubby
