@@ -86,6 +86,9 @@ function ensureStage1Layers(){
 function resetStage1Objects(){
   stage1Layers.forEach(l => { l._scroll = 0; });
   stage1BossLock = null;
+  stage1RedPlanetActive = false; // 붉은 행성 등장 상태도 재진입 시 초기화
+  stage1RedPlanetY = -400;
+  stage1RedPlanetFadeElapsed = 0;
 }
 
 // ---- 보스전 배경 잠금 ----
@@ -127,6 +130,9 @@ function drawStage1Layers(dt, speedMul, flakeAlpha, objectAlpha){
     stage1ObjectsWasHidden = false;
     stage1Layers.forEach(l => { if(l.kind === 'objects') l._scroll = 0; }); // 위에서부터 내려오도록 시작점으로
   }
+  // 요청사항: 붉은 행성은 다른 모든 오브젝트/별보다 가장 아래(가장 먼 배경)에 그려져야 하므로,
+  // 전체 레이어 루프보다도 먼저(가장 뒤에) 그림.
+  if(oa > 0 && !stage1ObjectsWasHidden) drawStage1RedPlanet(dt);
   const alphas = { objects: oa, flakes: fa, stars: 1 };
   updateStage1BossLock();
   for(const layer of stage1Layers){
@@ -140,4 +146,45 @@ function drawStage1Layers(dt, speedMul, flakeAlpha, objectAlpha){
       warpAll: true // 발사대 질주(배속>1) 때 모든 레이어가 같은 방식으로 세로로 늘어남
     });
   }
+}
+
+// ---- 붉은 행성 전용 등장 로직(요청사항) ----
+// 자동 루프 레이어 시스템(위 drawStage1Layers의 objects 레이어)에서는 완전히 제외하고
+// (stage1_layout.js에서 "붉은 행성 (아주 느림)" 레이어를 visible:false로 숨겨둠), 대신 이 함수가
+// 전용으로 관리: 스테이지1 시작 30초 후 화면 맨 위에서 등장해 느린 속도로 아래로 흐르다가,
+// WARNING 단계(stagePhase==='warning' 이상)에 들어가면 서서히 사라짐.
+const STAGE1_RED_PLANET_APPEAR_MS = 30000; // 스테이지1 시작 30초 후 등장
+const STAGE1_RED_PLANET_SPEED = 10; // px/s, 느리게 흐르는 속도
+const STAGE1_RED_PLANET_FADE_MS = 1000; // WARNING 진입 시 페이드아웃 시간
+let stage1RedPlanetY = -400; // 화면 위 바깥에서 시작(이미지 자체 크기 고려해 충분히 위)
+let stage1RedPlanetActive = false;
+let stage1RedPlanetFadeElapsed = 0;
+function drawStage1RedPlanet(dt){
+  if(typeof stageElapsed === 'undefined' || typeof stagePhase === 'undefined') return;
+  const inWarningOrLater = ['warning','bossIntro','boss','clear'].includes(stagePhase);
+  if(!stage1RedPlanetActive){
+    if(stageElapsed >= STAGE1_RED_PLANET_APPEAR_MS && !inWarningOrLater){
+      stage1RedPlanetActive = true;
+      stage1RedPlanetY = -400;
+      stage1RedPlanetFadeElapsed = 0;
+    } else {
+      return;
+    }
+  }
+  stage1RedPlanetY += STAGE1_RED_PLANET_SPEED * dt;
+  let alpha = 1;
+  if(inWarningOrLater){
+    stage1RedPlanetFadeElapsed += dt * 1000;
+    alpha = Math.max(0, 1 - stage1RedPlanetFadeElapsed / STAGE1_RED_PLANET_FADE_MS);
+    if(alpha <= 0){ stage1RedPlanetActive = false; return; }
+  }
+  const img = stage1ObjImgs['planetMars'];
+  if(!img || !img.complete || !img.naturalWidth) return;
+  const scale = 2.2, w = img.width * scale, h = img.height * scale;
+  if(stage1RedPlanetY - h > H + 80){ stage1RedPlanetActive = false; return; } // 화면 아래로 완전히 지나가면 종료(재등장 안 함)
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(20, stage1RedPlanetY);
+  ctx.drawImage(getBrightnessImage(img, 1), -w/2, -h/2, w, h);
+  ctx.restore();
 }

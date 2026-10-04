@@ -622,19 +622,19 @@ touchPad.addEventListener('touchstart', e=>{
   if(e.touches.length >= 2) useBomb();
 }, {passive:true});
 </script>
-<script src="bg.js?v=202610051300"></script>
-<script src="stage1layers.js?v=202610051300"></script>
-<script src="assets/bg/stage1new/stage1_launch.js?v=202610051300"></script>
-<script src="stage1bg.js?v=202610051300"></script>
-<script src="assets/bg/stage1new/stage1_layout.js?v=202610051300"></script>
-<script src="assets/bg/stage1new/stage1_schedule.js?v=202610051300"></script>
-<script src="assets/bg/stage1new/stage1_bgm.js?v=202610051300"></script>
-<script src="stage2bg.js?v=202610051300"></script>
-<script src="assets/bg/stage2new/stage2_layout.js?v=202610051300"></script>
-<script src="assets/bg/stage2new/stage2_schedule.js?v=202610051300"></script>
-<script src="assets/bg/stage2new/stage2_bgm.js?v=202610051300"></script>
-<script src="characters.js?v=202610051300"></script>
-<script src="stage.js?v=202610051300"></script>
+<script src="bg.js?v=202610072200"></script>
+<script src="stage1layers.js?v=202610072200"></script>
+<script src="assets/bg/stage1new/stage1_launch.js?v=202610072200"></script>
+<script src="stage1bg.js?v=202610072200"></script>
+<script src="assets/bg/stage1new/stage1_layout.js?v=202610072200"></script>
+<script src="assets/bg/stage1new/stage1_schedule.js?v=202610072200"></script>
+<script src="assets/bg/stage1new/stage1_bgm.js?v=202610072200"></script>
+<script src="stage2bg.js?v=202610072200"></script>
+<script src="assets/bg/stage2new/stage2_layout.js?v=202610072200"></script>
+<script src="assets/bg/stage2new/stage2_schedule.js?v=202610072200"></script>
+<script src="assets/bg/stage2new/stage2_bgm.js?v=202610072200"></script>
+<script src="characters.js?v=202610072200"></script>
+<script src="stage.js?v=202610072200"></script>
 <script>
 // ---- 일시정지/메뉴 ----
 // M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
@@ -951,8 +951,7 @@ function update(currentTime){
     spawnTimer = 0;
     const type = spawnCycle[cycleIdx % spawnCycle.length];
     cycleIdx++;
-    if(type==='normal1' && enabledTypes.normal1) spawnNormal1();
-    else if(type==='normal2' && enabledTypes.normal2) spawnNormal2();
+    if(type==='normal2' && enabledTypes.normal2) spawnNormal2();
     else if(type==='normal3' && enabledTypes.normal3) spawnNormal3();
     else if(type==='normal4' && enabledTypes.normal4) spawnNormal4();
     else if(type==='normal5' && enabledTypes.normal5) spawnNormal5();
@@ -968,6 +967,32 @@ function update(currentTime){
       if(enabledTypes.normal4 && enabledTypes.normal5) use5 = Math.random() < 0.5;
       else use5 = enabledTypes.normal5;
       if(use5) spawnNormal5(); else spawnNormal4();
+    }
+  }
+
+  // 일반1 전용 스폰: B라인→D라인 반원 U턴 패턴, 3대 편대. 화면에 일반1이 하나도 없을 때부터
+  // NORMAL1_RESPAWN_DELAY_MS만큼 대기한 뒤 재등장(공용 사이클에서 분리).
+  // 'waitRight' 상태(왼쪽 등장 후 오른쪽 등장까지 2초 대기, 요청사항)는 화면에 적이 있어도
+  // 독립적으로 타이머를 진행해야 하므로 별도 분기로 처리.
+  if(stagePhase === 'spawn' && enabledTypes.normal1){
+    if(normal1SideState === 'waitRight'){
+      normal1SideWaitTimer += dtMs;
+      if(normal1SideWaitTimer >= NORMAL1_SIDE_GAP_MS){
+        normal1SideWaitTimer = 0;
+        normal1SideState = 'right';
+        spawnNormal1(); // 오른쪽 편대 즉시 등장
+      }
+    } else {
+      const normal1Count = enemies.filter(en=>en.type==='normal1').length;
+      if(normal1Count === 0){
+        normal1RespawnTimer += dtMs;
+        if(normal1RespawnTimer >= NORMAL1_RESPAWN_DELAY_MS){
+          normal1RespawnTimer = 0;
+          spawnNormal1();
+        }
+      } else {
+        normal1RespawnTimer = 0;
+      }
     }
   }
 
@@ -994,7 +1019,7 @@ function update(currentTime){
   // 적 기체끼리 겹치는 것을 막기 위한 소프트 분리(separation): 서로 가까운 두 적이 있으면
   // 매 프레임 조금씩 밀어냄(델타타임 기반). 자체 이동 벡터가 중요한 타입(편대/돌진/보스)은
   // 패턴이 깨지지 않도록 대상에서 제외하고, 제자리/수직 하강 계열 적끼리만 적용.
-  const SEPARATION_TYPES = ['normal1','normal2','normal3','normal7','normal8'];
+  const SEPARATION_TYPES = ['normal2','normal3','normal7','normal8']; // normal1은 고정 편대 경로(B→D 반원)라 분리 대상에서 제외
   const SEPARATION_MIN_DIST = 70; // px
   const SEPARATION_PUSH_SPEED = 160; // px/s
   for(let i=0;i<enemies.length;i++){
@@ -1022,11 +1047,39 @@ function update(currentTime){
     e.cool += dtMs;
     updateHitFlash(e, dtMs); // 피격 플래시 감쇠(모든 적 공통, 델타타임 기반)
     if(e.type==='normal1'){
-      e.y += e.vy * dt; // 직선 하강(지그재그 제거)
+      // 신규 패턴(요청사항 확정 수치): startX 하강 -> B3 지점에서 반원 U턴 -> endX 상승하며 탄 남기고 퇴장.
+      // 좌측 편대는 B->D, 우측(미러) 편대는 J->H(e.startX/e.endX로 구분).
+      if(e.phase === 'descend'){
+        e.y += NORMAL1_DESCEND_SPEED * dt;
+        if(e.y >= NORMAL1_TURN_Y){
+          e.phase = 'turn';
+          e.turnElapsed = 0;
+          e.turnStartX = e.x; e.turnStartY = e.y;
+        }
+      } else if(e.phase === 'turn'){
+        e.turnElapsed += dtMs;
+        const t = Math.min(1, e.turnElapsed / NORMAL1_TURN_MS);
+        const angle = t * Math.PI;
+        const midX = (e.turnStartX + e.endX) / 2;
+        const radius = Math.abs(e.endX - e.turnStartX) / 2;
+        const sign = e.endX >= e.turnStartX ? 1 : -1;
+        e.x = midX - sign * radius * Math.cos(angle);
+        e.y = e.turnStartY + radius * Math.sin(angle) * 0.6;
+        if(t >= 1) e.phase = 'ascend';
+      } else if(e.phase === 'ascend'){
+        e.x = e.endX;
+        e.y -= NORMAL1_ASCEND_SPEED * dt;
+      }
       drawSprite(e, 'normal1', 64);
-      if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
-        e.cool = 0;
-        fireStraightDown(e, getEnemyColor('normal1', '#4dff8f'), 100); // 수직 단발(조준 아님, 항상 아래 방향)
+      // 상승 중 기체당 NORMAL1_TRAIL_COUNT발만 발사(요청사항: 1발), 그 이후엔 멈춤.
+      if(e.phase === 'ascend' && e.trailFiredCount < NORMAL1_TRAIL_COUNT){
+        e.trailTimer += dtMs;
+        if(e.trailTimer >= NORMAL1_TRAIL_INTERVAL_MS){
+          e.trailTimer = 0;
+          e.trailFiredCount++;
+          bullets.push({ x:e.x, y:e.y, vx:0, vy:NORMAL1_TRAIL_FALL_SPEED, r:6, color: getEnemyColor('normal1', '#4dff8f') });
+          playEnemyShootSound();
+        }
       }
     } else if(e.type==='normal2'){ // 좌우 사인 웨이브 이동 + 조준 단발
       e.sineTime = (e.sineTime || 0) + dt;
@@ -1063,21 +1116,64 @@ function update(currentTime){
       } else {
         drawSprite(e, 'normal4', 64); // 크기 20% 축소(기존 80px)
       }
-      // 편대 중앙 리더 기체만 대표로 등장 후 0.9초 뒤 180도 부채꼴 9발을 1회 발사 (조준하지 않고 항상 아래 방향 기준)
-      if(e.isSquadLeader && !e.fired && e.cool >= e.fireDelay){
-        e.fired = true;
-        fireFanN(e, getEnemyColor('normal4', '#c9a3ff'), 134, 9, 180); // 9발, 180도 부채꼴 (기체색: 밝은 보라, 스테이지2는 민트그린)
+      // 편대 중앙 리더 기체만 대표로 발사(요청사항): 등장 후 0.9초 대기 → 교차 부채꼴 2세트 연속 발사
+      // (세트 간 0.3초 간격) → 1.5초 휴식 → 다시 2세트... 퇴장 전까지 반복.
+      const NORMAL4_CROSSFAN_SHOT_INTERVAL = 300; // ms, 세트 사이 간격
+      const NORMAL4_CROSSFAN_SETS = 2; // 연속 세트 수
+      const NORMAL4_CROSSFAN_REST_MS = 1500; // 세트 묶음 사이 휴식
+      if(e.isSquadLeader){
+        if(e.crossFanState === 'wait'){
+          if(e.cool >= e.fireDelay){
+            e.crossFanState = 'firing';
+            e.crossFanShotTimer = NORMAL4_CROSSFAN_SHOT_INTERVAL; // 즉시 첫 세트 발사
+            e.crossFanSetCount = 0;
+          }
+        } else if(e.crossFanState === 'firing'){
+          e.crossFanShotTimer += dtMs;
+          if(e.crossFanShotTimer >= NORMAL4_CROSSFAN_SHOT_INTERVAL){
+            e.crossFanShotTimer = 0;
+            fireNormal4CrossFan(e, getEnemyColor('normal4', '#c9a3ff'), 134); // 교차 부채꼴 1세트
+            e.crossFanSetCount++;
+            if(e.crossFanSetCount >= NORMAL4_CROSSFAN_SETS){
+              e.crossFanState = 'resting';
+              e.crossFanRestTimer = 0;
+            }
+          }
+        } else if(e.crossFanState === 'resting'){
+          e.crossFanRestTimer += dtMs;
+          if(e.crossFanRestTimer >= NORMAL4_CROSSFAN_REST_MS){
+            e.crossFanState = 'firing';
+            e.crossFanShotTimer = 0;
+            e.crossFanSetCount = 0;
+          }
+        }
       }
     } else if(e.type==='normal7'){
       if(!e.settled){
         e.y += e.vy * dt;
-        if(e.y >= e.targetY){ e.y = e.targetY; e.settled = true; }
+        if(e.y >= e.targetY){
+          e.y = e.targetY; e.settled = true;
+          // 요청사항: 정지(등장 완료)하는 즉시 첫 발을 쏘도록 쿨다운을 fireRate로 채워둠.
+          e.cool = e.fireRate;
+        }
       }
       drawSprite(e, 'normal7', 104);
-      // 상단에 정지한 뒤 계속 3발 부채꼴 반복 발사 (고정 각도, 이동과 무관)
-      if(e.settled && e.cool >= e.fireRate && !isNoFireZone(e.y)){
-        e.cool = 0;
-        fireFan3(e, getEnemyColor('normal7', '#ff9a3c'), 150); // 3발 부채꼴 (기체색: 오렌지, 스테이지2는 보라). 탄속 67 → 150px/s(너무 느리다는 피드백)
+      // 요청사항(normal7_bullet_patterns_sample.html "5. 쌍포 교차 직선탄"): 정지 후 쌍포 교차
+      // 직선탄 4줄 묶음을 60ms 간격으로 4회 반복 발사한 뒤, fireRate만큼 쉬었다가 다시 반복.
+      if(e.settled && !isNoFireZone(e.y)){
+        e.crossBeamCool = (e.crossBeamCool || 0) + dtMs;
+        if(e.crossBeamShotsLeft === undefined) e.crossBeamShotsLeft = 0;
+        if(e.crossBeamShotsLeft > 0){
+          if(e.crossBeamCool >= NORMAL7_CROSSBEAM_LINE_SPACING_MS){
+            e.crossBeamCool = 0;
+            fireNormal7CrossBeamLine(e, getEnemyColor('normal7', '#ff9a3c'));
+            e.crossBeamShotsLeft--;
+          }
+        } else if(e.cool >= e.fireRate){
+          e.cool = 0;
+          e.crossBeamCool = 0;
+          e.crossBeamShotsLeft = 4; // 4줄 묶음을 4회 반복(기존 샘플의 count=4)
+        }
       }
     } else if(e.type==='normal8'){
       if(!e.settled){
@@ -1098,7 +1194,8 @@ function update(currentTime){
       ctx.rotate(e.spinAngle);
       const img8 = assets['normal8'];
       if(img8 && img8.complete && img8.naturalWidth > 0){
-        drawImageWithHitFlash(img8, -45, -45, 90, 90, e);
+        const img8Stage2Color = (currentStage >= 2) ? STAGE2_ENEMY_COLORS['normal8'] : null;
+        drawImageWithHitFlash(img8Stage2Color ? getTintedImage(img8, img8Stage2Color) : img8, -45, -45, 90, 90, e);
       }
       ctx.restore();
       // 정지 후 퇴장 시작 전까지 나선형(spiral) 탄막 반복 발사
@@ -1360,7 +1457,7 @@ function update(currentTime){
       const dx = b.x - e.x, dy = b.y - e.y;
       const hitRadius = (e.type === 'boss1' || e.type === 'boss2') ? 100 : 60;
       if(Math.hypot(dx,dy) < hitRadius){
-        e.hp--;
+        e.hp -= getPlayerAttackPower(); // 요청사항: 기본 공격력 1, P 아이템 1개당 +0.5(최대 4개)
         b.hit = true;
         // 요청에 따라 일반7/일반8(spiral)/보스1/보스2에만 피격 시 아주 살짝 밝아지는 플래시 적용
         if(e.type === 'normal7' || e.type === 'normal8' || e.type === 'boss1' || e.type === 'boss2'){
@@ -1374,7 +1471,10 @@ function update(currentTime){
   playerBullets = playerBullets.filter(b=> !b.hit);
   enemies = enemies.filter(e=> !e.dead);
 
-  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.type === 'boss2' || (e.type === 'normal8' ? e.y > -80 : e.y < H+40));
+  enemies = enemies.filter(e=> e.type === 'normal7' || e.type === 'boss1' || e.type === 'boss2' || (e.type === 'normal8' ? e.y > -80 : (e.type === 'normal1' ? true : e.y < H+40)));
+  // 일반1: ascend(상승 퇴장) 단계에서 화면 위로 완전히 빠져나갔을 때만 제거(descend/turn 단계는
+  // 스폰 시점에 화면 밖(y<0)에 있을 수 있어 범용 필터로 걸러내면 "일부만 보임" 버그가 생김).
+  enemies = enemies.filter(e=> e.type !== 'normal1' || e.phase !== 'ascend' || e.y > -60);
   // 일반4/5: 진행 방향 쪽(반대편)으로 빠져나갔거나 화면 위로 나갔을 때만 제거(등장 전 화면 밖 대기 중에는 유지)
   enemies = enemies.filter(e=> e.type !== 'normal4' || !((e.vx > 0 && e.x > W+80) || (e.vx < 0 && e.x < -80) || e.y < -100));
   enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
@@ -1383,12 +1483,20 @@ function update(currentTime){
   items.forEach(it=>{
     avoidBulletsForItem(it, dt);
     it.y += it.vy * dt;
+    // 요청사항: 한 자리에 머무르지 않고 둥둥 떠다니도록 좌우/상하 사인파 흔들림을 더함(개체별 랜덤 위상/빈도).
+    // it.x/it.y는 실제 베이스 좌표(탄환 회피/하강 로직용)로 그대로 두고, 그리기/충돌판정에는
+    // 흔들림 오프셋을 더한 drawX/drawY만 사용(베이스 로직을 건드리지 않아 안전함).
+    it.floatTime = (it.floatTime || 0) + dt;
+    const floatX = Math.sin(it.floatTime * (it.floatFreqX||1) + (it.floatPhaseX||0)) * (it.floatAmpX||0);
+    const floatY = Math.sin(it.floatTime * (it.floatFreqY||1) + (it.floatPhaseY||0)) * (it.floatAmpY||0);
+    it.drawX = it.x + floatX;
+    it.drawY = it.y + floatY;
     drawItem(it);
-    if(!it.picked && pixelHitsPlayer(it.x, it.y, it.type)){
+    if(!it.picked && pixelHitsPlayer(it.drawX, it.drawY, it.type)){
       it.picked = true;
       playItemPickupSound(); // 아이템 획득 효과음
-      if(it.type === 'R'){
-        playerRStack = Math.min(4, playerRStack + 1); // 최대 4스택
+      if(it.type === 'P'){
+        playerPower = Math.min(PLAYER_POWER_MAX, playerPower + PLAYER_POWER_STEP); // 요청사항: 1개당 +0.5, 최대 4개(공격력 1~3)
       } else if(it.type === 'W'){
         playerHasW = true;
       } else if(it.type === 'B'){

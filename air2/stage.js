@@ -42,12 +42,12 @@ const STAGE1_SCHEDULE_DEFAULT = {
     { startMs: 30000, enabled: ['normal1','normal2','normal3','normal4','normal5'], cap: 5 },
     { startMs: 60000, enabled: ['normal1','normal2','normal3','normal4','normal5','normal6','normal7','normal8'], cap: 7 }
   ],
-  items: { rFirstMs: 15000, rIntervalMinMs: 25000, rIntervalMaxMs: 35000, wFirstMs: 30000, wIntervalMinMs: 30000, wIntervalMaxMs: 45000 },
+  items: { rFirstMs: 15000, rIntervalMinMs: 25000, rIntervalMaxMs: 35000, pSpawnChance: 55, wFirstMs: 30000, wIntervalMinMs: 30000, wIntervalMaxMs: 45000 },
   bossTriggerMs: 120000
 };
 const STAGE2_SCHEDULE_DEFAULT = {
   phases: [],
-  items: { rFirstMs: 999999999, rIntervalMinMs: 999999999, rIntervalMaxMs: 999999999, wFirstMs: 999999999, wIntervalMinMs: 999999999, wIntervalMaxMs: 999999999 },
+  items: { rFirstMs: 20000, rIntervalMinMs: 35000, rIntervalMaxMs: 45000, pSpawnChance: 55, wFirstMs: 45000, wIntervalMinMs: 45000, wIntervalMaxMs: 60000 },
   bossTriggerMs: Infinity
 };
 function getScheduleData(stageNum){
@@ -73,10 +73,9 @@ let clearBulletFadeTimer = 0; // ms, 'clear' 단계(보스 폭발) 진입 이후
 
 // 스테이지 진행 중 사용하는 구간(phase) 인덱스/아이템 스폰 타이머(스테이지 시작 시 리셋됨)
 let stage1CurPhaseIdx = -1; // 현재 적용된 phases 배열의 인덱스(중복 적용 방지, startStage에서 -1로 리셋)
-let stage1NextRSpawnMs = 0; // 다음 R 아이템 등장 예정 시각(ms)
-let stage1NextWSpawnMs = 0; // 다음 W 아이템 등장 예정 시각(ms)
-let stage1NextBSpawnMs = 45000; // 다음 폭탄 아이템 등장 예정 시각(ms). 45초 간격(요청 확정값)
-const BOMB_ITEM_INTERVAL_MS = 45000;
+// 요청사항: P/W/B 아이템은 더 이상 각자 독립 타이머로 등장하지 않고, 아래 공용 타이머 하나로
+// 통합되어 "그 타이밍에 셋 중 하나만"(W 30%/B 30%/P 40%) 등장함.
+let stage1NextRSpawnMs = 0; // 다음 아이템(P/W/B 중 하나) 등장 예정 시각(ms)
 
 // 매 프레임 호출: 데이터 기반(phases 배열) 시간 구간에 따라 활성 타입/상한을 갱신.
 // elapsedMs 시점에 해당하는 마지막 구간(startMs <= elapsedMs)을 찾아 그 구간의 enabled/cap을 적용.
@@ -101,30 +100,36 @@ function updateStage1Spawns(elapsedMs){
   }
 
   const items_ = sched.items || STAGE1_SCHEDULE_DEFAULT.items;
-  // R 아이템: 시간 기반으로 독립 등장 (화면에 아이템이 있으면 겹치지 않도록 다음 프레임으로 넘김)
+  // 요청사항: P/W/B 아이템을 더 이상 각자 독립적으로(단독으로) 등장시키지 않고, 하나의 공용
+  // 타이머에서 "그 타이밍이 되면 셋 중 하나만" 뜨게 통합. 비율: W 30%, B 30%, P 40%.
+  // (간격 자체는 기존 P 아이템 간격 설정을 그대로 재사용)
   if(items.length === 0 && elapsedMs >= stage1NextRSpawnMs){
     stage1NextRSpawnMs = elapsedMs + items_.rIntervalMinMs + Math.random()*(items_.rIntervalMaxMs - items_.rIntervalMinMs);
-    spawnItem('R', W/2, -40); // 화면 상단 중앙에서 낙하 시작
-  }
-
-  // W 아이템: 시간 기반으로 독립 등장 (이미 획득했으면 더 이상 등장 안 함,
-  // 화면에 아이템이 있으면 겹치지 않도록 다음 프레임으로 넘김)
-  if(!playerHasW && items.length === 0 && elapsedMs >= stage1NextWSpawnMs){
-    stage1NextWSpawnMs = elapsedMs + items_.wIntervalMinMs + Math.random()*(items_.wIntervalMaxMs - items_.wIntervalMinMs);
-    const margin = ITEM_SIZE_W/2 + 10;
-    spawnItem('W', margin + Math.random()*(W - margin*2), -40); // 화면 상단 랜덤 x위치에서 낙하 시작
-  }
-
-  // 폭탄(B) 아이템: 45초 간격 독립 등장. 보스 전투 중(stagePhase==='boss'/'bossIntro'/'warning')에는 등장 금지,
-  // 폭탄 보유가 이미 상한(BOMB_MAX_STOCK)이면 등장 자체를 건너뛰고 다음 타이머로 넘김(낭비 방지).
-  if(items.length === 0 && elapsedMs >= stage1NextBSpawnMs){
-    const bossBusy = stagePhase === 'boss' || stagePhase === 'bossIntro' || stagePhase === 'warning';
-    if(bossBusy || playerBombs >= BOMB_MAX_STOCK){
-      stage1NextBSpawnMs = elapsedMs + BOMB_ITEM_INTERVAL_MS; // 조건 안 맞으면 다음 주기로 미룸(연속 재시도 방지)
-    } else {
-      stage1NextBSpawnMs = elapsedMs + BOMB_ITEM_INTERVAL_MS;
-      const margin = ITEM_SIZE_B/2 + 10;
-      spawnItem('B', margin + Math.random()*(W - margin*2), -40);
+    const pChance = items_.pSpawnChance != null ? items_.pSpawnChance : 100;
+    if(Math.random()*100 < pChance){
+      // 그 타이밍에 실제로 하나를 등장시키기로 결정된 경우에만, W/B/P 중 하나를 비율대로 선택.
+      // W는 이미 획득했으면, B는 상한에 도달했거나 보스전 중이면 후보에서 제외하고 남은 후보끼리 비율 재분배.
+      const bossBusy = stagePhase === 'boss' || stagePhase === 'bossIntro' || stagePhase === 'warning';
+      const candidates = [];
+      if(!playerHasW) candidates.push({ type:'W', weight: 30 });
+      if(playerBombs < BOMB_MAX_STOCK && !bossBusy) candidates.push({ type:'B', weight: 30 });
+      candidates.push({ type:'P', weight: 40 });
+      const totalWeight = candidates.reduce((s,c)=>s+c.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let chosen = candidates[candidates.length-1].type;
+      for(const c of candidates){
+        if(roll < c.weight){ chosen = c.type; break; }
+        roll -= c.weight;
+      }
+      if(chosen === 'P'){
+        spawnItem('P', W/2, -40); // 화면 상단 중앙에서 낙하 시작
+      } else if(chosen === 'W'){
+        const margin = ITEM_SIZE_W/2 + 10;
+        spawnItem('W', margin + Math.random()*(W - margin*2), -40);
+      } else if(chosen === 'B'){
+        const margin = ITEM_SIZE_B/2 + 10;
+        spawnItem('B', margin + Math.random()*(W - margin*2), -40);
+      }
     }
   }
 }
@@ -277,6 +282,7 @@ let stageClearActive = false; // 격파 직후부터 true(BGM 정지 등 즉시 
 // 진입하는 경우(이전에 흘러온 배경이 없음)에는 false(기본값)로 호출해 처음 위치로 초기화.
 function startStage(stageNum, skipBgReset){
   if(typeof normal45SpawnTimer !== 'undefined'){ normal45SpawnTimer = 0; }
+  if(typeof normal1RespawnTimer !== 'undefined'){ normal1RespawnTimer = 0; normal1SideState = 'left'; normal1SideWaitTimer = 0; }
   // 이전 스테이지(보스전)에 남아 있던 적·적 탄환 제거. 클리어 연출 중 투명하게 페이드됐던 탄이
   // bulletFadeAlpha=1 리셋과 함께 다시 보이며 날아오던 문제 방지.
   if(typeof enemies !== 'undefined') enemies = [];
@@ -292,8 +298,6 @@ function startStage(stageNum, skipBgReset){
   stage1CurPhaseIdx = -1; // 스케줄 구간 판정을 처음부터 다시 시작
   const sched = getScheduleData(stageNum);
   stage1NextRSpawnMs = (sched.items && sched.items.rFirstMs) || STAGE1_SCHEDULE_DEFAULT.items.rFirstMs;
-  stage1NextWSpawnMs = (sched.items && sched.items.wFirstMs) || STAGE1_SCHEDULE_DEFAULT.items.wFirstMs;
-  stage1NextBSpawnMs = BOMB_ITEM_INTERVAL_MS; // 스테이지 시작 45초 후 첫 폭탄 등장
   stage1CurBgmSegIdx = -1; // BGM 구간도 처음부터 다시 판정
   bossSpiralSpawnIdx = 0;
   bossPhaseElapsed = 0;

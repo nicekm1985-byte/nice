@@ -208,14 +208,20 @@ function useBomb(){
 // ---- 주인공 ----
 const player = { x: W/2, y: H-80 };
 let playerCool = 0; // ms 누적
-const PLAYER_FIRE_RATE = 217; // ms 주기, 초당 약 4.5회 발사 (기본, R 스택 0일 때)
-const PLAYER_FIRE_RATE_MIN = 90; // ms, R 스택 4개일 때 도달하는 최소 발사 주기(더 짧아지지 않음)
+const PLAYER_FIRE_RATE = 90; // ms 주기, 고정 연사 속도(파워와 무관, 항상 동일)
+// 요청사항(재설계): 파워 시스템을 "공격력" 하나로 단순화.
+// 기본 공격력 1, P 아이템 1개당 +0.5, 최대 4개까지 먹을 수 있음(공격력 1~3).
+const PLAYER_POWER_BASE = 1; // 기본 공격력
+const PLAYER_POWER_STEP = 0.3; // P 1개당 증가량(요청사항: 4개 다 먹으면 일반7이 10발에 터지도록)
+const PLAYER_POWER_MAX_ITEMS = 4; // P 아이템 최대 적용 개수
+const PLAYER_POWER_MAX = PLAYER_POWER_BASE + PLAYER_POWER_STEP * PLAYER_POWER_MAX_ITEMS; // 1 + 0.3*4 = 2.2
 
-// R 스택 개수에 따라 더 촘촘하게(짧은 주기로) 발사되도록 실제 발사 주기를 계산.
-// 스택당 균등하게 보간되어 4스택에서 PLAYER_FIRE_RATE_MIN에 도달.
 function getPlayerFireRate(){
-  const t = Math.min(1, playerRStack / 4);
-  return PLAYER_FIRE_RATE - (PLAYER_FIRE_RATE - PLAYER_FIRE_RATE_MIN) * t;
+  return PLAYER_FIRE_RATE; // 연사 속도는 고정, 파워는 공격력(데미지)에만 영향
+}
+// 공격력(레이저 1발당 데미지). playerPower 자체가 그대로 공격력 값.
+function getPlayerAttackPower(){
+  return playerPower;
 }
 
 // ---- 전역 음소거 시스템 ----
@@ -440,7 +446,7 @@ function playLaserSound(){
 // 게임 시작 직후 몰리는 초기 네트워크/디코딩 부담을 줄임(지연 생성).
 // 모바일 기기 판별(BGM 볼륨을 모바일에서만 추가로 낮추는 데 사용).
 const IS_MOBILE_DEVICE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
-let BGM_MOBILE_VOLUME_SCALE = 0.8; // 사용자 요청으로 0.8로 지정(기존 0.5)
+let BGM_MOBILE_VOLUME_SCALE = 0.8; // 개발자 모드에서 조정 가능(참고용). 실제 모바일 하향은 getBgmVolume()의 고정 0.8배로 적용됨.
 const BGM_TO_SFX_RATIO = 0.3; // BGM은 항상 효과음 평균 볼륨의 30% 수준을 유지
 // 효과음(레이저/폭발/피격/아이템/스파이럴/보스탄/보스레이저) 평균 볼륨을 구해 그 30%를 BGM 기준 볼륨으로 사용.
 // 이 함수보다 아래에 선언된 _SOUND_VOLUME 상수들을 참조하지만, 실제 호출은 항상 스크립트 로드가
@@ -454,7 +460,8 @@ function getSfxAverageVolume(){
   return vols.reduce((a,b)=>a+b, 0) / vols.length;
 }
 function getBgmVolume(){
-  return 0.045; // 사용자 요청으로 고정값 지정(스테이지1/2 공용 메인 BGM 볼륨)
+  const base = 0.045; // 사용자 요청으로 고정값 지정(스테이지1/2 공용 메인 BGM 볼륨)
+  return IS_MOBILE_DEVICE ? base * BGM_MOBILE_VOLUME_SCALE : base; // 요청사항: 모바일에서만 20% 추가 하향(기본 0.8배)
 }
 // 모바일 전용 효과음 볼륨 배율: 레이저/스파이럴탄/보스탄/적격파음/보스격파음은 모바일 스피커에서
 // 더 잘 들리도록 재생 시점에만 2배 증폭(효과음 볼륨 상수 자체는 그대로 유지 -> BGM 계산에 영향 없음).
@@ -1030,8 +1037,8 @@ function drawPlayerWithEffects(){
   ctx.drawImage(img, renderX - size/2, renderY - size/2, size, size);
 }
 
-// ---- 아이템 (R: 탄속 강화 스택형, W: 3방향 스프레드) ----
-const itemAssets = { R: 'assets/optimized/item_r_sm.png', W: 'assets/optimized/item_w_sm.png' };
+// ---- 아이템 (P: 파워 강화 스택형, W: 3방향 스프레드) ----
+const itemAssets = { P: 'assets/optimized/item_p_sm.png', W: 'assets/optimized/item_w_sm.png' };
 const itemImgs = {};
 Object.entries(itemAssets).forEach(([key, src])=>{
   const img = new Image();
@@ -1043,18 +1050,20 @@ Object.entries(itemAssets).forEach(([key, src])=>{
 const bombIconImg = new Image();
 bombIconImg.src = 'assets/optimized/item_bomb_sm.png';
 itemImgs['B'] = bombIconImg; // 낙하 아이템도 동일 비주얼 재사용
-let items = []; // {type:'R'|'W'|'B', x, y, vy}
+let items = []; // {type:'P'|'W'|'B', x, y, vy}
 const ITEM_FALL_SPEED = 90; // px/s
-const ITEM_SIZE_R = 90; // px (20% 축소, 기존 112px)
-const ITEM_SIZE_W = 115; // px, R보다 더 크게 (20% 축소, 기존 144px)
-const ITEM_SIZE_B = 90; // px, 폭탄 아이템(R과 동일 크기)
+const ITEM_SIZE_P = 115; // px, W 아이템과 동일 크기(요청사항)
+const ITEM_SIZE_W = 115; // px
+const ITEM_SIZE_B = 90; // px, 폭탄 아이템(P와 동일 크기)
 const BOMB_MAX_STOCK = 4; // 폭탄 보유 상한
-let playerRStack = 0; // 0~4, R 아이템 스택 개수 (스택당 탄속 +35% + 발사 주기 단축, 최대 4개면 +140%)
+// 요청사항: 기본 파워값은 4("R 4개 먹은 것과 동일한 연사"로 시작), P 아이템을 먹을 때마다 +1,
+// 최대 PLAYER_POWER_MAX(8)까지 강화. 기존 R 스택 시스템을 완전히 대체.
+let playerPower = PLAYER_POWER_BASE;
 let playerHasW = false; // W 아이템 획득 여부 (3방향 스프레드), 획득하면 더 이상 W 아이템 드랍 안 됨
-// R/W/B는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_R_SPAWN_*, STAGE1_W_SPAWN_*, STAGE1_B_SPAWN_* 참고)
+// P/W/B는 격파 드랍과 무관하게 stage.js에서 시간 기반으로 독립 등장(STAGE1_P_SPAWN_*, STAGE1_W_SPAWN_*, STAGE1_B_SPAWN_* 참고)
 
 function itemSizeFor(type){
-  return type === 'W' ? ITEM_SIZE_W : (type === 'B' ? ITEM_SIZE_B : ITEM_SIZE_R);
+  return type === 'W' ? ITEM_SIZE_W : (type === 'B' ? ITEM_SIZE_B : ITEM_SIZE_P);
 }
 
 function spawnItem(type, x, y){
@@ -1068,7 +1077,14 @@ function spawnItem(type, x, y){
     x = Math.max(margin, Math.min(W - margin, x));
     attempts++;
   }
-  items.push({ type, x, y, vy: ITEM_FALL_SPEED, pulseSeed: Math.random()*Math.PI*2 });
+  // 요청사항: 아이템이 한 자리에 머무르지 않고 둥둥 떠다니도록, 좌우/상하 흔들림(사인파) 파라미터를
+  // 개체별로 랜덤하게 부여. baseX는 좌우 흔들림의 중심(탄환 회피로 밀릴 때도 함께 이동).
+  items.push({
+    type, x, y, vy: ITEM_FALL_SPEED, pulseSeed: Math.random()*Math.PI*2,
+    floatAmpX: 18 + Math.random()*14, floatFreqX: 0.8 + Math.random()*0.8, floatPhaseX: Math.random()*Math.PI*2,
+    floatAmpY: 6 + Math.random()*6, floatFreqY: 1.0 + Math.random()*0.9, floatPhaseY: Math.random()*Math.PI*2,
+    floatTime: 0
+  });
 }
 
 function drawItem(it){
@@ -1077,11 +1093,13 @@ function drawItem(it){
   const size = itemSizeFor(it.type);
   // 발광했다 안했다 하는 펄스 연출 (실제 시간 기반, dt 무관)
   const pulse = 0.5 + 0.5 * Math.sin(Date.now()/220 + (it.pulseSeed || 0));
+  const dx = it.drawX != null ? it.drawX : it.x;
+  const dy = it.drawY != null ? it.drawY : it.y;
   ctx.save();
-  ctx.shadowColor = it.type === 'R' ? '#ff9a3c' : (it.type === 'B' ? '#ff4d4d' : '#c77dff');
+  ctx.shadowColor = it.type === 'P' ? '#ff9a3c' : (it.type === 'B' ? '#ff4d4d' : '#c77dff');
   ctx.shadowBlur = 8 + pulse * 22;
   ctx.globalAlpha = 0.75 + pulse * 0.25;
-  ctx.drawImage(img, it.x - size/2, it.y - size/2, size, size);
+  ctx.drawImage(img, dx - size/2, dy - size/2, size, size);
   ctx.restore();
 }
 
@@ -1115,7 +1133,7 @@ let normal7SpawnTimer = 0; // ms 누적
 let normal7Alive = false; // 화면에 일반7이 존재하는지 여부 (동시 1기 운용)
 let normal7RespawnTimer = 0; // 0이면 대기 없음, >0이면 카운트다운 중 (ms)
 const NORMAL7_RESPAWN_DELAY = 1500; // 격파 후 재등장까지 지연 (ms)
-const spawnCycle = ['normal1','normal2','normal3','normal6']; // 일반4/5/7/8은 별도 타이머로 분리
+const spawnCycle = ['normal2','normal3','normal6']; // 일반1/4/5/7/8은 별도 타이머로 분리
 // 일반4/5 전용: 6초마다 1편대씩(일반4 → 일반5 번갈아). 해당 구간에서 켜진 쪽만 등장.
 const NORMAL45_SPAWN_INTERVAL = 10000; // ms, 10초마다 1편대(4 또는 5 중 랜덤)
 let normal45SpawnTimer = 0; // ms 누적
@@ -1128,22 +1146,59 @@ const NORMAL8_SPAWN_INTERVAL = 10000; // spiral 등장 간격: 1기 등장 후 1
 
 // ---- 스폰 함수 (모든 이동속도는 px/s, 모든 타이머는 ms 기준) ----
 
-function spawnNormal1(){ // 일반1: 터렛 포드, 지그재그
-  const count = 2 + Math.floor(Math.random()*2); // 2~3대
-  const margin = 90;
-  const minGapX = 70; // 서로 최소 이 정도 x간격은 유지(완전 겹침 방지)
-  const positions = [];
-  for(let i=0;i<count;i++){
-    let x;
-    let attempts = 0;
-    do {
-      x = margin + Math.random()*(W - margin*2);
-      attempts++;
-    } while(positions.some(p => Math.abs(p - x) < minGapX) && attempts < 10);
-    positions.push(x);
+// ---- 일반1 신규 패턴 전용 상수 (B라인→D라인 반원 U턴, 요청사항 확정 수치) ----
+// 그리드 체계: 가로 10등분(A~K 열), 세로 5등분(0~5 행). B열=1번 컬럼, D열=3번 컬럼.
+// 미러(우측) 라인: J열=9번 컬럼(B의 좌우 대칭), H열=7번 컬럼(D의 좌우 대칭).
+const NORMAL1_COL_W = W / 10;
+const NORMAL1_B_X = NORMAL1_COL_W * 1; // B라인(좌측 시작)
+const NORMAL1_D_X = NORMAL1_COL_W * 3; // D라인(좌측 전환 목적지)
+const NORMAL1_J_X = NORMAL1_COL_W * 9; // J라인(우측 시작, B의 미러)
+const NORMAL1_H_X = NORMAL1_COL_W * 7; // H라인(우측 전환 목적지, D의 미러)
+const NORMAL1_TURN_Y = (H / 5) * 3; // B3 지점(3번째 행 경계선) 높이에서 U턴 시작
+const NORMAL1_DESCEND_SPEED = 389; // px/s
+const NORMAL1_ASCEND_SPEED = 435; // px/s
+const NORMAL1_SPACING = 138; // px, 편대 간격
+const NORMAL1_TURN_MS = 137; // ms, U턴 소요 시간
+const NORMAL1_TRAIL_COUNT = 1; // 기체당 발사 개수
+const NORMAL1_TRAIL_INTERVAL_MS = 216; // 탄 생성 간격
+const NORMAL1_TRAIL_FALL_SPEED = 151; // px/s, 탄 낙하 속도
+const NORMAL1_RESPAWN_DELAY_MS = 1209; // ms, 편대 전원 퇴장 후 재등장까지 대기(요청사항)
+let normal1RespawnTimer = 0; // ms 누적
+// 좌/우 등장 순서 상태(요청사항): stageElapsed < 130000(130초)이면 "왼쪽 한 번 → 2초 뒤 오른쪽
+// 한 번" 패턴을 반복하고, 130초부터는 양쪽을 동시에 등장시킴.
+// normal1SideState: 'left'(다음 왼쪽 차례) / 'waitRight'(오른쪽 등장까지 2초 대기 중) / 'right'(다음 오른쪽 차례, 대기 종료)
+let normal1SideState = 'left';
+let normal1SideWaitTimer = 0;
+const NORMAL1_SIDE_GAP_MS = 2000; // 요청사항: 왼쪽 등장 후 오른쪽 등장까지 2초
+
+function spawnNormal1(){
+  const bothSides = (typeof stageElapsed !== 'undefined') && stageElapsed >= 130000;
+  if(bothSides){
+    // 양쪽에서 동시에 3대씩(총 6대) 등장
+    spawnNormal1Squad(NORMAL1_B_X, NORMAL1_D_X);
+    spawnNormal1Squad(NORMAL1_J_X, NORMAL1_H_X);
+    return;
+  }
+  if(normal1SideState === 'left'){
+    spawnNormal1Squad(NORMAL1_B_X, NORMAL1_D_X); // 왼쪽 등장
+    normal1SideState = 'waitRight';
+    normal1SideWaitTimer = 0;
+  } else if(normal1SideState === 'right'){
+    spawnNormal1Squad(NORMAL1_J_X, NORMAL1_H_X); // 왼쪽과 완전히 미러(좌우 대칭 라인)
+    normal1SideState = 'left';
+  }
+  // 'waitRight' 상태일 때는 아무 것도 스폰하지 않음(index.html의 전용 타이머가 2초 경과를 기다려
+  // normal1SideState를 'right'로 전환시킴).
+}
+function spawnNormal1Squad(startX, endX){ // 3대 편대, startX 하강 → B3에서 반원 U턴 → endX 상승하며 탄 남기고 퇴장
+  for(let i=0;i<3;i++){
     enemies.push({
-      type:'normal1', x, y: -40 - Math.random()*260, // 등장 높이도 각자 크게 다르게(대형처럼 안 보이도록)
-      vy:110, zdir: Math.random()<0.5?1:-1, hp:2, score:90, cool:0, fireRate:1000
+      type:'normal1', x: startX, y: -40 - i*NORMAL1_SPACING,
+      startX, endX, // 이동 분기에서 좌/우 어느 편대인지 참조
+      phase: 'descend', // descend -> turn -> ascend
+      turnElapsed: 0, turnStartX: startX, turnStartY: 0,
+      trailTimer: 0, trailFiredCount: 0,
+      hp:2, score:90
     });
   }
 }
@@ -1190,8 +1245,10 @@ function spawnNormal45(dir){         // dir: 1 = 일반4(왼쪽→오른쪽), -1
     const back = k * NORMAL45_SPACING;
     enemies.push({
       type:'normal4', x: startX - ux*back, y: startY - uy*back, // 일반5도 같은 type(에셋/탄막 공유), vx 부호로 구분
-      vx, vy, hp:4, score:70, cool:0, squadId,
-      isSquadLeader: k === 1, fired:false, fireDelay: 900
+      vx, vy, hp:8, score:70, cool:0, squadId,
+      // 요청사항: 리더가 "교차 부채꼴"을 2세트 연속 쏘고 1.5초 쉬었다가 다시 2세트... 반복(퇴장 전까지).
+      isSquadLeader: k === 1, fireDelay: 900, crossFanState: 'wait', crossFanSetCount: 0,
+      crossFanShotTimer: 0, crossFanRestTimer: 0, crossFanToggle: false
     });
   }
 }
@@ -1206,7 +1263,7 @@ function spawnNormal6(){ // 일반6: 램(Ram), 고속 몸통박치기. Zone-1까
     vx: 0, vy: speed, // Zone-1까지는 아래로 직진
     speed,
     homing: false, // Zone-2 진입 후 true로 전환
-    hp:7, score:120
+    hp:10, score:120
   });
 }
 function spawnNormal7(){ // 일반7: Stubby
@@ -1214,7 +1271,7 @@ function spawnNormal7(){ // 일반7: Stubby
   const x = margin + Math.random()*(W - margin*2);
   enemies.push({
     type:'normal7', x, y:-40, targetY: (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2), // Zone-2 또는 Zone-3 경계선 중 랜덤
-    settled:false, vy:210, hp:21, score:110, cool:0, fireRate:1833, burstFired:false // 등장(Zone-2 도달) 속도를 빠르게
+    settled:false, vy:210, hp:35, score:110, cool:0, fireRate:1833, burstFired:false // 등장(Zone-2 도달) 속도를 빠르게
   });
   normal7Alive = true;
 }
@@ -1228,7 +1285,7 @@ function spawnNormal8(opts){ // 일반8: 바람개비 UFO, 등장 후 정지해 
   const targetY = (opts && opts.targetY !== undefined) ? opts.targetY : (Math.random()<0.5 ? ZONE_HEIGHT : ZONE_HEIGHT*2);
   enemies.push({
     type:'normal8', x, y:-60, targetY, // Zone-2 또는 Zone-3 경계선 중 랜덤(옵션으로 지정 가능)
-    settled:false, retreating:false, stayTimer:0, vy:150, hp:20, score:130, cool:0, fireRate:90,
+    settled:false, retreating:false, stayTimer:0, vy:150, hp:35, score:130, cool:0, fireRate:90,
     spiralAngle: Math.random()*Math.PI*2, spawnTime: Date.now() // 회전 애니메이션 기준 시각
   });
 }
@@ -1248,7 +1305,7 @@ function spawnBossNormal3Pair(){
 function spawnBoss1(){ // 보스1: 외계 문명 중형 기체 (일반7의 약 2.3배 크기)
   enemies.push({
     type:'boss1', x: W/2, y:-140, targetY: ZONE_HEIGHT * 1.25, // Zone-1과 Zone-2 경계선보다 조금 더 아래로 조정(요청사항)
-    settled:false, vy:50, hp:500, maxHp:500, score:2000, // HP 500(사용자 요청으로 300->500 상향). 하강 속도(vy) 80->50px/s로 늦춰 더 천천히 등장
+    settled:false, vy:50, hp:600, maxHp:600, score:2000, // HP 500(사용자 요청으로 300->500 상향). 하강 속도(vy) 80->50px/s로 늦춰 더 천천히 등장
     size:240, cool:0,
     // 좌우 이동↔정지 발사 상태 머신 (등장 완료 후부터 동작)
     moveState:'move', moveTargetX: null, moveSpeed:180, // px/s, 좌우 이동 속도
@@ -1376,6 +1433,33 @@ function fireFan3(e, color, speed){
   playEnemyShootSound();
 }
 
+// 일반7(Stubby) 쌍포신 끝 좌표(스프라이트 비율 기준 오프셋, size=104 기준으로 스케일).
+const NORMAL7_MUZZLE_OFFSETS = [ {x:-0.11, y:0.42}, {x:0.11, y:0.42} ];
+function getNormal7Muzzles(e){
+  const size = 104;
+  return NORMAL7_MUZZLE_OFFSETS.map(o=>({ x: e.x + o.x*size, y: e.y + o.y*size }));
+}
+// 요청사항(normal7_bullet_patterns_sample.html "5. 쌍포 교차 직선탄", 4줄 버전): 좌측 포신에서
+// 우측 하단(교차)+좌측 하단(평행) 2방향, 우측 포신에서 좌측 하단(교차)+우측 하단(평행) 2방향,
+// 총 4줄을 동시에 발사해 X자 그물 2겹을 만듦. count발을 lineSpacing(ms) 간격으로 연속 발사.
+const NORMAL7_CROSSBEAM_SPEED = 200;
+const NORMAL7_CROSSBEAM_LINE_SPACING_MS = 60; // 4줄을 한 번에 쏘지 않고 살짝 시차를 둠(index.html의 상태 타이머가 호출 간격을 관리)
+function fireNormal7CrossBeamLine(e, color){
+  const [left, right] = getNormal7Muzzles(e);
+  const targets = [
+    { from: left,  to: { x: W-40, y: H+40 } }, // 좌포 -> 우측 하단(교차)
+    { from: left,  to: { x: 40,   y: H+40 } }, // 좌포 -> 좌측 하단(평행)
+    { from: right, to: { x: 40,   y: H+40 } }, // 우포 -> 좌측 하단(교차)
+    { from: right, to: { x: W-40, y: H+40 } }  // 우포 -> 우측 하단(평행)
+  ];
+  targets.forEach(({from, to})=>{
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const d = Math.hypot(dx,dy) || 1;
+    bullets.push({x: from.x, y: from.y, vx: dx/d*NORMAL7_CROSSBEAM_SPEED, vy: dy/d*NORMAL7_CROSSBEAM_SPEED, r:6, color});
+  });
+  playEnemyShootSound();
+}
+
 // 조준 없이 고정 중심각(기본 아래 방향) 기준으로 넓은 부채꼴에 N발을 균등 배치해 동시 발사.
 // (Unity 참고 코드의 Fire180Degrees 로직과 동일: 부채꼴 폭을 (개수-1)등분해 간격을 구하고,
 // 중심각 - 폭/2 지점부터 순서대로 배치. 여기서는 플레이어 방향 조준을 하지 않고 항상 정면(아래) 기준.)
@@ -1386,6 +1470,21 @@ function fireFanN(e, color, speed, bulletCount, spreadDeg){
   const startAngle = base - spreadRad/2;
   for(let i=0;i<bulletCount;i++){
     const a = startAngle + angleStep * i;
+    bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:6,color});
+  }
+  playEnemyShootSound();
+}
+
+// 일반4/5 신규 패턴(요청사항, normal4_bullet_patterns_sample.html의 "1. 교차 부채꼴" 반영):
+// 리더 기체 중심에서 70도 부채꼴(9발)을 좌/우 번갈아 20도씩 기울여 발사. 호출될 때마다
+// e.crossFanToggle이 반전되어 다음 호출은 반대쪽으로 기움(교차 효과).
+function fireNormal4CrossFan(e, color, speed){
+  const count = 9, spread = 70 * Math.PI/180;
+  const tilt = (e.crossFanToggle ? 1 : -1) * 20 * Math.PI/180;
+  e.crossFanToggle = !e.crossFanToggle;
+  const base = Math.PI/2 + tilt;
+  for(let i=0;i<count;i++){
+    const a = base - spread/2 + spread*(i/(count-1));
     bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:6,color});
   }
   playEnemyShootSound();
@@ -1577,9 +1676,8 @@ function drawBossLaser(x, y, angleOffsetRad){
 }
 
 function fireLaser(){
-  const baseSpeed = 936; // 탄속 30% 상향 기준값: 720 -> 936px/s
-  const speed = baseSpeed * (1 + playerRStack * 0.35); // R 스택당 +35%, 최대 4스택 +140%
-  playLaserSound(); // 레이저 발사음 재생 (R 스택 비율만큼 재생 속도도 함께 빨라짐)
+  const speed = 936; // 탄속 고정(파워와 무관, 30% 상향 기준값: 720 -> 936px/s)
+  playLaserSound(); // 레이저 발사음 재생
   if(playerHasW){
     // W 획득 시: 30도 부채꼴로 3방향(좌/중/우) 발사
     const spreadDeg = 15; // 좌우 각 15도(총 30도)
@@ -1601,31 +1699,47 @@ function fireLaser(){
 
 function drawLaser(b){
   // 진행 방향(vx,vy)의 반대쪽으로 꼬리를 그림. 방향 벡터가 없으면(각도 미지정) 기본 수직 위쪽 발사로 간주.
-  // 성능 최적화: shadowBlur(매 프레임 고비용 블러 재계산)를 쓰지 않고, 굵고 반투명한 외곽 스트로크를
-  // 겹쳐 그려 비슷한 네온 글로우 느낌을 훨씬 저렴하게 재현.
+  // 요청사항: 네오지오풍 "프리즘 팽" 스타일 — 앞이 뾰족한 삼각 프리즘(쐐기) 단면, 양면에 서로
+  // 다른 밝기의 그라데이션을 줘서 입체적인 수정 송곳니처럼 보이게 함(TEST/laser_neogeo_style_sample.html
+  // 14번 반영). 색상은 기존과 동일한 푸른 계열(시안) 유지.
   const speed = Math.hypot(b.vx || 0, b.vy) || 1;
   const dirX = (b.vx || 0) / speed, dirY = b.vy / speed;
   const tailX = b.x - dirX * b.len;
   const tailY = b.y - dirY * b.len;
+  const perpX = -dirY, perpY = dirX;
+  const w = 7;
   ctx.save();
-  ctx.lineCap = 'round';
-  // 글로우(넓고 옅은 레이어)
-  ctx.strokeStyle = 'rgba(0,230,255,0.35)';
-  ctx.lineWidth = 9;
+  // 외곽선(검은 테두리)
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(tailX + perpX*(w+1.5), tailY + perpY*(w+1.5));
+  ctx.lineTo(tailX - perpX*(w+1.5), tailY - perpY*(w+1.5));
+  ctx.closePath();
+  ctx.fill();
+  // 왼쪽 면(밝은 흰색 -> 중간 톤 시안)
+  const gradL = ctx.createLinearGradient(b.x, b.y, tailX + perpX*w, tailY + perpY*w);
+  gradL.addColorStop(0, '#ffffff'); gradL.addColorStop(1, '#1a9fc8');
+  ctx.fillStyle = gradL;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(tailX + perpX*w, tailY + perpY*w);
+  ctx.lineTo(tailX, tailY);
+  ctx.closePath();
+  ctx.fill();
+  // 오른쪽 면(옅은 시안 -> 짙은 네이비, 입체 음영)
+  const gradR = ctx.createLinearGradient(b.x, b.y, tailX - perpX*w, tailY - perpY*w);
+  gradR.addColorStop(0, '#eaffff'); gradR.addColorStop(1, '#0a3a55');
+  ctx.fillStyle = gradR;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
   ctx.lineTo(tailX, tailY);
-  ctx.stroke();
-  // 메인 컬러 라인
-  ctx.strokeStyle = '#7dfcff';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(b.x, b.y);
-  ctx.lineTo(tailX, tailY);
-  ctx.stroke();
-  // 밝은 코어 라인
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.6;
+  ctx.lineTo(tailX - perpX*w, tailY - perpY*w);
+  ctx.closePath();
+  ctx.fill();
+  // 중앙 능선 하이라이트
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
   ctx.lineTo(tailX, tailY);
@@ -1679,10 +1793,33 @@ function drawImageWithHitFlash(img, x, y, w, h, e){
   ctx.drawImage(hitFlashTmpCanvas, x, y, w, h);
 }
 
+// 스테이지2 요청사항: 기체 발광색을 탄 색상과 동일하게 — 원본 스프라이트에 색상 틴트를
+// source-atop으로 입힌 결과를 캐싱(타입+색상 조합당 1회만 생성, 매 프레임 재생성 안 함).
+const tintedImageCache = new Map(); // key: img.src+'_'+color -> offscreen canvas
+function getTintedImage(img, color){
+  const key = img.src + '_' + color;
+  let c = tintedImageCache.get(key);
+  if(c) return c;
+  c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const tctx = c.getContext('2d');
+  tctx.drawImage(img, 0, 0);
+  tctx.globalCompositeOperation = 'source-atop';
+  tctx.globalAlpha = 0.55; // 원본 질감이 살짝 남도록 완전 덮지 않음
+  tctx.fillStyle = color;
+  tctx.fillRect(0, 0, c.width, c.height);
+  tctx.globalCompositeOperation = 'source-over';
+  tintedImageCache.set(key, c);
+  return c;
+}
+
 function drawSprite(e, key, size){
   const img = assets[key];
   if(!img || !img.complete || img.naturalWidth === 0) return;
-  drawImageWithHitFlash(img, e.x - size/2, e.y - size/2, size, size, e);
+  // 스테이지2부터는 기체 색상을 탄 색상(STAGE2_ENEMY_COLORS)과 동일하게 틴트.
+  const stage2Color = (typeof currentStage !== 'undefined' && currentStage >= 2) ? STAGE2_ENEMY_COLORS[key] : null;
+  const drawImg = stage2Color ? getTintedImage(img, stage2Color) : img;
+  drawImageWithHitFlash(drawImg, e.x - size/2, e.y - size/2, size, size, e);
 }
 
 // ---- 보스 등장 전 WARNING! 경고 문구 ----
@@ -2043,24 +2180,27 @@ function spawnPlayerHitExplosion(x, y){
   });
 }
 
-// 화면 좌측 하단에 R 아이템 스택을 아이콘으로 나란히(겹치지 않게) 표시 (최대 4개, 스택 0이면 표시 안 함)
-const R_STACK_ICON_SIZE = 28; // px
-const R_STACK_GAP = 0; // px, 아이콘 사이 간격
+// 화면 좌측 하단에 파워 레벨을 아이콘으로 나란히(겹치지 않게) 표시 (최대 8개, 기본 4개 이하면 표시 안 함).
+// 기본 파워(PLAYER_POWER_BASE=4)는 "항상 가지고 있는 전력"이라 아이콘으로 세지 않고,
+// 그 이상으로 P 아이템을 먹어 쌓인 만큼만 표시(기존 R 스택 HUD와 동일한 톤 유지).
+const POWER_STACK_ICON_SIZE = 28; // px
+const POWER_STACK_GAP = 0; // px, 아이콘 사이 간격
 // item_r.png 원본(1024x1024)은 실제 도안이 중앙 약 60%만 차지하고 사방에 투명 여백이 있어
 // 그대로 그리면 0px 간격으로도 벌어져 보임. 실제 콘텐츠 바운딩박스만 잘라서 그림.
-const R_ICON_CROP = { sx: 32, sy: 32, sw: 96, sh: 94 }; // item_r_sm.png(160px 기준)로 축소된 크롭 좌표
+const POWER_ICON_CROP = { sx: 32, sy: 32, sw: 96, sh: 94 }; // item_r_sm.png(160px 기준)로 축소된 크롭 좌표
 
 function drawRapidHud(){
-  if(playerRStack <= 0) return;
-  const img = itemImgs['R'];
+  const itemsEaten = Math.round((playerPower - PLAYER_POWER_BASE) / PLAYER_POWER_STEP); // 먹은 P 개수(정수)
+  if(itemsEaten <= 0) return;
+  const img = itemImgs['P'];
   if(!img || !img.complete || img.naturalWidth === 0) return;
   ctx.save();
   ctx.globalAlpha = 0.5; // 반투명
   const startX = 2;
-  const y = H - 2 - R_STACK_ICON_SIZE;
-  for(let i=0;i<playerRStack;i++){
-    const x = startX + i * (R_STACK_ICON_SIZE + R_STACK_GAP);
-    ctx.drawImage(img, R_ICON_CROP.sx, R_ICON_CROP.sy, R_ICON_CROP.sw, R_ICON_CROP.sh, x, y, R_STACK_ICON_SIZE, R_STACK_ICON_SIZE);
+  const y = H - 2 - POWER_STACK_ICON_SIZE;
+  for(let i=0;i<itemsEaten;i++){
+    const x = startX + i * (POWER_STACK_ICON_SIZE + POWER_STACK_GAP);
+    ctx.drawImage(img, POWER_ICON_CROP.sx, POWER_ICON_CROP.sy, POWER_ICON_CROP.sw, POWER_ICON_CROP.sh, x, y, POWER_STACK_ICON_SIZE, POWER_STACK_ICON_SIZE);
   }
   ctx.restore();
 }
