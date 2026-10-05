@@ -1077,13 +1077,14 @@ function spawnItem(type, x, y){
     x = Math.max(margin, Math.min(W - margin, x));
     attempts++;
   }
-  // 요청사항: 아이템이 한 자리에 머무르지 않고 둥둥 떠다니도록, 좌우/상하 흔들림(사인파) 파라미터를
-  // 개체별로 랜덤하게 부여. baseX는 좌우 흔들림의 중심(탄환 회피로 밀릴 때도 함께 이동).
+  // 요청사항: 아이템이 제자리 흔들림이 아니라, 화면 전체를 랜덤한 목표점으로 계속 이동하며
+  // 둥둥 떠다니게 함. A1 라인(그리드 행1 경계, H/5*1=144px) 위로는 절대 못 올라가고, 그 아래
+  // 영역에서만 돌아다님.
+  const floatMargin = size/2 + 6;
   items.push({
-    type, x, y, vy: ITEM_FALL_SPEED, pulseSeed: Math.random()*Math.PI*2,
-    floatAmpX: 18 + Math.random()*14, floatFreqX: 0.8 + Math.random()*0.8, floatPhaseX: Math.random()*Math.PI*2,
-    floatAmpY: 6 + Math.random()*6, floatFreqY: 1.0 + Math.random()*0.9, floatPhaseY: Math.random()*Math.PI*2,
-    floatTime: 0
+    type, x, y, vy: 0, pulseSeed: Math.random()*Math.PI*2,
+    floatTargetX: x, floatTargetY: Math.max(y, H/5 + floatMargin),
+    floatSpeed: 110 + Math.random()*40 // px/s, 요청사항: 기존(220~300)의 절반으로 하향
   });
 }
 
@@ -2180,28 +2181,32 @@ function spawnPlayerHitExplosion(x, y){
   });
 }
 
-// 화면 좌측 하단에 파워 레벨을 아이콘으로 나란히(겹치지 않게) 표시 (최대 8개, 기본 4개 이하면 표시 안 함).
-// 기본 파워(PLAYER_POWER_BASE=4)는 "항상 가지고 있는 전력"이라 아이콘으로 세지 않고,
-// 그 이상으로 P 아이템을 먹어 쌓인 만큼만 표시(기존 R 스택 HUD와 동일한 톤 유지).
-const POWER_STACK_ICON_SIZE = 28; // px
-const POWER_STACK_GAP = 0; // px, 아이콘 사이 간격
-// item_r.png 원본(1024x1024)은 실제 도안이 중앙 약 60%만 차지하고 사방에 투명 여백이 있어
-// 그대로 그리면 0px 간격으로도 벌어져 보임. 실제 콘텐츠 바운딩박스만 잘라서 그림.
-const POWER_ICON_CROP = { sx: 32, sy: 32, sw: 96, sh: 94 }; // item_r_sm.png(160px 기준)로 축소된 크롭 좌표
+// 화면 상단: SCORE 좌측에 LIFE 숫자, 우측에 POWER 숫자 (타이틀과 동일한 Trebuchet MS bold 폰트)
+function drawLifeHud(){
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#4dff8f';
+  ctx.shadowBlur = 6;
+  ctx.font = 'bold 13px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText('LIFE', W/2 - 68, 24);
+  ctx.font = 'bold 22px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText(String(playerLife), W/2 - 68, 50);
+  ctx.restore();
+}
 
+// POWER: itemsEaten(먹은 P 개수)을 숫자로 표시
 function drawRapidHud(){
   const itemsEaten = Math.round((playerPower - PLAYER_POWER_BASE) / PLAYER_POWER_STEP); // 먹은 P 개수(정수)
-  if(itemsEaten <= 0) return;
-  const img = itemImgs['P'];
-  if(!img || !img.complete || img.naturalWidth === 0) return;
   ctx.save();
-  ctx.globalAlpha = 0.5; // 반투명
-  const startX = 2;
-  const y = H - 2 - POWER_STACK_ICON_SIZE;
-  for(let i=0;i<itemsEaten;i++){
-    const x = startX + i * (POWER_STACK_ICON_SIZE + POWER_STACK_GAP);
-    ctx.drawImage(img, POWER_ICON_CROP.sx, POWER_ICON_CROP.sy, POWER_ICON_CROP.sw, POWER_ICON_CROP.sh, x, y, POWER_STACK_ICON_SIZE, POWER_STACK_ICON_SIZE);
-  }
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ff9a3c';
+  ctx.shadowBlur = 6;
+  ctx.font = 'bold 13px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText('POWER', W/2 + 68, 24);
+  ctx.font = 'bold 22px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText(String(itemsEaten), W/2 + 68, 50);
   ctx.restore();
 }
 
@@ -2219,43 +2224,19 @@ function drawScoreHud(){
   ctx.restore();
 }
 
-const LIFE_ICON_SIZE = 52; // px (좀더 키움)
-const BOMB_ICON_SIZE = 46; // px (좀더 키움)
-const LIFE_ICON_GAP = 2; // px, 잔기 아이콘 사이 간격(붙여서 표시)
-
-// SCORE 좌측: 주인공 기체 아이콘으로 잔여 라이프 표시 (LIFE 글자 없음, 반투명), SCORE 텍스트 블록 높이에 맞춰 정렬
-function drawLifeHud(){
-  const img = assets['player'];
-  if(!img || !img.complete || img.naturalWidth === 0) return;
-  if(playerLife <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = 0.6; // 반투명
-  const totalWidth = playerLife * LIFE_ICON_SIZE + (playerLife - 1) * LIFE_ICON_GAP;
-  const rightEdge = W/2 - 65; // SCORE 텍스트 블록 좌측 여백
-  const startX = rightEdge - totalWidth;
-  const y = 12; // SCORE 라벨/숫자 블록(대략 13~58px) 세로 중심에 맞춤
-  for(let i=0;i<playerLife;i++){
-    const x = startX + i * (LIFE_ICON_SIZE + LIFE_ICON_GAP);
-    ctx.drawImage(img, x, y, LIFE_ICON_SIZE, LIFE_ICON_SIZE);
-  }
-  ctx.restore();
-}
-
-// SCORE 우측: 폭탄 아이콘(스프라이트, assets/items/item_bomb.png)으로 잔여 폭탄 표시 (반투명)
+// 화면 좌측 하단: BOMB 숫자 (타이틀과 동일한 Trebuchet MS bold 폰트)
 function drawBombHud(){
-  if(playerBombs <= 0) return;
-  if(!bombIconImg.complete || bombIconImg.naturalWidth === 0) return;
   ctx.save();
-  ctx.globalAlpha = 0.6; // 반투명
-  const leftEdge = W/2 + 65; // SCORE 텍스트 블록 우측 여백
-  const y = 14; // SCORE 라벨/숫자 블록 세로 중심에 맞춤
-  for(let i=0;i<playerBombs;i++){
-    const x = leftEdge + i * (BOMB_ICON_SIZE + LIFE_ICON_GAP);
-    ctx.drawImage(bombIconImg, x, y, BOMB_ICON_SIZE, BOMB_ICON_SIZE);
-  }
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ff4d4d';
+  ctx.shadowBlur = 6;
+  ctx.font = 'bold 13px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText('BOMB', 10, H - 32);
+  ctx.font = 'bold 22px "Trebuchet MS", Arial, sans-serif';
+  ctx.fillText(String(playerBombs), 10, H - 10);
   ctx.restore();
 }
-
 // ---- 보스 HP바 ----
 // SCORE 숫자 블록 바로 아래, 화면 중앙에 "BOSS" 라벨 + 가로 선으로 남은 체력을 표시.
 // 전체 바는 반투명하게, 남은 비율만큼은 시안 네온 선, 깎인(잃은) 부분은 붉은색 선으로 그려

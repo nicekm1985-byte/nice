@@ -356,7 +356,10 @@ function getZoneIndex(y){
   return Math.max(0, Math.min(ZONE_COUNT-1, idx));
 }
 function isNoFireZone(y){
-  return getZoneIndex(y) === ZONE_COUNT - 1; // 맨 아래(Zone-6)
+  // 요청사항: 발사 금지 구역을 Zone-6(y>=600px) 기준보다 좁혀, A9 라인(10등분 그리드 행9, y=648px)부터
+  // 화면 맨 아래까지만 적용. ZONE_HEIGHT/getZoneIndex는 다른 로직(유도 구간, 보스 등장 위치 등)에서도
+  // 쓰이므로 그대로 두고, 이 함수만 10등분 그리드 기준 좌표로 직접 재정의함.
+  return y >= (H / 10) * 9;
 }
 // 적이 화면 안에 실제로 진입했는지 판정(스폰 직후 화면 밖에서 등장하며 들어오는 도중에는
 // 아직 보이지 않으므로 피격 무효 처리하기 위한 헬퍼). 여백(margin)은 스프라이트가 화면
@@ -622,19 +625,19 @@ touchPad.addEventListener('touchstart', e=>{
   if(e.touches.length >= 2) useBomb();
 }, {passive:true});
 </script>
-<script src="bg.js?v=202610072200"></script>
-<script src="stage1layers.js?v=202610072200"></script>
-<script src="assets/bg/stage1new/stage1_launch.js?v=202610072200"></script>
-<script src="stage1bg.js?v=202610072200"></script>
-<script src="assets/bg/stage1new/stage1_layout.js?v=202610072200"></script>
-<script src="assets/bg/stage1new/stage1_schedule.js?v=202610072200"></script>
-<script src="assets/bg/stage1new/stage1_bgm.js?v=202610072200"></script>
-<script src="stage2bg.js?v=202610072200"></script>
-<script src="assets/bg/stage2new/stage2_layout.js?v=202610072200"></script>
-<script src="assets/bg/stage2new/stage2_schedule.js?v=202610072200"></script>
-<script src="assets/bg/stage2new/stage2_bgm.js?v=202610072200"></script>
-<script src="characters.js?v=202610072200"></script>
-<script src="stage.js?v=202610072200"></script>
+<script src="bg.js?v=202610080200"></script>
+<script src="stage1layers.js?v=202610080200"></script>
+<script src="assets/bg/stage1new/stage1_launch.js?v=202610080200"></script>
+<script src="stage1bg.js?v=202610080200"></script>
+<script src="assets/bg/stage1new/stage1_layout.js?v=202610080200"></script>
+<script src="assets/bg/stage1new/stage1_schedule.js?v=202610080200"></script>
+<script src="assets/bg/stage1new/stage1_bgm.js?v=202610080200"></script>
+<script src="stage2bg.js?v=202610080200"></script>
+<script src="assets/bg/stage2new/stage2_layout.js?v=202610080200"></script>
+<script src="assets/bg/stage2new/stage2_schedule.js?v=202610080200"></script>
+<script src="assets/bg/stage2new/stage2_bgm.js?v=202610080200"></script>
+<script src="characters.js?v=202610080200"></script>
+<script src="stage.js?v=202610080200"></script>
 <script>
 // ---- 일시정지/메뉴 ----
 // M 버튼(오른쪽 상단) 또는 M 키를 누르면 게임 루프를 정지시키고 메뉴 오버레이를 표시.
@@ -1081,7 +1084,7 @@ function update(currentTime){
           playEnemyShootSound();
         }
       }
-    } else if(e.type==='normal2'){ // 좌우 사인 웨이브 이동 + 조준 단발
+    } else if(e.type==='normal2'){ // 좌우 사인 웨이브 이동 + 조준 단발(각도 제한: 아래 방향 기준 ±40도까지만)
       e.sineTime = (e.sineTime || 0) + dt;
       const sineAmp = 90, sineFreq = 1.6; // px, rad/s 환산용(아래서 *2*PI)
       e.x = e.baseX + Math.sin(e.sineTime * sineFreq) * sineAmp;
@@ -1089,7 +1092,18 @@ function update(currentTime){
       drawSprite(e, 'normal2', 64);
       if(e.cool >= e.fireRate && !isNoFireZone(e.y)){
         e.cool = 0;
-        fireAimed(e, getEnemyColor('normal1', '#4dff8f'), 100); // 조준 단발(일반1과 동일 색상 매핑 사용)
+        // 요청사항: 옆으로 쏘는 것 금지 — 플레이어 조준 각도를 아래 방향(수직 하향) 기준 ±40도로 제한.
+        const dxAim = player.x - e.x, dyAim = player.y - e.y;
+        const rawAngle = Math.atan2(dyAim, dxAim); // 조준 원래 각도
+        const downAngle = Math.PI/2; // 아래 방향 기준각
+        let diff = rawAngle - downAngle;
+        while(diff > Math.PI) diff -= Math.PI*2;
+        while(diff < -Math.PI) diff += Math.PI*2;
+        const maxRad = 40 * Math.PI/180;
+        diff = Math.max(-maxRad, Math.min(maxRad, diff));
+        const clampedAngle = downAngle + diff;
+        bullets.push({ x:e.x, y:e.y, vx: Math.cos(clampedAngle)*100, vy: Math.sin(clampedAngle)*100, r:6, color: getEnemyColor('normal1', '#4dff8f') });
+        playEnemyShootSound();
       }
     } else if(e.type==='normal3'){
       e.y += e.vy * dt;
@@ -1479,18 +1493,25 @@ function update(currentTime){
   enemies = enemies.filter(e=> e.type !== 'normal4' || !((e.vx > 0 && e.x > W+80) || (e.vx < 0 && e.x < -80) || e.y < -100));
   enemies = enemies.filter(e=> e.type !== 'normal6' || (e.y < H+60 && e.y > -60 && e.x > -60 && e.x < W+60));
 
-  // 아이템 낙하 + 획득 판정 (먼저 그려서, 아래에서 그리는 적 탄환이 그 위로 지나가도록 함)
+  // 아이템 유영 + 획득 판정 (먼저 그려서, 아래에서 그리는 적 탄환이 그 위로 지나가도록 함)
   items.forEach(it=>{
     avoidBulletsForItem(it, dt);
-    it.y += it.vy * dt;
-    // 요청사항: 한 자리에 머무르지 않고 둥둥 떠다니도록 좌우/상하 사인파 흔들림을 더함(개체별 랜덤 위상/빈도).
-    // it.x/it.y는 실제 베이스 좌표(탄환 회피/하강 로직용)로 그대로 두고, 그리기/충돌판정에는
-    // 흔들림 오프셋을 더한 drawX/drawY만 사용(베이스 로직을 건드리지 않아 안전함).
-    it.floatTime = (it.floatTime || 0) + dt;
-    const floatX = Math.sin(it.floatTime * (it.floatFreqX||1) + (it.floatPhaseX||0)) * (it.floatAmpX||0);
-    const floatY = Math.sin(it.floatTime * (it.floatFreqY||1) + (it.floatPhaseY||0)) * (it.floatAmpY||0);
-    it.drawX = it.x + floatX;
-    it.drawY = it.y + floatY;
+    // 요청사항: 화면 전체를 랜덤한 목표점으로 계속 이동하며 둥둥 떠다님(속도는 기존의 절반, floatSpeed px/s).
+    // A1 라인(144px) 위로는 절대 못 올라가므로, 목표점 y도 항상 A1 라인 아래~화면 하단 범위에서만 뽑음.
+    const size = itemSizeFor(it.type);
+    const floatMargin = size/2 + 6;
+    const dx = it.floatTargetX - it.x, dy = it.floatTargetY - it.y;
+    const dist = Math.hypot(dx, dy);
+    if(dist < 8){
+      // 목표 도착 시 새 목표점 랜덤 선택(화면 좌우 전체 x, y는 항상 A1 라인 아래~화면 하단)
+      it.floatTargetX = floatMargin + Math.random()*(W - floatMargin*2);
+      it.floatTargetY = (H/5 + floatMargin) + Math.random()*(H - H/5 - floatMargin*2);
+    } else {
+      const ux = dx/dist, uy = dy/dist;
+      const step = Math.min(dist, it.floatSpeed * dt);
+      it.x += ux*step; it.y += uy*step;
+    }
+    it.drawX = it.x; it.drawY = it.y;
     drawItem(it);
     if(!it.picked && pixelHitsPlayer(it.drawX, it.drawY, it.type)){
       it.picked = true;
@@ -1504,7 +1525,7 @@ function update(currentTime){
       }
     }
   });
-  items = items.filter(it=> !it.picked && it.y < H+40);
+  items = items.filter(it=> !it.picked);
 
   bullets.forEach(b=>{
     if(b.kind === 'screw'){

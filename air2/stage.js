@@ -42,12 +42,12 @@ const STAGE1_SCHEDULE_DEFAULT = {
     { startMs: 30000, enabled: ['normal1','normal2','normal3','normal4','normal5'], cap: 5 },
     { startMs: 60000, enabled: ['normal1','normal2','normal3','normal4','normal5','normal6','normal7','normal8'], cap: 7 }
   ],
-  items: { rFirstMs: 15000, rIntervalMinMs: 25000, rIntervalMaxMs: 35000, pSpawnChance: 55, wFirstMs: 30000, wIntervalMinMs: 30000, wIntervalMaxMs: 45000 },
+  items: { rFirstMs: 12000, rIntervalMinMs: 15000, rIntervalMaxMs: 19000, pSpawnChance: 100, wFirstMs: 30000, wIntervalMinMs: 30000, wIntervalMaxMs: 45000 },
   bossTriggerMs: 120000
 };
 const STAGE2_SCHEDULE_DEFAULT = {
   phases: [],
-  items: { rFirstMs: 20000, rIntervalMinMs: 35000, rIntervalMaxMs: 45000, pSpawnChance: 55, wFirstMs: 45000, wIntervalMinMs: 45000, wIntervalMaxMs: 60000 },
+  items: { rFirstMs: 20000, rIntervalMinMs: 35000, rIntervalMaxMs: 45000, pSpawnChance: 100, wFirstMs: 45000, wIntervalMinMs: 45000, wIntervalMaxMs: 60000 },
   bossTriggerMs: Infinity
 };
 function getScheduleData(stageNum){
@@ -101,7 +101,7 @@ function updateStage1Spawns(elapsedMs){
 
   const items_ = sched.items || STAGE1_SCHEDULE_DEFAULT.items;
   // 요청사항: P/W/B 아이템을 더 이상 각자 독립적으로(단독으로) 등장시키지 않고, 하나의 공용
-  // 타이머에서 "그 타이밍이 되면 셋 중 하나만" 뜨게 통합. 비율: W 30%, B 30%, P 40%.
+  // 타이머에서 "그 타이밍이 되면 셋 중 하나만" 뜨게 통합. 비율: P 38%, W 38%, B 24%(P/W를 B보다 높게).
   // (간격 자체는 기존 P 아이템 간격 설정을 그대로 재사용)
   if(items.length === 0 && elapsedMs >= stage1NextRSpawnMs){
     stage1NextRSpawnMs = elapsedMs + items_.rIntervalMinMs + Math.random()*(items_.rIntervalMaxMs - items_.rIntervalMinMs);
@@ -111,9 +111,9 @@ function updateStage1Spawns(elapsedMs){
       // W는 이미 획득했으면, B는 상한에 도달했거나 보스전 중이면 후보에서 제외하고 남은 후보끼리 비율 재분배.
       const bossBusy = stagePhase === 'boss' || stagePhase === 'bossIntro' || stagePhase === 'warning';
       const candidates = [];
-      if(!playerHasW) candidates.push({ type:'W', weight: 30 });
-      if(playerBombs < BOMB_MAX_STOCK && !bossBusy) candidates.push({ type:'B', weight: 30 });
-      candidates.push({ type:'P', weight: 40 });
+      if(!playerHasW) candidates.push({ type:'W', weight: 38 });
+      if(playerBombs < BOMB_MAX_STOCK && !bossBusy) candidates.push({ type:'B', weight: 24 });
+      candidates.push({ type:'P', weight: 38 });
       const totalWeight = candidates.reduce((s,c)=>s+c.weight, 0);
       let roll = Math.random() * totalWeight;
       let chosen = candidates[candidates.length-1].type;

@@ -70,11 +70,11 @@ let stage2TrackSequence = [
 // 오브젝트 기본 크기 배율(원본 이미지 × 이 값 × 개별 scale). stage_editor.html의 OBJ_BASE_SCALE[2]와 반드시 동일하게 유지.
 const STAGE2_OBJ_BASE_SCALE = 0.7;
 let stage2ScrollY = 0;
-let STAGE2_SCROLL_SPEED = 500; // px/s, 지면 타일 스크롤 속도(요청사항: 5배 상향, 기존 100)
+let STAGE2_SCROLL_SPEED = 100; // px/s, 지면 타일 스크롤 속도(요청사항: 5배 상향, 기존 100)
 // 오브젝트(터렛/타워/암석 등) 레이어 전용 스크롤 좌표/속도. 지면과 분리해서 서로 다른 속도로 흘려
 // 패럴랙스 깊이감을 줄 수 있음(통합 타임라인 에디터의 "레이어별 스크롤 속도" 설정으로 조절).
 let stage2ObjScrollY = 0;
-let STAGE2_OBJ_SCROLL_SPEED = 500; // px/s, 기본값은 지면과 동일(요청사항: 5배 상향, 기존 100)
+let STAGE2_OBJ_SCROLL_SPEED = 100; // px/s, 기본값은 지면과 동일(요청사항: 5배 상향, 기존 100)
 
 // 초기 배치: 에디터에 등록된 오브젝트 배치를 그대로 옮김
 // z: 그리기 순서(숫자가 클수록 나중에/위에 그려짐). opacity: 불투명도.
