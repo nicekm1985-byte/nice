@@ -1246,7 +1246,7 @@ function spawnNormal45(dir){         // dir: 1 = 일반4(왼쪽→오른쪽), -1
     const back = k * NORMAL45_SPACING;
     enemies.push({
       type:'normal4', x: startX - ux*back, y: startY - uy*back, // 일반5도 같은 type(에셋/탄막 공유), vx 부호로 구분
-      vx, vy, hp:8, score:70, cool:0, squadId,
+      vx, vy, hp:6, score:70, cool:0, squadId,
       // 요청사항: 리더가 "교차 부채꼴"을 2세트 연속 쏘고 1.5초 쉬었다가 다시 2세트... 반복(퇴장 전까지).
       isSquadLeader: k === 1, fireDelay: 900, crossFanState: 'wait', crossFanSetCount: 0,
       crossFanShotTimer: 0, crossFanRestTimer: 0, crossFanToggle: false
