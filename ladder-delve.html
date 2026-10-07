@@ -4,7 +4,8 @@
 <title>Ladder Fortune</title>
 <style>
 :root{--glass:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--txt:#e8ebff;--dim:#8d93b8;--acc:#7c9cff;--ok:#5ee6a8;--bad:#ff6b8a;--gold:#ffd166}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-touch-callout:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% 0,#1b2150,#0b0d1a 62%);color:var(--txt);font:14px/1.45 -apple-system,"Apple SD Gothic Neo",system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
 #app{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;gap:8px;padding:max(env(safe-area-inset-top),10px) 12px max(env(safe-area-inset-bottom),10px)}
 .glass{background:var(--glass);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -47,6 +48,7 @@ html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% 0,#1b2
 #sw{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .dot{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:.15s}
 .dot.sel{border-color:#fff;transform:scale(1.15);box-shadow:0 0 16px 2px currentColor}
+input,textarea,select{font-size:16px!important}
 input{background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 10px;font:inherit;width:100%;min-width:0}
 .tl{display:flex;flex-direction:column;gap:6px;min-height:120px}
 .tr{display:flex;justify-content:space-between;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.06);animation:pop .2s;border-left:3px solid transparent}
@@ -817,6 +819,8 @@ $('#mMute').onclick=()=>{ensureAudio();muted=!muted;localStorage.lfMute=muted?'1
 $('#mVol').oninput=e=>{ensureAudio();vol=+e.target.value;if(vol>0&&muted){muted=false;localStorage.lfMute='0'}localStorage.lfVol=vol;applyVol();syncMenu()};
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#mPanel,#mBtn'))$('#mPanel').classList.remove('on')});
 syncMenu();
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('dblclick',e=>{if(!e.target.closest('input,textarea'))e.preventDefault()},{passive:false});
 addEventListener('resize',resize);
 resize();renderTitle();requestAnimationFrame(frame);
 </script>
