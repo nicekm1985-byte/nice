@@ -24,7 +24,15 @@ html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% 0,#1b2
 #zc button{border:1px solid var(--line);background:rgba(20,24,50,.82);color:var(--txt);border-radius:8px;padding:3px 9px;font:600 11px system-ui;cursor:pointer}
 #zc button:hover:not(:disabled){background:rgba(60,70,130,.9)}
 #zc button:disabled{opacity:.35;cursor:default}
+#sp{position:absolute;top:10px;left:8px;display:flex;gap:4px;z-index:2}
+#sp button{border:1px solid var(--line);background:rgba(20,24,50,.82);color:var(--txt);border-radius:8px;padding:3px 9px;font:700 11px system-ui;cursor:pointer}
+#sp button:hover{background:rgba(60,70,130,.9)}
+#sp button.on{background:linear-gradient(135deg,#6c8bff,#b07bff);border-color:transparent;color:#fff}
 #foot{padding:10px;display:flex;flex-direction:column;gap:8px}
+#useBar:empty{display:none}
+.ubtn{display:flex;align-items:center;gap:6px}
+.ubtn .ic{font-size:16px}
+.ubtn small{opacity:.8;font-weight:600}
 #hint{font-size:12px;color:var(--dim);text-align:center}
 .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .btn{border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--txt);padding:9px 14px;border-radius:12px;font:inherit;font-weight:600;cursor:pointer;transition:.15s}
@@ -44,6 +52,7 @@ html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% 0,#1b2
 .opt:hover{background:rgba(255,255,255,.12)}
 .opt .ic{font-size:28px}.opt small{display:block;color:var(--dim)}
 .pro{color:var(--ok)}.con{color:var(--bad)}
+.ver{position:absolute;top:10px;left:14px;font:600 11px/1 system-ui;letter-spacing:.5px;color:var(--dim);opacity:.85}
 .logo{font-size:40px;font-weight:800;line-height:1.05;letter-spacing:4px;background:linear-gradient(135deg,#8fb0ff,#ffd166 60%,#ff8fb0);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
 #sw{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .dot{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:.15s}
@@ -116,11 +125,11 @@ input{background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--
     <div class="chips" id="players"></div>
     <div class="chips" id="chips"></div>
   </div>
-  <div id="cvw"><canvas id="cv"></canvas><div id="zc"><button id="zIn">확대</button><button id="zFit">전체</button></div></div>
-  <div id="foot" class="glass"><div class="btns"><button class="btn" id="tCut">✂️ 자르기</button><button class="btn" id="tAdd"><b style="color:#5ee6a8">＋</b> 추가</button></div><div id="hint"></div></div>
+  <div id="cvw"><canvas id="cv"></canvas><div id="sp"><button id="spd2">2X</button><button id="spd4">4X</button></div><div id="zc"><button id="zIn">확대</button><button id="zFit">전체</button></div></div>
+  <div id="foot" class="glass"><div class="btns" id="useBar"></div><div id="hint"></div></div>
 </div>
 
-<div id="title" class="overlay on"><div class="card glass">
+<div id="title" class="overlay on"><div class="card glass" style="position:relative"><span class="ver" id="verTag">Ver. 1.01</span>
   <div class="logo">LADDER<br>FORTUNE</div>
   <div class="tagline"><i></i><span>본격 행운 게임</span><i></i></div>
   <input id="pname" maxlength="8" placeholder="이름을 입력하세요" autocomplete="off">
@@ -170,15 +179,15 @@ const ITEMS=[
  {id:'moon',i:'🌙',n:'달빛',pro:'모든 칸이 항상 공개',con:'내 코인 획득 -20%',m:m=>{m.showAll=true;m.coin*=.8}},
  {id:'scale',i:'⚖️',n:'저울',pro:'배수 칸 값 +20%',con:'내 코인 획득 -10%',m:m=>{m.multAdd+=.2;m.coin*=.9}},
  {id:'clock',i:'⏳',n:'모래시계',pro:'자르기(✂)·추가(<b style="color:#5ee6a8">＋</b>) 포인트 +1씩',con:'폭탄 피해 +50%',m:m=>{m.cuts+=1;m.adds+=1;m.bomb*=1.5}},
- {id:'lens',i:'🔭',n:'투시 렌즈',pro:'안개가 크게 걷혀 가로줄 4줄 더 보임 (후반 한정)',m:m=>m.vis+=4},
+ {id:'lens',i:'🔭',n:'투시 렌즈',pro:'[사용] 안개 중간은 그대로 두고 맨 끝(도착 직전) 가로줄만 보이고 조작 가능 · 라운드당 3번',use:'fogEnd',uses:3,m:m=>{}},
  {id:'crown',i:'👑',n:'황금 왕관',pro:'내 라운드 점수 +40%',m:m=>m.mine*=1.4},
  {id:'skipF',i:'⏫',n:'첫 줄 건너뛰기',pro:'내 구슬은 맨 위 가로줄을 무시하고 내려감',m:m=>m.skipF=true},
  {id:'skipL',i:'⏬',n:'끝 줄 건너뛰기',pro:'내 구슬은 맨 아래 가로줄을 무시하고 내려감',m:m=>m.skipL=true},
- {id:'sun',i:'☀️',n:'태양석',pro:'안개가 완전히 걷혀 모든 가로줄을 보고 조작 가능',m:m=>m.vis=99},
+ {id:'sun',i:'☀️',n:'태양석',pro:'[사용] 안개가 완전히 걷혀 모든 가로줄을 보고 조작 가능 · 라운드당 1번',use:'fogAll',uses:1,m:m=>{}},
  {id:'plank',i:'🪜',n:'사다리 조각',pro:'추가 포인트(<b style="color:#5ee6a8">＋</b>) +1',con:'폭탄 칸 출현 +20%',m:m=>{m.adds+=1;m.bombW*=1.2}},
- {id:'lantern',i:'🏮',n:'랜턴',pro:'안개 속 가로줄 3줄 더 보임',con:'내 코인 획득 -10%',m:m=>{m.vis+=3;m.coin*=.9}}];
-const COST={sun:600,skipF:80,skipL:80,scissors:40,plank:35,moon:40,lantern:45,magnet:50,clover:60,clock:60,orb:70,scale:70,shield:90,ticket:90,shades:100,dice:110,pouch:120,bank:150,crown:380,lens:320};
-const FROM={sun:5,crown:3,lens:4};
+ {id:'lantern',i:'🏮',n:'랜턴',pro:'[사용] 안개 속 가로줄 3줄만 더 보임 · 라운드당 1번',con:'내 코인 획득 -10%',use:'fogSome',uses:1,m:m=>{m.coin*=.9}}];
+const COST={sun:100,lens:55,lantern:40,skipF:80,skipL:80,scissors:40,plank:35,moon:40,lantern:45,magnet:50,clover:60,clock:60,orb:70,scale:70,shield:90,ticket:90,shades:100,dice:110,pouch:120,bank:150,crown:380};
+const FROM={crown:3};
 ITEMS.forEach(x=>{x.cost=COST[x.id]||60;if(FROM[x.id])x.from=FROM[x.id]});
 const itemOf=id=>ITEMS.find(x=>x.id===id);
 /* ✨ 시너지: 아이템 두 개를 같은 라운드에 가지면 숨은 효과 */
@@ -332,7 +341,7 @@ function giftPick(){
  const pick=id=>{S.items=[id];chipCoin();startStage()};
  $('#gCut').onclick=()=>pick('scissors');$('#gAdd').onclick=()=>pick('plank')}
 function startStage(){
- M=mods();pickRival();{const a=activeSyn(S.items),w=waitSyn(S.items);if(a.length)setTimeout(()=>{ensureAudio();sparkle(3);toast('✨ 시너지 발동! '+a.map(x=>x.n).join(' · ')+(w.length?'<br>(대기: '+w.map(x=>x.n).join(', ')+' — 한 라운드에 하나만 적용돼요)':''))},700)}S.cuts=M.cuts;S.adds=M.adds;S.round=0;S.players.forEach(p=>p.picks=[]);
+ M=mods();pickRival();{const a=activeSyn(S.items),w=waitSyn(S.items);if(a.length)setTimeout(()=>{ensureAudio();sparkle(3);toast('✨ 시너지 발동! '+a.map(x=>x.n).join(' · ')+(w.length?'<br>(대기: '+w.map(x=>x.n).join(', ')+' — 한 라운드에 하나만 적용돼요)':''))},700)}S.cuts=M.cuts;S.adds=M.adds;S.uses={};S.items.forEach(id=>{const it=itemOf(id);if(it&&it.use)S.uses[id]=it.uses||1});S.fogShown=false;S.round=0;S.players.forEach(p=>p.picks=[]);
  newBoard();S.phase='plan';S.anims=null;closeModal();ui();showPick();
  toast(`라운드 ${S.stage} · ${alive().length}명 중 최저점 1명 탈락${S.rival?' · 🔥 '+(S.rivalNew?'새 ':'')+'라이벌 '+S.rival.name+' (이기면 💰+'+Math.round(25*gsc())+')':''}`);
 }
@@ -362,9 +371,10 @@ function newBoard(hit){
  while(S.cells.filter(pos).length<need){const c=S.cells.filter(x=>!pos(x))[Math.floor(R_()*S.cells.filter(x=>!pos(x)).length)];c.t='coin';c.v=Math.round(b*(.7+R_()*.7))}
  if(!M.showAll){S.cells.forEach(c=>c.hid=M.hideAll||R_()<.6);
   if(!M.hideAll)S.cells.filter(c=>c.hid).sort(()=>R_()-.5).slice(0,M.reveal).forEach(c=>c.hid=false)}
- S.fogA=1;S.pops=null;S.lastSeg=-1;S.nearIdx=-1;
+ S.fogA=1;S.pops=null;S.lastSeg=-1;S.nearIdx=-1;S.fog='none';
 }
-const visRows=()=>{const R=S.rungs.length;return M.vis>=99?R:Math.min(R,Math.round(R*.4)+Math.round((M.vis-4)*R/10))};
+const visRows=()=>{const R=S.rungs.length,base=Math.round(R*.4);return S.fog==='all'?R:S.fog==='some'?Math.min(R,base+Math.round(R*.12)):base};
+const fogVisible=r=>{const R=S.rungs.length;if(S.fog==='all')return true;if(S.fog==='end')return r<Math.round(R*.4)||r>=R-Math.round(R*.2);if(S.fog==='some')return r<visRows();return r<Math.round(R*.4)};
 function itemSpent(id){
  if(id==='shield'&&activeSyn(S.items).some(x=>x.id==='ironwall'))return false;
  if(id==='scissors')return S.cuts<1;
@@ -372,6 +382,30 @@ function itemSpent(id){
  if(id==='clock')return S.cuts<1&&S.adds<1;
  if(id==='shield')return S.shield<1;
  return false}
+function useBtns(){
+ const L=[];
+ if(S.cuts>0)L.push({k:'cut',h:'<span class="ic">✂️</span> 자르기 <small>'+S.cuts+'</small>',on:S.tool==='cut',cls:'cut'});
+ if(S.adds>0)L.push({k:'add',h:'<span class="ic"><b style="color:#5ee6a8">＋</b></span> 추가 <small>'+S.adds+'</small>',on:S.tool==='add',cls:'add'});
+ S.items.forEach(id=>{const it=itemOf(id);if(!it||!it.use)return;const n=S.uses[id]||0;if(n<1)return;
+  L.push({k:'fog:'+id,h:'<span class="ic">'+it.i+'</span> '+it.n+' <small>'+n+'</small>',on:false,cls:''})});
+ return L}
+function renderUseBar(){
+ const bar=$('#useBar'),L=useBtns(),pl=S&&S.phase==='plan';
+ bar.innerHTML='';
+ L.forEach(b=>{const e=document.createElement('button');e.className='btn ubtn'+(b.on?' on '+b.cls:'');e.innerHTML=b.h;e.disabled=!pl;
+  e.onclick=()=>{if(!S||S.phase!=='plan')return;ensureAudio();
+   if(b.k==='cut'){S.tool=S.tool==='cut'?null:'cut';ui()}
+   else if(b.k==='add'){S.tool=S.tool==='add'?null:'add';ui()}
+   else useFog(b.k.slice(4))};
+  bar.appendChild(e)})}
+function useFog(id){
+ const it=itemOf(id),mode={lens:'end',sun:'all',lantern:'some'}[id];
+ if(!it||(S.uses[id]||0)<1)return toast('이 아이템은 이번 라운드에 더 쓸 수 없어요');
+ if(S.fog===mode)return toast('이미 적용 중이에요');
+ if(S.fog==='all')return toast('이미 안개가 모두 걷혀 있어요');
+ S.uses[id]--;S.fog=mode;sparkle(4);chipCoin();
+ toast(it.i+' '+it.n+' 사용! '+({end:'맨 끝 가로줄이 보여요',all:'안개가 모두 걷혔어요',some:'안개 속 일부가 보여요'}[mode]));
+ ui()}
 function ui(){
  if(!S)return;
  $('#stage').innerHTML=`라운드 ${S.stage}<small> · ${alive().length}명</small>`;
@@ -381,10 +415,8 @@ function ui(){
  document.querySelectorAll('.relic').forEach(e=>e.onclick=()=>{const it=itemOf(e.dataset.r);toast(`${it.i} <b>${it.n}</b><br><span class="pro">▲ ${it.pro}</span>${it.con?`<br><span class="con">▼ ${it.con}</span>`:''}`)});
  if(S.tool==='cut'&&S.cuts<1)S.tool=null;if(S.tool==='add'&&S.adds<1)S.tool=null;
  const pl=S.phase==='plan';
- $('#hint').textContent=!pl?(S.phase==='move'?'화면을 탭하면 바로 도착해요':'…'):S.tool==='cut'?'✂ 자르기: 빨간 점선 줄에 가져다 대고 클릭 · 같은 버튼을 다시 누르면 해제':S.tool==='add'?'＋ 추가: 반투명 초록 줄이 추가될 자리예요 · 가져다 대고 클릭':(S.cuts+S.adds>0?'도구(✂ 자르기 / ＋ 추가)를 고르거나, 내 사다리를 탭해 출발하세요':'포인트가 없어요 · 내 사다리를 탭해 출발하세요');
- $('#tCut').classList.toggle('on',S.tool==='cut');$('#tCut').classList.toggle('cut',true);
- $('#tAdd').classList.toggle('on',S.tool==='add');$('#tAdd').classList.toggle('add',true);
- $('#tCut').disabled=$('#tAdd').disabled=!pl;$('#tCut').classList.toggle('dim',S.cuts<1);$('#tAdd').classList.toggle('dim',S.adds<1);$('#tCut').innerHTML='✂️ 자르기 '+S.cuts;$('#tAdd').innerHTML='<b style="color:#5ee6a8">＋</b> 추가 '+S.adds;
+ $('#hint').textContent=!pl?(S.phase==='move'?'화면을 탭하면 바로 도착해요':'…'):S.tool==='cut'?'✂ 자르기: 빨간 점선 줄에 가져다 대고 클릭 · 같은 버튼을 다시 누르면 해제':S.tool==='add'?'＋ 추가: 반투명 초록 줄이 추가될 자리예요 · 가져다 대고 클릭':(useBtns().length?'아래 아이템 버튼을 쓰거나, 내 사다리를 탭해 출발하세요':'내 사다리를 탭해 출발하세요');
+ renderUseBar();
  if(!S.tool)cv.style.cursor='';
 }
 
@@ -404,6 +436,9 @@ function slotAt(x,y){const sp=(BOT-TOP)/(R()+1),r=Math.round((y-TOP)/sp)-1;
  for(let i=0;i<xs.length-1;i++)if(x>xs[i]&&x<xs[i+1])return{r,i};return null}
 const hitR=()=>Math.min(28,xs.length>1?(xs[1]-xs[0])/2:28);
 function ptr(e){const b=cv.getBoundingClientRect();S.mx=e.clientX-b.left;S.my=e.clientY-b.top;S.inside=true;S.overStart=xs.some(c=>Math.hypot(S.mx-c,S.my-TOP)<hitR())}
+let SPD=1;
+function setSpd(v){SPD=SPD===v?1:v;$('#spd2').classList.toggle('on',SPD===2);$('#spd4').classList.toggle('on',SPD===4)}
+$('#spd2').onclick=()=>setSpd(2);$('#spd4').onclick=()=>setSpd(4);
 let zoom=1,sx=0,drag=null,zHint=false;
 function clampSx(){const vw=W*zoom;sx=Math.max(0,Math.min(vw-W,sx))}
 function syncZoom(){$('#zFit').disabled=zoom<=1;$('#zIn').disabled=zoom>=3}
@@ -432,7 +467,7 @@ cv.addEventListener('pointerleave',()=>{if(S)S.inside=false;if(!drag)cv.style.cu
 cv.addEventListener('wheel',e=>{if(!S||zoom<=1)return;e.preventDefault();sx+=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;clampSx()},{passive:false});
 
 function useTool(sl){
- const{r,i}=sl;if(r>=visRows())return toast('안개 속 줄은 조작할 수 없어요');
+ const{r,i}=sl;if(!fogVisible(r))return toast('안개 속 줄은 조작할 수 없어요');
  const row=S.rungs[r],x1=xs[i],x2=xs[i+1],y=rowY(r);
  if(S.tool==='cut'){
   if(!row[i])return toast('자를 줄이 없어요 · 빨간 점선 줄을 선택하세요');
@@ -443,8 +478,6 @@ function useTool(sl){
   row[i]=true;chipRung();(S.fx=S.fx||[]).push({k:'add',x1,x2,y,t:0});
  }
  if(S.tool==='cut')S.cuts--;else S.adds--;if((S.tool==='cut'?S.cuts:S.adds)<1)S.tool=null;cv.style.cursor=S.tool?'none':'';ui()}
-$('#tCut').onclick=()=>{if(!S||S.phase!=='plan')return;if(S.cuts<1)return toast('자르기 포인트가 없습니다');S.tool=S.tool==='cut'?null:'cut';ui()};
-$('#tAdd').onclick=()=>{if(!S||S.phase!=='plan')return;if(S.adds<1)return toast('추가 포인트가 없습니다');S.tool=S.tool==='add'?null:'add';ui()};
 addEventListener('keydown',e=>{if(e.key==='Escape'&&S){S.tool=null;ui()}});
 function showPick(){const e=$('#pick'),r=cv.getBoundingClientRect();
  e.style.left=(r.left+r.width/2)+'px';e.style.top=(r.top+r.height*.5)+'px';
@@ -480,8 +513,8 @@ function drawTool(ts,dt){
   ctx.restore()});S.fx=S.fx.filter(f=>f.t<.6)}
  if(S.phase!=='plan'||!S.tool)return;
  const tool=S.tool,pu=.6+.4*Math.sin(ts/300),sl=S.inside?slotAt(S.mx,S.my):null;
- const ok=!!sl&&sl.r<visRows()&&(tool==='cut'?S.rungs[sl.r][sl.i]:(!S.rungs[sl.r][sl.i]&&!S.rungs[sl.r][sl.i-1]&&!S.rungs[sl.r][sl.i+1]));
- S.rungs.forEach((row,r)=>{if(r>=visRows())return;row.forEach((v,i)=>{const mx=(xs[i]+xs[i+1])/2,my=rowY(r),hov=ok&&sl.r===r&&sl.i===i;
+ const ok=!!sl&&fogVisible(sl.r)&&(tool==='cut'?S.rungs[sl.r][sl.i]:(!S.rungs[sl.r][sl.i]&&!S.rungs[sl.r][sl.i-1]&&!S.rungs[sl.r][sl.i+1]));
+ S.rungs.forEach((row,r)=>{if(!fogVisible(r))return;row.forEach((v,i)=>{const mx=(xs[i]+xs[i+1])/2,my=rowY(r),hov=ok&&sl.r===r&&sl.i===i;
   if(tool==='cut'&&v){ctx.save();ctx.strokeStyle='#ff6b8a';ctx.lineCap='round';ctx.setLineDash([6,5]);ctx.lineWidth=hov?6:3;ctx.globalAlpha=hov?1:pu;ctx.shadowColor='#ff6b8a';ctx.shadowBlur=hov?18:6;ctx.beginPath();ctx.moveTo(xs[i],my);ctx.lineTo(xs[i+1],my);ctx.stroke();ctx.restore()}
   if(tool==='add'&&!v&&!row[i-1]&&!row[i+1]){
    if(hov){ctx.save();ctx.strokeStyle='#5ee6a8';ctx.lineCap='round';ctx.setLineDash([6,5]);ctx.lineWidth=5;ctx.globalAlpha=.9;ctx.shadowColor='#5ee6a8';ctx.shadowBlur=16;ctx.beginPath();ctx.moveTo(xs[i],my);ctx.lineTo(xs[i+1],my);ctx.stroke();ctx.restore();badge(mx,my,'+','#5ee6a8')}
@@ -546,10 +579,17 @@ function drawLadder(ts,dt){
  ctx.save();ctx.shadowColor=acc;ctx.shadowBlur=8;ctx.strokeStyle=acc+'aa';ctx.lineWidth=3;
  xs.forEach(x=>{ctx.beginPath();ctx.moveTo(x,TOP);ctx.lineTo(x,BOT);ctx.stroke()});
  ctx.strokeStyle='#a9b8ff';
- S.rungs.forEach((row,r)=>{ctx.globalAlpha=r<visRows()?1:1-S.fogA;if(ctx.globalAlpha<=0)return;if((r===0&&M.skipF)||(r===R()-1&&M.skipL))ctx.globalAlpha*=.3;row.forEach((v,i)=>{if(v){ctx.beginPath();ctx.moveTo(xs[i],rowY(r));ctx.lineTo(xs[i+1],rowY(r));ctx.stroke()}})});ctx.restore();
- if(visRows()<R()&&S.fogA>0){const sp=(BOT-TOP)/(R()+1),y0=rowY(visRows()-1)+sp*.5,g=ctx.createLinearGradient(0,y0,0,y0+26);g.addColorStop(0,'rgba(11,13,28,0)');g.addColorStop(1,'rgba(11,13,28,.93)');
-  ctx.save();ctx.globalAlpha=S.fogA;ctx.fillStyle=g;ctx.fillRect(0,y0,W,26);ctx.fillStyle='rgba(11,13,28,.93)';ctx.fillRect(0,y0+26,W,BOT-y0-26+2);
-  ctx.fillStyle='#8d93b8';ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillText('· · ·  안개  · · ·',W/2,(y0+BOT)/2);ctx.restore()}
+ S.rungs.forEach((row,r)=>{ctx.globalAlpha=fogVisible(r)?1:1-S.fogA;if(ctx.globalAlpha<=0)return;if((r===0&&M.skipF)||(r===R()-1&&M.skipL))ctx.globalAlpha*=.3;row.forEach((v,i)=>{if(v){ctx.beginPath();ctx.moveTo(xs[i],rowY(r));ctx.lineTo(xs[i+1],rowY(r));ctx.stroke()}})});ctx.restore();
+ if(S.fogA>0&&S.fog!=='all'){const sp=(BOT-TOP)/(R()+1),R0=R();let r=0;
+   ctx.save();ctx.globalAlpha=S.fogA;
+   while(r<R0){if(fogVisible(r)){r++;continue}let e=r;while(e<R0&&!fogVisible(e))e++;
+    const y0=rowY(r)-sp*.5,y1=(e>=R0?BOT+2:rowY(e-1)+sp*.5),fade=Math.min(26,(y1-y0)/3);
+    const g=ctx.createLinearGradient(0,y0,0,y0+fade);g.addColorStop(0,'rgba(11,13,28,0)');g.addColorStop(1,'rgba(11,13,28,.93)');
+    ctx.fillStyle=g;ctx.fillRect(0,y0,W,fade);ctx.fillStyle='rgba(11,13,28,.93)';ctx.fillRect(0,y0+fade,W,Math.max(0,y1-y0-fade));
+    if(e<R0){const g2=ctx.createLinearGradient(0,y1-fade,0,y1);g2.addColorStop(0,'rgba(11,13,28,.93)');g2.addColorStop(1,'rgba(11,13,28,0)');ctx.fillStyle=g2;ctx.fillRect(0,y1-fade,W,fade)}
+    if(y1-y0>40){ctx.fillStyle='#8d93b8';ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.fillText('· · ·  안개  · · ·',W/2,(y0+y1)/2)}
+    r=e}
+   ctx.restore()}
   const cw=Math.min((xs[1]-xs[0])-8,64),ch=50;
  S.cells.forEach((c,i)=>{const x=xs[i],y=BOT+10,T=CELL[c.t],hit=c.hit;
   ctx.save();ctx.shadowColor=c.hid?'transparent':T.c;ctx.shadowBlur=c.hid?0:(hit?22:10);
@@ -568,7 +608,7 @@ function drawLadder(ts,dt){
   if(ac){bead(x,TOP,17,ac.p.col,ac.p.me?'나':ac.p.name,16);if(ac.p===S.rival){ctx.save();ctx.strokeStyle='#ff6b8a';ctx.lineWidth=2.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.arc(x,TOP,22,0,7);ctx.stroke();ctx.restore()}}
   else bead(x,TOP,17,'#7c9cff',String.fromCharCode(65+c),17,'#9fc0ff')}
  if(S.anims){
-  if(S.phase==='move'){S.t+=dt;S.tk+=dt;if(S.tk>.17){S.tk-=.17;chipStep(++S.ni)}}
+  if(S.phase==='move'){S.t+=dt*SPD;S.tk+=dt;if(S.tk>.17){S.tk-=.17;chipStep(++S.ni)}}
   const k=Math.min(1,S.t/S.dur);
   [...S.anims].sort((a,b)=>a.p.me-b.p.me).forEach(a=>{
    const px=a.pts.map(p=>({x:xs[p.c],y:fy(p.f)}));let total=0;
