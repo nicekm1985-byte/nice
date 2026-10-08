@@ -129,7 +129,7 @@ input{background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--
   <div id="foot" class="glass"><div class="btns" id="useBar"></div><div id="hint"></div></div>
 </div>
 
-<div id="title" class="overlay on"><div class="card glass" style="position:relative"><span class="ver" id="verTag">Ver. 1.05</span>
+<div id="title" class="overlay on"><div class="card glass" style="position:relative"><span class="ver" id="verTag">Ver. 1.06</span>
   <div class="logo">LADDER<br>FORTUNE</div>
   <div class="tagline"><i></i><span>본격 행운 게임</span><i></i></div>
   <input id="pname" maxlength="8" placeholder="이름을 입력하세요" autocomplete="off">
@@ -303,7 +303,7 @@ const meP=()=>S.players[0];
 function mods(){
  const m={immune:false,multW:1,coin:1,bomb:1,blankW:1,bombW:1,jackW:1,cuts:0,adds:0,skipF:false,skipL:false,reveal:0,interest:0,mine:1,multAdd:0,vis:4,hideAll:false,showAll:false};
  S.items.forEach(id=>{const it=itemOf(id);it.m&&it.m(m)});activeSyn(S.items).forEach(x=>x.m(m));m.cuts=Math.max(0,m.cuts);m.adds=Math.max(0,m.adds);return m}
-const GROW=3.1,PEXP=.8,PRICE_K=.2;
+const GROW=3.1,PEXP=.8,PRICE_K=.6;
 const base=st=>Math.round(16*Math.pow(GROW,st-1));
 const gsc=()=>base(S.stage)/base(1);
 const priceScale=st=>Math.pow(GROW,PEXP*(st-1));
@@ -857,7 +857,7 @@ function itemPick(){
   opened.v=true;opened.res={i:it.i,n:it.n,pro:it.pro,con:it.con,rare:tier==='p'};
   ui();closeModal();render()};
  const render=()=>{
-  modal('🛒 아이템 상점',`이번 라운드에 번 골드 <b style="color:#ffd166">${S.wallet.toLocaleString()}</b> · 이 돈으로만 구매해요<br><span style="color:#ffb86b">쓰지 않은 돈은 다음 라운드로 넘어가지 않아요 · </span><span style="color:#ffb86b">⏱ 구매한 아이템은 <b>다음 라운드 1번만</b> 적용되고 사라져요</span><br><span style="color:#ff9f7a">🛒 쓴 돈의 30%가 다음 라운드 순위 점수에서 차감돼요 · 점수보다 많으면 빚으로 남아요</span><br><span style='color:#7fe3ff'>✨ 시너지는 한 라운드에 <b>하나만</b> 적용돼요</span>`,
+  modal('🛒 아이템 상점',`이번 라운드에 번 골드 <b style="color:#ffd166">${S.wallet.toLocaleString()}</b> · 이 돈으로만 구매해요<br><span style="color:#ffb86b">쓰지 않은 돈은 다음 라운드로 넘어가지 않아요 · </span><span style="color:#ffb86b">⏱ 구매한 아이템은 <b>다음 라운드 1번만</b> 적용되고 사라져요</span><br><div style="margin-top:6px;padding:8px 10px;border-radius:10px;background:rgba(255,107,138,.16);border:1px solid rgba(255,107,138,.5)"><span style="color:#ff6b8a;font-weight:800">⚠️ 쓴 돈의 30%가 다음 라운드 점수에서 바로 차감돼요!</span><br><span style="color:#ff9f9f;font-size:12px">모자르면 빚으로 넘어가요 · 신중하게 구매하세요</span></div><span style='color:#7fe3ff'>✨ 시너지는 한 라운드에 <b>하나만</b> 적용돼요</span>`,
    pool.map((it,i)=>{const q=qtyOf(S.items,it.id),done=q>=MAXQ,lack=pc(it)-S.wallet,dis=done||lack>0;
     return`<button class="opt" data-i="${i}" ${dis?'disabled style="opacity:.5;cursor:default"':''}><span class="ic">${it.i}</span><span style="flex:1"><b>${it.n}</b>${q?' <span class="chip" style="color:#7fe3ff">보유 ×'+q+'</span>':''} <span class="chip" style="color:#ffd166">💰 ${pc(it).toLocaleString()} 골드</span>${it.cost>=300?' <span class="chip">💎 프리미엄</span>':''}<small class="pro">▲ ${it.pro}</small>${it.con?`<small class="con">▼ ${it.con}</small>`:''}${(()=>{const sp=synPartners(it.id,S.items),ac=activeSyn(S.items)[0];return !done?sp.map(x=>ac?'<span class="syn" style="opacity:.55">✨ 시너지 가능: '+x.n+' — 하지만 이번 라운드엔 <b>'+ac.n+'</b>가 발동 중이라 적용되지 않아요</span>':'<span class="syn">✨ 시너지 가능: '+x.n+' ('+x.d+')</span>').join(' '):''})()}${done?'<small>최대 보유 (4개)</small>':lack>0?`<small class="con">${lack.toLocaleString()} 골드 부족${it.cost>=300?' · 2~3라운드 모아서 구매':''}</small>`:''}</span></button>`}).join('')
    +boxHtml()+'<div class="btns"><button class="btn pri" id="leave">다음 라운드로 ▶</button></div>');
