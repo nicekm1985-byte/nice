@@ -139,7 +139,7 @@ input{background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--
   <div id="foot" class="glass"><div class="btns" id="useBar"></div><div id="hint"></div></div>
 </div>
 
-<div id="title" class="overlay on"><div class="card glass" style="position:relative"><span class="ver" id="verTag">Ver. 1.06</span>
+<div id="title" class="overlay on"><div class="card glass" style="position:relative"><span class="ver" id="verTag">Ver. 1.07</span>
   <div class="logo">LADDER<br>FORTUNE</div>
   <div class="tagline"><i></i><span>본격 행운 게임</span><i></i></div>
   <p class="sub" style="text-align:center;margin-bottom:4px">몇 명이 함께 할까요?</p>
@@ -189,7 +189,7 @@ const ITEMS=[
  {id:'dice',i:'🎲',n:'도박꾼의 주사위',pro:'대박 칸 출현 2.5배',con:'꽝 칸 출현 +40%',m:m=>{m.jackW*=2.5;m.blankW*=1.4}},
  {id:'magnet',i:'🧲',n:'자석',pro:'내 코인 획득 +25%',con:'자르기 포인트(✂) -1',m:m=>{m.coin*=1.25;m.cuts-=1}},
  {id:'shades',i:'🕶️',n:'선글라스',pro:'내 코인 획득 +60%',con:'모든 칸이 숨겨짐',m:m=>{m.coin*=1.6;m.hideAll=true}},
- {id:'moon',i:'🌙',n:'달빛',pro:'모든 칸이 항상 공개',con:'내 코인 획득 -20%',m:m=>{m.showAll=true;m.coin*=.8}},
+ {id:'moon',i:'🌙',n:'달빛',pro:'[사용] 안개가 완전히 걷혀 모든 가로줄을 보고 조작 가능 · 보유한 개수만큼(1개당 1판) 사용 가능',con:'내 코인 획득 -20%',use:'fogAll',uses:1,m:m=>{m.coin*=.8}},
  {id:'scale',i:'⚖️',n:'저울',pro:'배수 칸 값 +20%',con:'내 코인 획득 -10%',m:m=>{m.multAdd+=.2;m.coin*=.9}},
  {id:'clock',i:'⏳',n:'모래시계',pro:'자르기(✂)·추가(<b style="color:#5ee6a8">＋</b>) 포인트 +1씩',con:'폭탄 피해 +50%',m:m=>{m.cuts+=1;m.adds+=1;m.bomb*=1.5}},
  {id:'lens',i:'🔭',n:'투시 렌즈',pro:'[사용] 안개 중간은 그대로 두고 맨 끝(도착 직전) 가로줄만 보이고 조작 가능 · 라운드당 3번',use:'fogEnd',uses:3,m:m=>{}},
@@ -484,7 +484,7 @@ function renderUseBar(){
    else useFog(b.k.slice(4))};
   bar.appendChild(e)})}
 function useFog(id){
- const p=meP(),it=itemOf(id),mode={lens:'end',sun:'all',lantern:'some'}[id];
+ const p=meP(),it=itemOf(id),mode={lens:'end',sun:'all',moon:'all',lantern:'some'}[id];
  if(!it||(p.uses[id]||0)<1)return toast('이 아이템은 이번 라운드에 더 쓸 수 없어요');
  if(S.fog===mode)return toast('이미 적용 중이에요');
  if(S.fog==='all')return toast('이미 안개가 모두 걷혀 있어요');
