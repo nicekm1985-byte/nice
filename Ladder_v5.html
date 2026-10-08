@@ -758,18 +758,15 @@ function bead(x,y,r,col,label,px,txtCol){ctx.save();
 function playerTopLabel(x,y,p){
  if(!p)return;
  const neg=(p.debt||0)>0, score=neg?-(p.debt||0):(p.score||0);
- const name=String(p.name||'PLAYER');
+ if(!neg)return;
+ const st='−'+Math.abs(score).toLocaleString()+' PT';
  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
- const nameY=y-31, scoreY=y-52;
- ctx.font='900 13px system-ui';const nw=Math.min(108,Math.max(54,ctx.measureText(name).width+18));
- ctx.fillStyle='rgba(5,8,24,.94)';ctx.strokeStyle=p.col;ctx.lineWidth=2;ctx.shadowColor=p.col;ctx.shadowBlur=10;rr(x-nw/2,nameY-10,nw,20,8);ctx.fill();ctx.stroke();
- ctx.shadowBlur=0;ctx.fillStyle='#ffffff';fitText(name,x,nameY,nw-8,12,'#ffffff');
- if(neg){
-   const st='−'+Math.abs(score).toLocaleString()+' PT';
-   ctx.font='900 12px system-ui';const sw=Math.max(62,Math.min(100,ctx.measureText(st).width+18));
-   ctx.fillStyle='rgba(255,45,92,.96)';ctx.shadowColor='#ff2d5c';ctx.shadowBlur=14;rr(x-sw/2,scoreY-9,sw,18,7);ctx.fill();
-   ctx.shadowBlur=0;ctx.fillStyle='#fff';fitText(st,x,scoreY,sw-8,11,'#fff');
- }
+ const scoreY=y-34;
+ ctx.font='900 12px system-ui';
+ const sw=Math.max(62,Math.min(100,ctx.measureText(st).width+18));
+ ctx.fillStyle='rgba(255,45,92,.96)';ctx.shadowColor='#ff2d5c';ctx.shadowBlur=14;
+ rr(x-sw/2,scoreY-9,sw,18,7);ctx.fill();
+ ctx.shadowBlur=0;ctx.fillStyle='#fff';fitText(st,x,scoreY,sw-8,11,'#fff');
  ctx.restore();
 }
 function fitText(t,x,y,maxW,px,col){ctx.save();ctx.font='800 '+px+'px system-ui';const w=ctx.measureText(t).width;if(w>maxW)ctx.font='800 '+Math.max(8,px*maxW/w)+'px system-ui';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=0;ctx.fillText(t,x,y);ctx.restore()}
