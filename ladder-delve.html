@@ -382,7 +382,7 @@ function cpuBuffs(items){const b={coin:1,mine:1,multAdd:0};(items||[]).forEach(i
 function cpuShopping(){
  const bought=[];
  alive().filter(p=>!p.human).forEach(p=>{
-  p.items=[]; // 이전 라운드 아이템은 효과 적용이 끝났으니 여기(상점 시작 시점)에서 비움
+  p.items=[];p.shield=0; // 이전 라운드 아이템/방패는 효과 적용이 끝났으니 여기(상점 시작 시점)에서 비움
   let budget=Math.round((p.score||0)*(p.rate||0));
   if(budget<=0){p.buffs=cpuBuffs(p.items);return}
   const pool=()=>CPU_SCORE_ITEMS.map(itemOf).filter(it=>it&&qtyOf(p.items,it.id)<MAXQ&&(!it.from||S.stage>=it.from));
@@ -963,7 +963,7 @@ async function tallyAll(){
  ui();
 }
 function shopFor(p){return new Promise(resolve=>{
- p.items=[]; // 이전 라운드 아이템은 효과 적용이 끝났으니 여기(상점 시작 시점)에서 비움
+ p.items=[];p.shield=0; // 이전 라운드 아이템/방패는 효과 적용이 끝났으니 여기(상점 시작 시점)에서 비움
  const MULTI_EXCLUDE=['shades','sun']; // 2명 이상 플레이 시 보드 전체 안개를 좌우하는 아이템은 불공평해서 제외
  const ok=x=>qtyOf(p.items,x.id)<MAXQ&&(!x.from||S.stage>=x.from)&&!(numP>1&&MULTI_EXCLUDE.includes(x.id));
  const shuf=a=>a.slice().sort(()=>R_()-.5);
