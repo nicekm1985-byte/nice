@@ -888,7 +888,7 @@ function updateField(dt){
     if(canTake&&(c.t>.35||c.pull)&&(d<(UP.magnet?95:45)||state==='clear'||c.pull)){c.pull=(c.pull||0)+dt;
       const sp=Math.min(d/dt,240+c.pull*900);c.vx=dx/d*sp;c.vy=dy/d*sp;c.x+=c.vx*dt;c.y+=c.vy*dt;
       if(Math.hypot(ship.x-c.x,ship.y-c.y)<12)take(i);continue}
-    c.vx*=1-2*dt;c.vy+=(SPEED*1.8-c.vy)*Math.min(1,dt*2);c.x+=c.vx*dt;c.y+=c.vy*dt;if(c.y>H+10)coins.splice(i,1)}   // 흡수 안 되면 서서히 아래로 떨어짐 (요청: 제자리에 머물지 않게)
+    c.vx*=1-2*dt;c.vy+=(SPEED*3.2-c.vy)*Math.min(1,dt*2.6);c.x+=c.vx*dt;c.y+=c.vy*dt;if(c.y>H+10)coins.splice(i,1)}   // 흡수 안 되면 아래로 떨어짐 (더 빠르게)
 }
 function drawEnemies(now){
   const put=(e,dx,dy,fl)=>{const T=ET[e.type],k=e.bw?1:T.sc;ctx.save();ctx.translate(Math.round(e.x)+dx,Math.round(e.y)+dy);ctx.scale(k,k);ctx.rotate(T.rot?T.rot(e):0);FL=fl;T.draw(e,now);FL=null;ctx.restore()};
