@@ -2060,20 +2060,28 @@ function frame(now){
 
   // ----- 오버레이 & HUD -----
   ctx.textAlign='center';
-  if(state==='warning'&&stT%.5<.3){ctx.fillStyle='rgba(200,0,0,.35)';ctx.fillRect(0,140,W,30);
-    ctx.font='bold 16px monospace';ctx.fillStyle='#ff4040';ctx.fillText('WARNING',CX,161)}
-  if(state==='clear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,118,W,84);
-    ctx.font='bold 20px monospace';ctx.fillStyle='#000';const ct=isFinal?'FINAL VICTORY':'SECTOR '+stage+' CLEAR';ctx.fillText(ct,CX+2,154);ctx.fillStyle='#ffd84a';ctx.fillText(ct,CX,152);
-    ctx.font='10px monospace';ctx.fillStyle='#fff';ctx.fillText('SCORE '+score,CX,174);
-    if(stT%1<.6)ctx.fillText(isFinal?'MISSION COMPLETE':'RETURNING TO HANGAR...',CX,190)}
-  if(state==='segclear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,124,W,70);ctx.font='bold 18px monospace';ctx.fillStyle='#9ad8ff';ctx.fillText(run.mode==='treasure'?'CHASE OVER':run.elite?'ELITE CLEAR':'AREA CLEAR',CX,152);
-    ctx.font='10px monospace';ctx.fillStyle='#ffd040';ctx.fillText(`+${stageGold} G${run.bonus?`  (보너스 +${run.bonus})`:''}`,CX,172);ctx.fillStyle='#fff';if(stT%1<.6)ctx.fillText('항로 지도로 복귀...',CX,186)}
-  if(state==='over'){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,112,W,100);ctx.font='bold 22px monospace';ctx.fillStyle='#ff5050';ctx.fillText('GAME OVER',CX,144);
-    ctx.font='10px monospace';ctx.fillStyle='#fff';ctx.fillText(`SECTOR ${stage} · SCORE ${score}`,CX,166);const nb=score>0&&score>=best;ctx.fillStyle=nb?'#ffd040':'#9ad0ff';ctx.fillText(nb?'★ NEW BEST ★':'BEST '+best,CX,182);
-    if(stT>1.5&&stT%1<.6){ctx.fillStyle='#fff';ctx.fillText(IS_MOBILE?'TAP TO CONTINUE':'CLICK TO CONTINUE',CX,202)}}
+  if(state==='warning'&&stT%.5<.3){ctx.fillStyle='rgba(200,0,0,.35)';ctx.fillRect(0,140,W,30)}
+  if(state==='clear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,118,W,84)}
+  if(state==='segclear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,124,W,70)}
+  if(state==='over'){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,112,W,100)}
   ctx.textAlign='left';
-  hiHUD(()=>{drawHeroLive(now);drawNeonHUD(now)});
+  hiHUD(()=>{drawHeroLive(now);drawNeonHUD(now);drawOverlayText(now)});
   requestAnimationFrame(frame);
+}
+
+function drawOverlayText(now){
+  if(state==='warning'&&stT%.5<.3)neon('WARNING',CX,161,`700 16px ${NEO}`,'#ff4040','rgba(255,40,40,.9)','center');
+  if(state==='clear'){const ct=isFinal?'FINAL VICTORY':'SECTOR '+stage+' CLEAR';
+    neon(ct,CX,152,`900 20px ${NEO}`,'#ffd84a','rgba(255,200,60,.9)','center');
+    neon('SCORE '+score,CX,174,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
+    if(stT%1<.6)neon(isFinal?'MISSION COMPLETE':'RETURNING TO HANGAR...',CX,190,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
+  if(state==='segclear'){neon(run.mode==='treasure'?'CHASE OVER':run.elite?'ELITE CLEAR':'AREA CLEAR',CX,152,`900 18px ${NEO}`,'#9ad8ff','rgba(80,170,255,.9)','center');
+    neon(`+${stageGold} G${run.bonus?`  (보너스 +${run.bonus})`:''}`,CX,172,`700 10px ${NEO}`,'#ffd040','rgba(255,200,60,.7)','center');
+    if(stT%1<.6)neon('항로 지도로 복귀...',CX,186,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
+  if(state==='over'){neon('GAME OVER',CX,144,`900 22px ${NEO}`,'#ff5050','rgba(255,60,60,.9)','center');
+    neon(`SECTOR ${stage} \u00b7 SCORE ${score}`,CX,166,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
+    const nb=score>0&&score>=best;neon(nb?'\u2605 NEW BEST \u2605':'BEST '+best,CX,182,`700 10px ${NEO}`,nb?'#ffd040':'#9ad0ff',nb?'rgba(255,200,60,.9)':'rgba(60,160,255,.7)','center');
+    if(stT>1.5&&stT%1<.6)neon(IS_MOBILE?'TAP TO CONTINUE':'CLICK TO CONTINUE',CX,202,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center')}
 }
 if(!window.GALLERY)requestAnimationFrame(frame);
 else window.GAME={ET,BOSSES,heroShip,drawEB,get ctx(){return ctx},set ctx(v){ctx=v},setFL:v=>{FL=v},mouseOff:()=>{mouse=null},set ship(v){Object.assign(ship,v)},get stage(){return stage},set stage(v){stage=v}};
