@@ -703,7 +703,7 @@ function bgmTick(){   // 매 프레임 호출: 0.12초 앞까지 미리 예약
 
 // ---------- 외계 비행체 14종 ----------
 const enemies=[],ebul=[],coins=[];
-const GROUND_FIRE_Y=H*.8;
+const GROUND_FIRE_Y=H*.8,NO_UP_Y=H*.8;   // NO_UP_Y 아래에서는 위로 향하는 적 탄·미사일·거미줄이 생기지 않음
 let EASY=false,BSPD=1,FRATE=1;   // 섹터 1 보정: 적 탄 속도 ×0.8, 발사 간격 ×1.25 (FRATE=0.8), 출현량 ×0.75   // 지상형 적은 화면 아래 1/5(y≥256)부터 사격 중지
 let gold=0,spawnT=2,FL=null;   // FL: 그림자/외곽선/피격 플래시용 단색 덮어쓰기
 const R=(x,y,w,h,c)=>{ctx.fillStyle=FL||c;ctx.fillRect(x,y,w,h)};
@@ -855,7 +855,9 @@ function updateField(dt){
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i],T=ET[e.type];e.t+=dt;e.flash=Math.max(0,e.flash-dt);T.upd(e,dt);
     if(!T.ground&&!ship.dead&&Math.hypot(e.x-ship.x,e.y-ship.y)<T.r+(UP.small?2.5:4)){hitShip();killEnemy(i,false);continue}
     if(e.t>1&&(e.y>H+30||e.y<-60||e.x<-40||e.x>W+40))enemies.splice(i,1)}
-  for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];b.t+=dt;b.x+=b.vx*dt*BSPD;b.y+=b.vy*dt*BSPD;
+  for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];
+    if(!b.chk){b.chk=1;if(b.vy<0&&(b.y>NO_UP_Y||b.y>ship.y)){ebul.splice(i,1);continue}}   // 아래쪽(화면 아래 20% 또는 기체보다 아래)에서 올라오는 탄 금지
+    b.t+=dt;b.x+=b.vx*dt*BSPD;b.y+=b.vy*dt*BSPD;
     if(b.k==='m'&&b.t>1.8){ring(b.x,b.y,8,65,b.t);addFx(b.x,b.y,6,.25);ebul.splice(i,1);continue}
     if(b.k==='s'&&b.t>.9){ring(b.x,b.y,6,70,b.t*3);addFx(b.x,b.y,5,.2);ebul.splice(i,1);continue}
     if(b.k==='w')b.x+=Math.cos(b.t*5+b.ph)*40*dt;
@@ -1143,7 +1145,7 @@ function drawIceProps(){const STEP=52,K0=Math.ceil((scroll-60)/STEP),K1=Math.flo
       drawPrism(x,y,pts,h,PP.c[0],PP.c[1],PP.halo,PP)}}}
 // 눈보라 3층: 먼 층(작고 느림) → 가까운 층(크고 빠름, 기체보다 앞에 그림)
 const SNOWL=[46,28,12].map((n,l)=>{const r=rng(300+l);return Array.from({length:n},()=>[r()*W,r()*H,r()*TAU])});
-function drawSnow(l,now){const t=now/1000,up=TH.partUp?-.55:1,sp=[46,72,128][l]*up,par=[.25,.5,1][l],sz=[1,1.6,2.6][l],wind=[5,9,15][l];
+function drawSnow(l,now){const t=now/1000,up=TH.partUp?.45:1,sp=[46,72,128][l]*up,par=[.25,.5,1][l],sz=[1,1.6,2.6][l],wind=[5,9,15][l];
   ctx.fillStyle=`rgba(${TH.partC||'255,255,255'},${[.55,.75,.9][l]})`;
   for(const [x0,y0,ph] of SNOWL[l]){const x=mod(x0+Math.sin(t*1.2+ph)*6+t*wind-camX*par,W+10)-5,y=mod(y0+t*sp,H+10)-5;
     if(sz<2)ctx.fillRect(x|0,y|0,sz>1?2:1,sz>1?2:1);else{ctx.beginPath();ctx.arc(x,y,sz*.5+.6,0,7);ctx.fill()}}}
@@ -1952,12 +1954,13 @@ function frame(now){
       if(boss.hp<=0){state='dying';stT=0;boss.dead=1;missiles.length=webs.length=0}}
     if(hit)bullets.splice(i,1)}
   for(let i=missiles.length-1;i>=0;i--){const m=missiles[i];m.t+=dt;
-    if(m.t>.35){const ta=Math.atan2(ship.y-m.y,ship.x-m.x),da=mod(ta-m.a+Math.PI,Math.PI*2)-Math.PI;m.a+=Math.max(-2.4*dt,Math.min(2.4*dt,da))}
+    if(m.y>ship.y+8||m.y>NO_UP_Y)m.lost=1;   // 기체 아래로 지나간 미사일은 직진해서 빠져나감
+    if(m.t>.35&&!m.lost){const ta=Math.atan2(ship.y-m.y,ship.x-m.x),da=mod(ta-m.a+Math.PI,Math.PI*2)-Math.PI;m.a+=Math.max(-2.4*dt,Math.min(2.4*dt,da))}
     m.v=Math.min(130,m.v+110*dt);m.x+=Math.cos(m.a)*m.v*dt;m.y+=Math.sin(m.a)*m.v*dt;
     if((m.sm+=dt)>.03){m.sm=0;smoke.push({x:m.x-Math.cos(m.a)*4,y:m.y-Math.sin(m.a)*4,t:0})}
     if(!ship.dead&&Math.hypot(m.x-ship.x,m.y-ship.y)<(UP.small?4.2:6)){missiles.splice(i,1);addFx(m.x,m.y,10,.4);hitShip();if(!missiles.length)break;continue}
-    if(m.t>5||m.y>H+20||m.x<-20||m.x>W+20)missiles.splice(i,1)}
-  for(let i=webs.length-1;i>=0;i--){const w=webs[i];w.t+=dt;w.x+=w.vx*dt;w.y+=w.vy*dt;w.r=Math.min(13,3+w.t*9);w.rot+=dt*1.5;
+    if(m.t>5||m.y>H+4||m.x<-20||m.x>W+20)missiles.splice(i,1)}
+  for(let i=webs.length-1;i>=0;i--){const w=webs[i];if(!w.chk){w.chk=1;if(w.vy<0&&(w.y>NO_UP_Y||w.y>ship.y)){webs.splice(i,1);continue}}w.t+=dt;w.x+=w.vx*dt;w.y+=w.vy*dt;w.r=Math.min(13,3+w.t*9);w.rot+=dt*1.5;
     if(!ship.dead&&Math.hypot(w.x-ship.x,w.y-ship.y)<w.r*.7+3){if(w.k==='frost'){frozen=1;frozeAt=[ship.x,ship.y];slow=1.6;slowK='frost';SFX.freeze()}else if(!UP.webcut){slow=2.2;slowK='web';SFX.web()}webs.splice(i,1);continue}
     if(w.y>H+20||w.x<-20||w.x>W+20)webs.splice(i,1)}
   for(let i=smoke.length-1;i>=0;i--){const s=smoke[i];s.t+=dt;s.y+=SPEED*mult*dt*.5;if(s.t>.6)smoke.splice(i,1)}
