@@ -8,7 +8,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none
 canvas{display:block;margin:0 auto;height:min(100dvh,100dvw*4/3);width:min(100dvw,100dvh*3/4);image-rendering:pixelated}
 #ui{position:fixed;top:8px;right:8px;display:flex;gap:6px;z-index:30}
 button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1px solid #666;border-radius:4px}
-#shop{position:fixed;z-index:5;top:0;left:50%;transform:translateX(-50%);height:min(100dvh,100dvw*4/3);width:min(100dvw,100dvh*3/4);display:none;container-type:size;flex-direction:column;gap:1.1cqh;padding:2cqh 3cqw;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;
+#shop{position:fixed;z-index:5;top:0;left:50%;transform:translateX(-50%);height:min(100dvh,100dvw*4/3);width:min(100dvw,100dvh*3/4);display:none;container-type:size;flex-direction:column;gap:1.1cqh;padding:2cqh 3cqw;box-sizing:border-box;overflow:hidden;
  font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#e8ecf0;cursor:default;user-select:none;-webkit-user-select:none;
  background:radial-gradient(ellipse at 50% 28%,rgba(255,200,80,.13),transparent 55%),repeating-linear-gradient(90deg,#1a1e24 0 2px,#22272e 2px 40px);box-shadow:inset 0 0 60px #000}
 #shop.on{display:flex}
@@ -22,6 +22,7 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #shop .own{display:flex;flex-wrap:wrap;gap:.5cqh 1.2cqw;font-size:1.6cqh;align-items:center;color:#9aa4b0}
 #shop .own i{font-style:normal;background:#2a3038;border:1px solid #444c56;border-radius:4px;padding:.2cqh 1cqw;color:#e8ecf0}
 #shop .cards{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(13cqh,auto);gap:1.1cqh 2cqw;flex:none}
+#shop .scrollWrap{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 #shop .card{background:linear-gradient(#2c323a,#20252b);border:1px solid #47505b;border-radius:8px;padding:1cqh 2cqw;display:flex;flex-direction:column;gap:.4cqh;position:relative;overflow:hidden}
 #shop .card.fx{border-color:#a07a20} #shop .card .tag{position:absolute;top:0;right:0;font-size:1.4cqh;padding:.2cqh 1.5cqw;background:#a07a20;border-bottom-left-radius:6px}
 #shop .card.sold{opacity:.4} #shop .cat{font-size:1.4cqh;color:#8a96a2;letter-spacing:.1em}
@@ -106,8 +107,10 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #map .evc button.ok{align-items:center;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;font:800 2.4cqh/1 -apple-system,sans-serif;letter-spacing:.12em;padding:1.6cqh}
 @media(pointer:coarse),(hover:none){#shop .hd b{font-size:7cqh}#shop .hd span{font-size:3.2cqh}#shop .st{font-size:3cqh}#shop .own{font-size:2.6cqh}#shop .cat{font-size:2.4cqh}#shop .nm{font-size:3.5cqh}#shop .lv{font-size:2.5cqh}#shop .ds{font-size:2.6cqh;line-height:1.4}#shop button{font-size:3.2cqh}#shop .ic{font-size:5.5cqh}
 #map .mhd b{font-size:4.4cqh}#map .mhd span{font-size:2.3cqh}#map .nd small{font-size:1.6cqh}#map .nd{font-size:3.3cqh}#map .nd.boss{font-size:4.2cqh}#map .info .t{font-size:3cqh}#map .info .d{font-size:2.2cqh;line-height:1.5}#map .info button{font-size:3cqh}#map .evt{font-size:4.4cqh}#map .evd{font-size:2.5cqh}#map .evc button b{font-size:2.7cqh}#map .evc button small{font-size:2cqh}#map .evc button.ok{font-size:3cqh}#map .cred p{font-size:2.1cqh}
-canvas,#shop,#map{width:100dvw!important;height:100dvh!important}
-#ctrlZone{display:none!important;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
+body{display:flex;flex-direction:column;align-items:center;height:100dvh}
+#shop,#map{width:100dvw!important;height:100dvh!important}
+canvas{width:100dvw;height:auto;aspect-ratio:3/4;max-height:80dvh;flex:0 0 auto}
+#ctrlZone{display:flex!important;flex:1;min-height:0;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
   background:linear-gradient(#1c2026,#101317);border-top:1px solid #4a5660;
   background-image:linear-gradient(#1c2026,#101317),repeating-linear-gradient(0deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px);
   background-blend-mode:normal,screen,screen}
@@ -926,7 +929,7 @@ function drawTwist(b){const a=Math.atan2(b.vy,b.vx),c=Math.cos(a),s=Math.sin(a),
 // ---------- 업그레이드 & 상점(격납고) ----------
 let shopFrom='node',stage=1,stageGold=0,noDmg=true,goldFrac=0,shotN=0,homT=0,bought={},shopState=null;
 const DEV={on:false,god:false,full:false,boss:false,lives:3};   // lives: 개발자 패널에서 정한 출격 목숨   // 개발자 모드 상태 (메뉴에서 암호 1029)
-const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,power:0};
+const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,power:0,cont:0};
 const UP={...UP0},homers=[],trail=[];
 const ITEMS=[
  {id:'spread',cat:'무기',icon:'🔱',name:'확산탄',max:3,price:[120,200,320],desc:l=>['좌우로 비스듬한 보조탄 2발 추가 (보조탄 공격력 0.5)','보조탄 4발로 증가','보조탄 6발로 증가'][l]},
@@ -940,6 +943,7 @@ const ITEMS=[
  {id:'magnet',cat:'경제',icon:'🧲',name:'자석 강화',max:1,price:[80],desc:'코인 흡수 범위 2배'},
  {id:'amp',cat:'경제',icon:'💰',name:'골드 증폭기',max:1,price:[200],desc:'획득 골드 25% 증가'},
  {id:'power',cat:'무기',icon:'💪',name:'공격력 강화',max:4,price:[140,220,300,380],desc:l=>`공격력 +${((l+1)*.5).toFixed(1)} (주포·후방포·옵션·유도 미사일에 적용)`},
+ {id:'cont',cat:'보급',icon:'🔁',name:'컨티뉴',max:2,price:[450,700],desc:'게임오버 시 1회 자동으로 이어서 플레이 (최대 2개 보유)'},
  {id:'life',cat:'보급',icon:'❤️',name:'추가 목숨',fixed:1,price:l=>200+l*100,desc:'목숨 +1 (살 때마다 가격 상승)'},
  {id:'bomb',cat:'보급',icon:'💣',name:'폭탄',fixed:1,price:()=>60,desc:'적 탄 제거 + 화면 전체 피해 (최대 3개)'},
 ];
@@ -972,9 +976,9 @@ function renderShop(){const S=shopState;
   <div class="st">${shopFrom==='boss'?`<span>획득 <span class="g">+${S.earned}</span></span><span>보스 보너스 <span class="g">+${S.bb}</span></span><span>무피격 <span class="g">+${S.nb}</span></span>`:'<span>정비·보급 중</span>'}<span class="tot">보유 <span class="g">${gold} G</span></span></div>
   <div class="pad"><canvas id="padc" width="96" height="48"></canvas></div>
   <div class="own"><i>❤️ ${lives}</i><i>💣 ${UP.bomb}</i>${owned||'<span>장착된 장비 없음</span>'}</div>
-  <div class="cards">${S.slots.map((s,i)=>cardHTML(s,i)).join('')}${cardHTML(S.fixed,'f',1)}</div>
   <div class="bt"><button class="rr" data-rr ${gold<S.rr?'disabled':''}>🔄 리롤 ${S.rr} G</button><button class="go" data-go>${shopFrom==='boss'?(stage>=SECTORS?'최종 결전 ▶':'다음 섹터 ▶'):'항로로 ▶'}</button></div>
-  <div class="hz"></div>`;
+  <div class="scrollWrap"><div class="cards">${S.slots.map((s,i)=>cardHTML(s,i)).join('')}${cardHTML(S.fixed,'f',1)}</div>
+  <div class="hz"></div></div>`;
   drawPad()}
 function drawPad(){const c=document.getElementById('padc');if(!c||!c.getContext)return;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   const gr=g.createRadialGradient(48,40,2,48,40,40);gr.addColorStop(0,'rgba(255,210,100,.35)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,96,48);
@@ -1264,44 +1268,50 @@ function heroShip(x,y,s,bank,now,flame=true){const g=ctx,r=Math.max(-1,Math.min(
     g.fillStyle=far?`rgba(0,8,30,${.42*Math.abs(r)})`:`rgba(190,220,255,${.12*Math.abs(r)})`;   // 먼 날개 어둡게 · 가까운 날개 밝게
     g.beginPath();[[0,-14],[10,-2],[30,14],[46,18],[46,26],[36,26],[22,24],[12,30],[0,32]].forEach(([a,b],i)=>i?g.lineTo(side*a,b):g.moveTo(side*a,b));g.closePath();g.fill();g.restore()}}
 function shipBody(g,now,flame,r){const t=now/1000,T2=Math.PI*2;g.save();
-  // 도돈파치풍 전투기: 백색/실버 바디 + 레드 스트라이프, 뒤로 젖혀진 좁고 날카로운 스웹트윙
+  // 이중날개(복엽) 전투기: 상/하 2쌍 날개 + 지지 스트럿, 백/실버 바디 + 레드 스트라이프
   const lin=(x0,y0,x1,y1,st)=>{const q=g.createLinearGradient(x0,y0,x1,y1);st.forEach(([o,c])=>q.addColorStop(o,c));return q};
   const P=(pts,fill,stroke,lw)=>{g.beginPath();pts.forEach(([a,b],i)=>i?g.lineTo(a,b):g.moveTo(a,b));g.closePath();if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.lineWidth=lw||.6;g.stroke()}};
   const M=pts=>pts.concat(pts.slice().reverse().map(([a,b])=>[-a,b]));   // 좌우 대칭 외곽
   const pulse=.5+.5*Math.sin(t*6);
-  // 엔진 화염: 가늘고 뒤로 길게
+  // 엔진 화염
   if(flame){g.save();g.globalCompositeOperation='lighter';
-    for(const sx of[-6.5,6.5]){const L=20+Math.sin(t*38+sx)*3+Math.sin(t*13)*1.8;
+    for(const sx of[-7,7]){const L=20+Math.sin(t*38+sx)*3+Math.sin(t*13)*1.8;
       g.fillStyle=lin(0,20,0,20+L,[[0,'rgba(255,255,255,1)'],[.2,'rgba(255,210,160,.95)'],[.55,'rgba(255,110,70,.55)'],[1,'rgba(255,70,40,0)']]);
-      g.beginPath();g.moveTo(sx-2.6,20);g.quadraticCurveTo(sx,20+L*1.2,sx+2.6,20);g.fill();
+      g.beginPath();g.moveTo(sx-2.8,20);g.quadraticCurveTo(sx,20+L*1.2,sx+2.8,20);g.fill();
       for(let d=0;d<3;d++){const yy=23+d*5+((t*60)%5);g.fillStyle=`rgba(255,235,210,${.55-d*.16})`;g.beginPath();g.ellipse(sx,yy,1.3-d*.25,.9,0,0,T2);g.fill()}
       const rg=g.createRadialGradient(sx,21,0,sx,21,8);rg.addColorStop(0,'rgba(255,170,110,.6)');rg.addColorStop(1,'rgba(255,70,40,0)');g.fillStyle=rg;g.fillRect(sx-8,13,16,16)}
     g.restore()}
-  // 주익: 뒤로 길게 젖혀진 좁고 뾰족한 스웹트윙 (도돈파치식 — 몸체에서 날카롭게 뻗어나감)
-  P(M([[0,-4],[5,4],[14,10],[30,16],[40,19],[42,22],[36,21],[22,18],[10,20],[4,14]]),lin(-42,0,42,0,[[0,'#d8dce4'],[.3,'#f4f6fa'],[.5,'#ffffff'],[.7,'#f4f6fa'],[1,'#d8dce4']]),'rgba(140,150,165,.55)',.5);
-  for(const s of[-1,1]){P([[s*14,10],[s*30,16],[s*40,19],[s*28,15]],'rgba(255,255,255,.4)');   // 날개 중앙 광택
-    P([[s*30,15],[s*42,19],[s*42,22],[s*32,20]],lin(0,15,0,22,[[0,'#ff3a30'],[1,'#9a1018']]));    // 날개끝 레드 스트라이프
-    P([[s*39,20],[s*43,19],[s*43,22.5],[s*39,23]],'#1a1c22')}                                      // 날개끝 다크 핀
-  // 레드 악센트 라인: 동체~날개 경계를 따라 선명한 스트라이프
-  g.save();g.strokeStyle='#ff2a28';g.lineWidth=1.3;g.lineCap='round';
-  g.beginPath();for(const s of[-1,1]){g.moveTo(s*4,2);g.lineTo(s*16,9);g.lineTo(s*30,15);g.lineTo(s*38,18)}g.stroke();g.restore();
-  // 에너지 라인 (가는 발광선, 레드 스트라이프 바로 안쪽)
-  g.save();g.globalCompositeOperation='lighter';g.strokeStyle=`rgba(255,120,100,${.5+.3*pulse})`;g.lineWidth=.7;g.lineCap='round';
-  g.beginPath();for(const s of[-1,1]){g.moveTo(s*5,0);g.lineTo(s*17,7);g.lineTo(s*29,13)}g.stroke();g.restore();
-  // 카나드: 짧고 뾰족
+  // 하단 메인 윙
+  P(M([[0,2],[10,8],[24,13],[38,17],[40,20],[32,19],[18,15],[6,16]]),lin(-40,0,40,0,[[0,'#c8ccd4'],[.3,'#eef0f4'],[.5,'#ffffff'],[.7,'#eef0f4'],[1,'#c8ccd4']]),'rgba(140,150,165,.5)',.4);
+  // 상단 보조 윙 (더 작고 뒤쪽, 겹침)
+  P(M([[0,-6],[6,-2],[16,3],[26,7],[28,10],[20,9],[10,6],[4,2]]),'rgba(190,195,205,.9)','rgba(100,106,118,.6)',.4);
+  for(const s of[-1,1]){
+    // 지지 스트럿 (복엽기 특징)
+    g.save();g.strokeStyle='#8a90a0';g.lineWidth=1;
+    g.beginPath();g.moveTo(s*14,5);g.lineTo(s*18,14);g.stroke();
+    g.beginPath();g.moveTo(s*22,8);g.lineTo(s*26,16);g.stroke();g.restore();
+    // 날개끝 레드 스트라이프
+    P([[s*28,16],[s*40,20],[s*40,22.5],[s*30,20.5]],lin(0,16,0,22.5,[[0,'#ff3a30'],[1,'#9a1018']]));
+    P([[s*37,20.5],[s*41,19.5],[s*41,23],[s*37,24]],'#1a1c22')   // 날개끝 다크 핀
+  }
+  // 레드 악센트 라인
+  g.save();g.strokeStyle='#ff2a28';g.lineWidth=1.1;g.lineCap='round';
+  g.beginPath();for(const s of[-1,1]){g.moveTo(s*6,3);g.lineTo(s*18,10);g.lineTo(s*30,15);g.lineTo(s*36,18)}g.stroke();g.restore();
+  // 카나드
   for(const s of[-1,1])P([[s*3,-15],[s*9,-11],[s*9,-9.5],[s*4,-10.5]],lin(0,-15,0,-9,[[0,'#eef0f4'],[1,'#b8bcc6']]),'rgba(140,150,165,.4)',.4);
-  // 엔진 나셀: 몸체에 밀착된 가는 두 줄기 (도돈파치식 좁은 엔진)
-  for(const sx of[-6.5,6.5]){P([[sx-3,2],[sx+3,2],[sx+3.4,19],[sx+2.4,22],[sx-2.4,22],[sx-3.4,19]],lin(sx-3.4,0,sx+3.4,0,[[0,'#2a2e36'],[.5,'#6a7280'],[1,'#2a2e36']]),'rgba(16,18,22,.8)',.5);
+  // 엔진 나셀
+  for(const sx of[-7,7]){P([[sx-3,2],[sx+3,2],[sx+3.4,19],[sx+2.4,22],[sx-2.4,22],[sx-3.4,19]],lin(sx-3.4,0,sx+3.4,0,[[0,'#2a2e36'],[.5,'#6a7280'],[1,'#2a2e36']]),'rgba(16,18,22,.8)',.5);
+    P([[sx-2.2,5],[sx+2.2,5],[sx+1.8,9],[sx-1.8,9]],'#0a0e1a');
     g.fillStyle='#1e2028';g.beginPath();g.ellipse(sx,20.3,2.6,1.4,0,0,T2);g.fill();
     g.fillStyle=flame?`rgba(255,220,190,${.75+.25*pulse})`:'#3a3e48';g.beginPath();g.ellipse(sx,20.6,1.7,.8,0,0,T2);g.fill()}
-  // 꼬리: 짧은 수직 안정판 (레드 포인트)
+  // 꼬리
   for(const s of[-1,1])P([[s*4.5,8],[s*6,8],[s*10,20],[s*8,20]],lin(0,8,0,20,[[0,'#ff3a30'],[1,'#6a0c10']]),'rgba(255,160,140,.4)',.4);
-  // 동체: 가늘고 긴 흰색/실버 바디, 중앙 레드 스트라이프 한 줄
+  // 동체
   P(M([[0,-32],[1.8,-28],[3.4,-18],[4,-2],[4.2,12],[3.6,19],[2,23]]),lin(-4.2,0,4.2,0,[[0,'#c8ccd4'],[.3,'#eef0f4'],[.5,'#ffffff'],[.7,'#eef0f4'],[1,'#c8ccd4']]),'rgba(140,150,165,.6)',.5);
-  P([[0,-32],[1.6,-28],[0,-25],[-1.6,-28]],'#ffffff');                                                                  // 기수 끝 하이라이트
-  g.fillStyle='#ff2a28';g.fillRect(-1,-20,2,38);                                                                        // 중앙 레드 스트라이프
-  P(M([[0,-6],[2.6,-1],[2.6,9],[1.4,13]]),'rgba(200,205,214,.5)');                                                      // 등쪽 패널
-  // 조종석 (좁고 긴 캐노피)
+  P([[0,-32],[1.6,-28],[0,-25],[-1.6,-28]],'#ffffff');
+  g.fillStyle='#ff2a28';g.fillRect(-1,-20,2,38);
+  P(M([[0,-6],[2.6,-1],[2.6,9],[1.4,13]]),'rgba(200,205,214,.5)');
+  // 조종석
   g.translate(r*2,0);
   P(M([[0,-20],[2.6,-15],[2.9,-7],[2,-2]]),'#04081a');
   P(M([[0,-19],[2.2,-14.5],[2.4,-8],[1.5,-3.5]]),lin(-2.5,-19,2.5,-3,[[0,'#d8fbff'],[.35,'#40c8f8'],[.7,'#1460c0'],[1,'#061a50']]));
@@ -1874,7 +1884,7 @@ function hitShip(){if(DEV.god||inv>0||ship.dead>0||!(state==='play'||state==='wa
   addFx(ship.x,ship.y,24,.6);
   for(let k=0;k<8;k++)addFx(ship.x+(Math.random()-.5)*28,ship.y+(Math.random()-.5)*28,8+Math.random()*10,.5,k*.07);
   for(const b of ebul)addFx(b.x,b.y,3,.2);ebul.length=missiles.length=webs.length=0;
-  if(lives<=0){state='over';stT=0;bgmStop();if(score>best){best=score;try{localStorage.setItem('air_best',best)}catch(e){}}}}
+  if(lives<=0){if(UP.cont>0){UP.cont--;lives=1;SFX.respawn();return}state='over';stT=0;bgmStop();if(score>best){best=score;try{localStorage.setItem('air_best',best)}catch(e){}}}}
 
 addEventListener('keydown',e=>{keys[e.key]=1;
   if((e.key==='Enter'||e.code==='Space')&&!menuOpen){if(state==='title'){startRun();e.preventDefault();return}if(state==='howto'){confirmHowTo();e.preventDefault();return}if(state==='over'&&stT>1.5){toTitle();e.preventDefault();return}}
