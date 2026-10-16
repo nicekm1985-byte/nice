@@ -879,7 +879,7 @@ function updateField(dt){
     if(b.k==='s'&&b.t>.9){ring(b.x,b.y,6,70,b.t*3);addFx(b.x,b.y,5,.2);ebul.splice(i,1);continue}
     if(b.k==='w')b.x+=Math.cos(b.t*5+b.ph)*40*dt;
     if(b.k==='c'){const sp=Math.hypot(b.vx,b.vy)||1,ns=Math.min(125,sp+75*dt);b.vx*=ns/sp;b.vy*=ns/sp}   // 얼음 결정: 점점 가속
-    if(!ship.dead&&inv<=0&&Math.hypot(b.x-ship.x,b.y-ship.y)<(b.k==='m'?9:7)*shipHitScale()){ebul.splice(i,1);hitShip();if(!ebul.length)break;continue}   // 피격 시 hitShip이 탄 목록을 비움 (무적 중엔 통과)
+    if(!ship.dead&&inv<=0&&Math.hypot(b.x-ship.x,b.y-ship.y)<(b.k==='m'?7.7:6)*shipHitScale()){ebul.splice(i,1);hitShip();if(!ebul.length)break;continue}   // 피격 시 hitShip이 탄 목록을 비움 (무적 중엔 통과) · 탄 판정도 축소(9/7→7.7/6)
     if(b.y>H+10||b.y<-20||b.x<-10||b.x>W+10)ebul.splice(i,1)}
   // 코인 흡수: 매 프레임 기체 쪽으로 직진(속도 점점 증가, 기체를 지나치지 않음) → 기체 주위를 맴돌다 뭉치는 현상 방지
   const canTake=!ship.dead&&state!=='over',take=i=>{gainGold(COIN_V);SFX.coin();coins.splice(i,1)};
@@ -888,7 +888,7 @@ function updateField(dt){
     if(canTake&&(c.t>.35||c.pull)&&(d<(UP.magnet?95:45)||state==='clear'||c.pull)){c.pull=(c.pull||0)+dt;
       const sp=Math.min(d/dt,240+c.pull*900);c.vx=dx/d*sp;c.vy=dy/d*sp;c.x+=c.vx*dt;c.y+=c.vy*dt;
       if(Math.hypot(ship.x-c.x,ship.y-c.y)<12)take(i);continue}
-    c.vx*=1-2*dt;c.vy+=(SPEED*.5-c.vy)*Math.min(1,dt*2);c.x+=c.vx*dt;c.y+=c.vy*dt;if(c.y>H+10)coins.splice(i,1)}
+    c.vx*=1-2*dt;c.vy+=(SPEED*1.8-c.vy)*Math.min(1,dt*2);c.x+=c.vx*dt;c.y+=c.vy*dt;if(c.y>H+10)coins.splice(i,1)}   // 흡수 안 되면 서서히 아래로 떨어짐 (요청: 제자리에 머물지 않게)
 }
 function drawEnemies(now){
   const put=(e,dx,dy,fl)=>{const T=ET[e.type],k=e.bw?1:T.sc;ctx.save();ctx.translate(Math.round(e.x)+dx,Math.round(e.y)+dy);ctx.scale(k,k);ctx.rotate(T.rot?T.rot(e):0);FL=fl;T.draw(e,now);FL=null;ctx.restore()};
@@ -906,7 +906,7 @@ function drawEbulCoins(now){
   for(const c of coins){const w=Math.abs(Math.cos(c.t*6+c.x))*2.5+.5;
     ctx.fillStyle='#a07010';ctx.beginPath();ctx.ellipse(c.x,c.y,w+.6,3.6,0,0,7);ctx.fill();
     ctx.fillStyle='#ffd040';ctx.beginPath();ctx.ellipse(c.x,c.y,w,3,0,0,7);ctx.fill()}
-  for(const b of ebul){ctx.save();ctx.translate(b.x,b.y);ctx.scale(1.45,1.45);ctx.translate(-b.x,-b.y);drawEB(b,now);ctx.restore()}
+  for(const b of ebul){ctx.save();ctx.translate(b.x,b.y);ctx.scale(1.1,1.1);ctx.translate(-b.x,-b.y);drawEB(b,now);ctx.restore()}   // 탄 밀도 체감 완화: 그림 축소(1.45→1.1)
 }
 function drawEB(b,now){
   if(b.k==='m'){const bl=b.t>1.2?(now/50|0)%2:(now/200|0)%2;O(b.x,b.y,4.2,EB0);O(b.x,b.y,3.6,bl?EB1:'#e03048');O(b.x,b.y,2.3,EB2);return}
@@ -926,7 +926,7 @@ function drawTwist(b){const a=Math.atan2(b.vy,b.vx),c=Math.cos(a),s=Math.sin(a),
 // ---------- 업그레이드 & 상점(격납고) ----------
 let shopFrom='node',stage=1,stageGold=0,noDmg=true,goldFrac=0,shotN=0,homT=0,bought={},shopState=null;
 const DEV={on:false,god:false,full:false,boss:false,lives:3};   // lives: 개발자 패널에서 정한 출격 목숨   // 개발자 모드 상태 (메뉴에서 암호 1029)
-const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,webcut:0};
+const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,power:0};
 const UP={...UP0},homers=[],trail=[];
 const ITEMS=[
  {id:'spread',cat:'무기',icon:'🔱',name:'확산탄',max:3,price:[120,200,320],desc:l=>['좌우로 비스듬한 보조탄 2발 추가 (보조탄 공격력 0.5)','보조탄 4발로 증가','보조탄 6발로 증가'][l]},
@@ -939,7 +939,7 @@ const ITEMS=[
  {id:'small',cat:'방어',icon:'🎯',name:'히트박스 축소',max:5,price:[80,140,200,260,320],desc:l=>`피격 판정 ${l+1}% 감소 (기본 6.0 → ${(6*(1-(l+1)*.01)).toFixed(2)})`},
  {id:'magnet',cat:'경제',icon:'🧲',name:'자석 강화',max:1,price:[80],desc:'코인 흡수 범위 2배'},
  {id:'amp',cat:'경제',icon:'💰',name:'골드 증폭기',max:1,price:[200],desc:'획득 골드 25% 증가'},
- {id:'webcut',cat:'특수',icon:'✂️',name:'웹 커터',max:1,price:[70],desc:'거미 보스의 거미줄(화력 약화) 무효'},
+ {id:'power',cat:'무기',icon:'💪',name:'공격력 강화',max:4,price:[140,220,300,380],desc:l=>`공격력 +${((l+1)*.5).toFixed(1)} (주포·후방포·옵션·유도 미사일에 적용)`},
  {id:'life',cat:'보급',icon:'❤️',name:'추가 목숨',fixed:1,price:l=>200+l*100,desc:'목숨 +1 (살 때마다 가격 상승)'},
  {id:'bomb',cat:'보급',icon:'💣',name:'폭탄',fixed:1,price:()=>60,desc:'적 탄 제거 + 화면 전체 피해 (최대 3개)'},
 ];
@@ -992,7 +992,7 @@ shopEl.addEventListener('click',e=>{const t=e.target.closest('button');if(!t||t.
 // ---------- 무기 ----------
 const optPos=k=>trail[Math.min(trail.length-1,10*(k+1))]||[ship.x,ship.y];   // 옵션 드론: 기체가 지나간 경로를 따라옴
 const SIDE_DMG=.5;   // 확산탄 보조탄 공격력 (주포·후방포·옵션 드론은 1)
-function pb(x,y,a=-Math.PI/2,dmg=1){bullets.push({x,y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,pierce:UP.pierce,hits:null,dmg})}
+function pb(x,y,a=-Math.PI/2,dmg=1){bullets.push({x,y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,pierce:UP.pierce,hits:null,dmg:dmg+UP.power*.5})}
 function firePlayer(weak){
   pb(ship.x,ship.y-10);if(weak){shotN++;SFX.shot();return}
   for(const a of[[],[.18],[.14,.28],[.12,.24,.36]][UP.spread]){pb(ship.x-3,ship.y-6,-Math.PI/2-a,SIDE_DMG);pb(ship.x+3,ship.y-6,-Math.PI/2+a,SIDE_DMG)}
@@ -1008,15 +1008,15 @@ function updateWeapons(dt){
     if(boss&&state==='boss'&&boss.t>3&&Math.hypot(boss.x-m.x,boss.y-m.y)<bd){tx=boss.x;ty=boss.y-10;tg=1}else if(tg){tx=tg.x;ty=tg.y}
     if(tg){const da=mod(Math.atan2(ty-m.y,tx-m.x)-m.a+Math.PI,Math.PI*2)-Math.PI;m.a+=Math.max(-6*dt,Math.min(6*dt,da))}
     m.v=Math.min(300,m.v+400*dt);m.x+=Math.cos(m.a)*m.v*dt;m.y+=Math.sin(m.a)*m.v*dt;let hit=false;
-    for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(e.x-m.x,e.y-m.y)<ET[e.type].r+3){e.hp-=3;e.flash=.05;score+=10;if(e.hp<=0)killEnemy(j);hit=true;break}}
-    if(!hit&&boss&&state==='boss'&&boss.t>3&&BOSSES[boss.kind].hit(boss,m.x,m.y)){damageBoss(3);hit=true}
+    for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(e.x-m.x,e.y-m.y)<ET[e.type].r+3){e.hp-=3+UP.power*.5;e.flash=.05;score+=10;if(e.hp<=0)killEnemy(j);hit=true;break}}
+    if(!hit&&boss&&state==='boss'&&boss.t>3&&BOSSES[boss.kind].hit(boss,m.x,m.y)){damageBoss(3+UP.power*.5);hit=true}
     if(hit){addFx(m.x,m.y,6,.25);homers.splice(i,1);continue}
     if(m.t>2.2||m.y<-20||m.y>H+20||m.x<-20||m.x>W+20)homers.splice(i,1)}}
 function useBomb(){if(UP.bomb<=0||ship.dead||!(state==='play'||state==='warning'||state==='boss'))return;
   UP.bomb--;flashT=.45;inv=Math.max(inv,1);SFX.bomb();addFx(ship.x,ship.y,60,.6);
   for(const b of ebul)addFx(b.x,b.y,3,.25);ebul.length=missiles.length=webs.length=0;
-  for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(e.y<-10||e.y>H+10)continue;e.hp-=12;e.flash=.1;if(e.hp<=0)killEnemy(i)}
-  if(boss&&state==='boss'&&boss.t>3)damageBoss(20)}
+  for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(e.y<-10||e.y>H+10)continue;e.hp-=100;e.flash=.1;if(e.hp<=0)killEnemy(i)}
+  if(boss&&state==='boss'&&boss.t>3)damageBoss(100)}
 function drawWeapons(now){
   for(const m of homers){ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='rgba(120,200,255,.5)';ctx.fillRect(-8,-1,5,2);ctx.fillStyle='#e8f4ff';ctx.fillRect(-3,-1.5,6,3);ctx.fillStyle='#40a0ff';ctx.fillRect(3,-1,2,2);ctx.restore()}
   if(ship.dead||state==='over'||state==='shop')return;
@@ -1079,7 +1079,7 @@ function renderMap(){
   const [mx,my]=posOf(run.pos.r,run.pos.i),s=run.sel&&nodeAt(run.sel[0],run.sel[1]);
   mapEl.innerHTML=`<div class="mhd"><b>SECTOR ${stage}/${SECTORS}</b><span>${TH.planet} · 항로 선택</span><span class="res">💰 ${gold} G · ❤️ ${lives} · 💣 ${UP.bomb}</span></div>
   <div class="sky"><div class="board"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${lines.join('')}</svg>${nodes}
-  ${SHIP_URL?`<img class="me" src="${SHIP_URL}" style="left:${mx}%;top:${my}%">`:''}</div></div>
+  </div></div>
   <div class="info">${s?`<div class="t">${NT[s.type].ic} ${NT[s.type].nm}</div><div class="d">${nodeInfo(s)}</div><button data-launch>${s.type==='hangar'?'입장 ▶':'출격 ▶'}</button>`
     :`<div class="t">항로 선택</div><div class="d">${run.toast||'빛나는 노드를 눌러 다음 목적지를 고르세요.'}</div><button disabled>목적지를 선택하세요</button>`}</div>`}
 function openMap(){if(!SHIP_URL)mkShipURL();state='map';stT=0;boss=null;run.sel=null;shopEl.classList.remove('on');
@@ -1264,52 +1264,53 @@ function heroShip(x,y,s,bank,now,flame=true){const g=ctx,r=Math.max(-1,Math.min(
     g.fillStyle=far?`rgba(0,8,30,${.42*Math.abs(r)})`:`rgba(190,220,255,${.12*Math.abs(r)})`;   // 먼 날개 어둡게 · 가까운 날개 밝게
     g.beginPath();[[0,-14],[10,-2],[30,14],[46,18],[46,26],[36,26],[22,24],[12,30],[0,32]].forEach(([a,b],i)=>i?g.lineTo(side*a,b):g.moveTo(side*a,b));g.closePath();g.fill();g.restore()}}
 function shipBody(g,now,flame,r){const t=now/1000,T2=Math.PI*2;g.save();
-  // 미래형 요격기: 날카로운 델타익 + 장갑판 레이어 + 에너지 라인 + 쌍발 플라즈마 엔진
+  // 도돈파치풍 전투기: 백색/실버 바디 + 레드 스트라이프, 뒤로 젖혀진 좁고 날카로운 스웹트윙
   const lin=(x0,y0,x1,y1,st)=>{const q=g.createLinearGradient(x0,y0,x1,y1);st.forEach(([o,c])=>q.addColorStop(o,c));return q};
   const P=(pts,fill,stroke,lw)=>{g.beginPath();pts.forEach(([a,b],i)=>i?g.lineTo(a,b):g.moveTo(a,b));g.closePath();if(fill){g.fillStyle=fill;g.fill()}if(stroke){g.strokeStyle=stroke;g.lineWidth=lw||.6;g.stroke()}};
   const M=pts=>pts.concat(pts.slice().reverse().map(([a,b])=>[-a,b]));   // 좌우 대칭 외곽
   const pulse=.5+.5*Math.sin(t*6);
-  // 엔진 화염: 길쭉한 플라즈마 + 충격 다이아몬드
+  // 엔진 화염: 가늘고 뒤로 길게
   if(flame){g.save();g.globalCompositeOperation='lighter';
-    for(const sx of[-8.5,8.5]){const L=26+Math.sin(t*38+sx)*4+Math.sin(t*13)*2;
-      g.fillStyle=lin(0,30,0,30+L,[[0,'rgba(255,255,255,1)'],[.18,'rgba(140,230,255,.95)'],[.55,'rgba(60,120,255,.55)'],[1,'rgba(40,60,255,0)']]);
-      g.beginPath();g.moveTo(sx-3.4,30);g.quadraticCurveTo(sx,30+L*1.2,sx+3.4,30);g.fill();
-      for(let d=0;d<3;d++){const yy=34+d*6+((t*60)%6);g.fillStyle=`rgba(220,250,255,${.55-d*.16})`;g.beginPath();g.ellipse(sx,yy,1.6-d*.35,1.1,0,0,T2);g.fill()}
-      const rg=g.createRadialGradient(sx,32,0,sx,32,12);rg.addColorStop(0,'rgba(120,220,255,.65)');rg.addColorStop(1,'rgba(40,120,255,0)');g.fillStyle=rg;g.fillRect(sx-12,20,24,24)}
+    for(const sx of[-6.5,6.5]){const L=20+Math.sin(t*38+sx)*3+Math.sin(t*13)*1.8;
+      g.fillStyle=lin(0,20,0,20+L,[[0,'rgba(255,255,255,1)'],[.2,'rgba(255,210,160,.95)'],[.55,'rgba(255,110,70,.55)'],[1,'rgba(255,70,40,0)']]);
+      g.beginPath();g.moveTo(sx-2.6,20);g.quadraticCurveTo(sx,20+L*1.2,sx+2.6,20);g.fill();
+      for(let d=0;d<3;d++){const yy=23+d*5+((t*60)%5);g.fillStyle=`rgba(255,235,210,${.55-d*.16})`;g.beginPath();g.ellipse(sx,yy,1.3-d*.25,.9,0,0,T2);g.fill()}
+      const rg=g.createRadialGradient(sx,21,0,sx,21,8);rg.addColorStop(0,'rgba(255,170,110,.6)');rg.addColorStop(1,'rgba(255,70,40,0)');g.fillStyle=rg;g.fillRect(sx-8,13,16,16)}
     g.restore()}
-  // 주익 (델타, 끝이 앞으로 꺾인 날개끝)
-  P(M([[0,-14],[10,-2],[30,14],[44,20],[44,25],[36,26],[22,24],[12,30]]),lin(-44,0,44,0,[[0,'#0c1426'],[.3,'#2a3c64'],[.5,'#46608e'],[.7,'#2a3c64'],[1,'#0c1426']]),'rgba(160,200,255,.45)',.5);
-  P([[10,-2],[30,14],[44,20],[30,16],[12,6]],'rgba(255,255,255,.14)');P([[-10,-2],[-30,14],[-44,20],[-30,16],[-12,6]],'rgba(255,255,255,.14)');   // 앞전 하이라이트
-  for(const s of[-1,1]){P([[s*20,10],[s*38,20],[s*36,23],[s*20,18]],'#16203a');                                   // 패널 홈
-    P([[s*40,19],[s*46,18],[s*46,26],[s*42,27]],'#e8f0ff');P([[s*43,19.5],[s*46,18.5],[s*46,25.5],[s*44,26]],'#ff7a2a')}   // 날개끝 핀 (주황 포인트)
-  // 에너지 라인: 날개를 따라 흐르는 청록 발광선
-  g.save();g.globalCompositeOperation='lighter';g.strokeStyle=`rgba(80,240,255,${.55+.35*pulse})`;g.lineWidth=.9;g.lineCap='round';
-  g.beginPath();for(const s of[-1,1]){g.moveTo(s*9,2);g.lineTo(s*24,13);g.lineTo(s*40,21)}g.stroke();
-  g.strokeStyle=`rgba(80,240,255,${.25+.2*pulse})`;g.lineWidth=2.6;g.stroke();g.restore();
-  // 카나드 (앞날개)
-  for(const s of[-1,1])P([[s*5,-24],[s*15,-18],[s*15,-15.5],[s*6,-17]],lin(0,-24,0,-15,[[0,'#5a74a8'],[1,'#1a2440']]),'rgba(160,200,255,.4)',.4);
-  // 엔진 나셀
-  for(const sx of[-8.5,8.5]){P([[sx-4,4],[sx+4,4],[sx+4.6,28],[sx+3.4,31],[sx-3.4,31],[sx-4.6,28]],lin(sx-4.6,0,sx+4.6,0,[[0,'#141c30'],[.5,'#5a6c8e'],[1,'#141c30']]),'rgba(10,16,30,.8)',.5);
-    P([[sx-3,8],[sx+3,8],[sx+2.4,12],[sx-2.4,12]],'#0a0e1a');                                                          // 흡기구
-    g.fillStyle='#1e2638';g.beginPath();g.ellipse(sx,30.5,3.6,1.8,0,0,T2);g.fill();
-    g.fillStyle=flame?`rgba(190,245,255,${.75+.25*pulse})`:'#3a4458';g.beginPath();g.ellipse(sx,30.8,2.4,1,0,0,T2);g.fill()}
-  // 꼬리 수직 안정판 (바깥으로 기운 V)
-  for(const s of[-1,1])P([[s*12,14],[s*14,14],[s*19,30],[s*16.5,30]],lin(0,14,0,30,[[0,'#6a84bc'],[1,'#1a2442']]),'rgba(150,190,255,.4)',.4);
-  // 동체: 길고 날카로운 기수
-  P(M([[0,-50],[2.4,-42],[4.6,-28],[6,-12],[6.4,6],[5.4,24],[3,32]]),lin(-6.4,0,6.4,0,[[0,'#121a30'],[.28,'#7c94c8'],[.5,'#f0f6ff'],[.72,'#7c94c8'],[1,'#121a30']]),'rgba(10,16,34,.75)',.55);
-  P([[0,-50],[2.2,-42],[0,-38],[-2.2,-42]],'#ffffff');                                                                  // 기수 끝 하이라이트
-  P(M([[0,-10],[3.6,-4],[3.6,14],[2,20]]),'rgba(20,30,56,.55)');                                                        // 등쪽 장갑판
-  for(const y of[0,8])P([[-3,y],[3,y],[3,y+.6],[-3,y+.6]],'rgba(255,255,255,.25)');
-  // 조종석 (롤 방향으로 살짝 이동)
+  // 주익: 뒤로 길게 젖혀진 좁고 뾰족한 스웹트윙 (도돈파치식 — 몸체에서 날카롭게 뻗어나감)
+  P(M([[0,-4],[5,4],[14,10],[30,16],[40,19],[42,22],[36,21],[22,18],[10,20],[4,14]]),lin(-42,0,42,0,[[0,'#d8dce4'],[.3,'#f4f6fa'],[.5,'#ffffff'],[.7,'#f4f6fa'],[1,'#d8dce4']]),'rgba(140,150,165,.55)',.5);
+  for(const s of[-1,1]){P([[s*14,10],[s*30,16],[s*40,19],[s*28,15]],'rgba(255,255,255,.4)');   // 날개 중앙 광택
+    P([[s*30,15],[s*42,19],[s*42,22],[s*32,20]],lin(0,15,0,22,[[0,'#ff3a30'],[1,'#9a1018']]));    // 날개끝 레드 스트라이프
+    P([[s*39,20],[s*43,19],[s*43,22.5],[s*39,23]],'#1a1c22')}                                      // 날개끝 다크 핀
+  // 레드 악센트 라인: 동체~날개 경계를 따라 선명한 스트라이프
+  g.save();g.strokeStyle='#ff2a28';g.lineWidth=1.3;g.lineCap='round';
+  g.beginPath();for(const s of[-1,1]){g.moveTo(s*4,2);g.lineTo(s*16,9);g.lineTo(s*30,15);g.lineTo(s*38,18)}g.stroke();g.restore();
+  // 에너지 라인 (가는 발광선, 레드 스트라이프 바로 안쪽)
+  g.save();g.globalCompositeOperation='lighter';g.strokeStyle=`rgba(255,120,100,${.5+.3*pulse})`;g.lineWidth=.7;g.lineCap='round';
+  g.beginPath();for(const s of[-1,1]){g.moveTo(s*5,0);g.lineTo(s*17,7);g.lineTo(s*29,13)}g.stroke();g.restore();
+  // 카나드: 짧고 뾰족
+  for(const s of[-1,1])P([[s*3,-15],[s*9,-11],[s*9,-9.5],[s*4,-10.5]],lin(0,-15,0,-9,[[0,'#eef0f4'],[1,'#b8bcc6']]),'rgba(140,150,165,.4)',.4);
+  // 엔진 나셀: 몸체에 밀착된 가는 두 줄기 (도돈파치식 좁은 엔진)
+  for(const sx of[-6.5,6.5]){P([[sx-3,2],[sx+3,2],[sx+3.4,19],[sx+2.4,22],[sx-2.4,22],[sx-3.4,19]],lin(sx-3.4,0,sx+3.4,0,[[0,'#2a2e36'],[.5,'#6a7280'],[1,'#2a2e36']]),'rgba(16,18,22,.8)',.5);
+    g.fillStyle='#1e2028';g.beginPath();g.ellipse(sx,20.3,2.6,1.4,0,0,T2);g.fill();
+    g.fillStyle=flame?`rgba(255,220,190,${.75+.25*pulse})`:'#3a3e48';g.beginPath();g.ellipse(sx,20.6,1.7,.8,0,0,T2);g.fill()}
+  // 꼬리: 짧은 수직 안정판 (레드 포인트)
+  for(const s of[-1,1])P([[s*4.5,8],[s*6,8],[s*10,20],[s*8,20]],lin(0,8,0,20,[[0,'#ff3a30'],[1,'#6a0c10']]),'rgba(255,160,140,.4)',.4);
+  // 동체: 가늘고 긴 흰색/실버 바디, 중앙 레드 스트라이프 한 줄
+  P(M([[0,-32],[1.8,-28],[3.4,-18],[4,-2],[4.2,12],[3.6,19],[2,23]]),lin(-4.2,0,4.2,0,[[0,'#c8ccd4'],[.3,'#eef0f4'],[.5,'#ffffff'],[.7,'#eef0f4'],[1,'#c8ccd4']]),'rgba(140,150,165,.6)',.5);
+  P([[0,-32],[1.6,-28],[0,-25],[-1.6,-28]],'#ffffff');                                                                  // 기수 끝 하이라이트
+  g.fillStyle='#ff2a28';g.fillRect(-1,-20,2,38);                                                                        // 중앙 레드 스트라이프
+  P(M([[0,-6],[2.6,-1],[2.6,9],[1.4,13]]),'rgba(200,205,214,.5)');                                                      // 등쪽 패널
+  // 조종석 (좁고 긴 캐노피)
   g.translate(r*2,0);
-  P(M([[0,-36],[3.2,-30],[3.6,-20],[2.4,-14]]),'#04081a');
-  P(M([[0,-35],[2.6,-29.5],[2.9,-21],[1.8,-15.5]]),lin(-3,-35,3,-15,[[0,'#d8fbff'],[.35,'#40c8f8'],[.7,'#1460c0'],[1,'#061a50']]));
-  P([[-.6,-33],[.4,-33],[-.4,-24],[-1.4,-25]],'rgba(255,255,255,.85)');
+  P(M([[0,-20],[2.6,-15],[2.9,-7],[2,-2]]),'#04081a');
+  P(M([[0,-19],[2.2,-14.5],[2.4,-8],[1.5,-3.5]]),lin(-2.5,-19,2.5,-3,[[0,'#d8fbff'],[.35,'#40c8f8'],[.7,'#1460c0'],[1,'#061a50']]));
+  P([[-.5,-17],[.3,-17],[-.3,-9],[-1.1,-10]],'rgba(255,255,255,.85)');
   g.translate(-r*2,0);
   // 기수 센서 + 항법등
   g.save();g.globalCompositeOperation='lighter';
-  {const q=g.createRadialGradient(0,-44,0,0,-44,3.5);q.addColorStop(0,`rgba(255,160,60,${.8*pulse+.2})`);q.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=q;g.fillRect(-4,-48,8,8)}
-  if((now/400|0)%2)for(const [sx,c] of[[-45,'255,64,80'],[45,'64,255,128']]){const q=g.createRadialGradient(sx,22,0,sx,22,5);q.addColorStop(0,`rgba(${c},1)`);q.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=q;g.fillRect(sx-5,17,10,10)}
+  {const q=g.createRadialGradient(0,-27,0,0,-27,2.8);q.addColorStop(0,`rgba(255,160,60,${.8*pulse+.2})`);q.addColorStop(1,'rgba(255,120,40,0)');g.fillStyle=q;g.fillRect(-3.5,-30,7,7)}
+  if((now/400|0)%2)for(const [sx,c] of[[-38,'255,64,80'],[38,'64,255,128']]){const q=g.createRadialGradient(sx,16,0,sx,16,4);q.addColorStop(0,`rgba(${c},1)`);q.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=q;g.fillRect(sx-4,12,8,8)}
   g.restore();
   g.restore()}
 
@@ -1597,7 +1598,7 @@ function updArk(b,dt){b.t+=dt;b.flash=Math.max(0,b.flash-dt);const p2=b.hp<b.max
   if((b.launchT-=dt)<=0){b.launchT=p2?3.2:4.2;for(const s of[-1,1])spawnEnemy(Math.random()<.5?'dart':'drone',b.x+s*40,b.y+18)}           // 함재기 사출
   if(b.bc<=0&&b.bf<=0&&(b.beamT-=dt)<=0){b.beamT=p2?4.5:6;b.bc=1.2;b.bx=b.x;tone(440,1.1,{type:'sawtooth',vol:.05,f2:1320,lp:2000})}       // 주포 충전
   if(b.bc>0){b.bc-=dt;b.bx+=(ship.x-b.bx)*Math.min(1,dt*1.5);if(b.bc<=0){b.bf=1.6;SFX.breath()}}
-  else if(b.bf>0){b.bf-=dt;b.bx+=(ship.x-b.bx)*Math.min(1,dt*(p2?.9:.6));if(Math.abs(ship.x-b.bx)<11&&ship.y>b.y)hitShip()}
+  else if(b.bf>0){b.bf-=dt;if(Math.abs(ship.x-b.bx)<11&&ship.y>b.y)hitShip()}   // 발사 중엔 조준 고정 (요청: 레이저 나가면 이동 안 함)
   if(p2){b.spA+=dt*2.6;if((b.spT-=dt)<=0){b.spT=.09;for(const o of[0,Math.PI])shoot(b.x,b.y+8,b.spA+o,66)}}}                                  // 2페이즈: 나선
 function drawArk(b,now){const p2=b.hp<b.maxHp/2,x=b.x,y=b.y,cg=p2?'255,60,120':'170,110,255';
   if(b.bc>0||b.bf>0)drawBeam(b.bx,y+14,Math.PI/2,400,b.bf>0?7:0,now);
@@ -1852,7 +1853,7 @@ function drawCityNest(e,now){if(FL){const m=Math.min(e.bw,e.bh);O(0,0,m*.36,FL);
 const SHIP_Y=Math.round(H*.8125);   // 320 기준 260(=81.25%), 모바일 세로 비율에서도 동일 위치 비율 유지
 const ship={x:CX,y:SHIP_Y,tx:CX,ty:SHIP_Y},keys={},bullets=[],missiles=[],webs=[],fx=[],smoke=[];
 // 기체 히트박스 모양(다각형, hitbox_view.html과 동일) — 원형 대신 이 모양으로 피격 판정
-const SHIP_HIT_SHAPE=[[0,-1],[.35,-.32],[.55,.14],[.5,.55],[.3,.74],[0,.85],[-.3,.74],[-.5,.55],[-.55,.14],[-.35,-.32]];
+const SHIP_HIT_SHAPE=[[0,-1],[.45,-.2],[.65,.25],[.55,.6],[.3,.78],[0,.85],[-.3,.78],[-.55,.6],[-.65,.25],[-.45,-.2]];   // 짧아진 델타익 실루엣에 맞춤
 function isInsideShipHit(px,py,r){const dx=px-ship.x,dy=py-ship.y;let inside=false;
   for(let i=0,j=SHIP_HIT_SHAPE.length-1;i<SHIP_HIT_SHAPE.length;j=i++){
     const xi=SHIP_HIT_SHAPE[i][0]*r,yi=SHIP_HIT_SHAPE[i][1]*r,xj=SHIP_HIT_SHAPE[j][0]*r,yj=SHIP_HIT_SHAPE[j][1]*r;
@@ -2026,7 +2027,7 @@ function frame(now){
     if(!ship.dead&&Math.hypot(m.x-ship.x,m.y-ship.y)<SHIP_HIT_BASE_R*shipHitScale()){missiles.splice(i,1);addFx(m.x,m.y,10,.4);hitShip();if(!missiles.length)break;continue}
     if(m.t>5||m.y>H+20||m.x<-20||m.x>W+20)missiles.splice(i,1)}
   for(let i=webs.length-1;i>=0;i--){const w=webs[i];w.t+=dt;w.x+=w.vx*dt;w.y+=w.vy*dt;w.r=Math.min(13,3+w.t*9);w.rot+=dt*1.5;
-    if(!ship.dead&&Math.hypot(w.x-ship.x,w.y-ship.y)<w.r*.7+3){if(w.k==='frost'){frozen=1;frozeAt=[ship.x,ship.y];slow=1.6;slowK='frost';SFX.freeze()}else if(!UP.webcut){slow=2.2;slowK='web';SFX.web()}webs.splice(i,1);continue}
+    if(!ship.dead&&Math.hypot(w.x-ship.x,w.y-ship.y)<w.r*.7+3){if(w.k==='frost'){frozen=1;frozeAt=[ship.x,ship.y];slow=1.6;slowK='frost';SFX.freeze()}else{slow=2.2;slowK='web';SFX.web()}webs.splice(i,1);continue}
     if(w.y>H+20||w.x<-20||w.x>W+20)webs.splice(i,1)}
   for(let i=smoke.length-1;i>=0;i--){const s=smoke[i];s.t+=dt;s.y+=SPEED*mult*dt*.5;if(s.t>.6)smoke.splice(i,1)}
   for(let i=fx.length-1;i>=0;i--){fx[i].t+=dt;if(fx[i].t>fx[i].life)fx.splice(i,1)}
