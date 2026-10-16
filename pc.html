@@ -104,11 +104,10 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #map .cred{height:15cqh;overflow:hidden;mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);width:100%}
 #map .cred div{animation:roll 14s linear infinite}#map .cred p{margin:.5cqh 0;font-size:1.7cqh;color:#c8b8f0}@keyframes roll{from{transform:translateY(15cqh)}to{transform:translateY(-100%)}}
 #map .evc button.ok{align-items:center;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;font:800 2.4cqh/1 -apple-system,sans-serif;letter-spacing:.12em;padding:1.6cqh}
-@media(pointer:coarse),(hover:none){#shop .hd b{font-size:5.6cqh}#shop .hd span{font-size:2.6cqh}#shop .st{font-size:2.4cqh}#shop .own{font-size:2.1cqh}#shop .cat{font-size:1.9cqh}#shop .nm{font-size:2.8cqh}#shop .lv{font-size:2cqh}#shop .ds{font-size:2.05cqh;line-height:1.4}#shop button{font-size:2.6cqh}#shop .ic{font-size:4.4cqh}
-#map .mhd b{font-size:4.8cqh}#map .mhd span{font-size:2.4cqh}#map .nd small{font-size:1.7cqh}#map .nd{font-size:3.4cqh}#map .nd.boss{font-size:4.4cqh}#map .info .t{font-size:3.2cqh}#map .info .d{font-size:2.3cqh;line-height:1.5}#map .info button{font-size:3.2cqh}#map .evt{font-size:4.6cqh}#map .evd{font-size:2.6cqh}#map .evc button b{font-size:2.8cqh}#map .evc button small{font-size:2.1cqh}#map .evc button.ok{font-size:3.2cqh}#map .cred p{font-size:2.2cqh}
-body{display:flex;flex-direction:column;align-items:center;height:100dvh}
-canvas{width:100dvw;height:auto;aspect-ratio:5/9;max-height:96dvh;flex:0 0 auto}
-#ctrlZone{display:flex;flex:1;min-height:14px;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
+@media(pointer:coarse),(hover:none){#shop .hd b{font-size:7cqh}#shop .hd span{font-size:3.2cqh}#shop .st{font-size:3cqh}#shop .own{font-size:2.6cqh}#shop .cat{font-size:2.4cqh}#shop .nm{font-size:3.5cqh}#shop .lv{font-size:2.5cqh}#shop .ds{font-size:2.6cqh;line-height:1.4}#shop button{font-size:3.2cqh}#shop .ic{font-size:5.5cqh}
+#map .mhd b{font-size:6cqh}#map .mhd span{font-size:3cqh}#map .nd small{font-size:2.1cqh}#map .nd{font-size:4.3cqh}#map .nd.boss{font-size:5.5cqh}#map .info .t{font-size:4cqh}#map .info .d{font-size:2.9cqh;line-height:1.5}#map .info button{font-size:4cqh}#map .evt{font-size:5.8cqh}#map .evd{font-size:3.3cqh}#map .evc button b{font-size:3.5cqh}#map .evc button small{font-size:2.6cqh}#map .evc button.ok{font-size:4cqh}#map .cred p{font-size:2.8cqh}
+canvas,#shop,#map{width:100dvw!important;height:100dvh!important}
+#ctrlZone{display:none!important;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
   background:linear-gradient(#1c2026,#101317);border-top:1px solid #4a5660;
   background-image:linear-gradient(#1c2026,#101317),repeating-linear-gradient(0deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px);
   background-blend-mode:normal,screen,screen}
@@ -1249,12 +1248,12 @@ function startRun(){unlock();state='howto';stT=0}
 function confirmHowTo(){reset();SFX.respawn()}
 
 // ---------- 고해상도 오버레이 (타이틀·지도·이벤트 화면) ----------
-const hiC=document.getElementById('hi'),hctx=hiC.getContext('2d');let hiK=1,hiOn=false;
+const hiC=document.getElementById('hi'),hctx=hiC.getContext('2d');let hiK=1,hiKX=1,hiKY=1,hiOn=false;
 function sizeHi(){const r=cv.getBoundingClientRect(),d=Math.min(3,window.devicePixelRatio||1);
   Object.assign(hiC.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
-  const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(hiC.width!==w||hiC.height!==h){hiC.width=w;hiC.height=h}hiK=hiC.width/W}
+  const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(hiC.width!==w||hiC.height!==h){hiC.width=w;hiC.height=h}hiK=hiC.width/W;hiKX=hiC.width/W;hiKY=hiC.height/H}
 addEventListener('resize',()=>{if(hiOn)sizeHi()});
-function hiDraw(fn){if(!hiOn){hiOn=true;hiC.style.display='block';sizeHi()}ctx=hctx;ctx.setTransform(hiK,0,0,hiK,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx=CTX0}}
+function hiDraw(fn){if(!hiOn){hiOn=true;hiC.style.display='block';sizeHi()}ctx=hctx;ctx.setTransform(hiKX,0,0,hiKY,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx=CTX0}}
 function hiHide(){if(hiOn){hiOn=false;hiC.style.display='none'}}
 
 // ---------- 주인공 기체 (벡터, 고해상도용) ----------
@@ -1674,7 +1673,7 @@ function drawFireworks(now){const t=now/1000;ctx.save();ctx.globalCompositeOpera
 // ---------- 고해상도 HUD · 네온 레트로 ----------
 let shipVis=false;
 function hiHUD(fn){if(!hiOn){hiOn=true;hiC.style.display='block';sizeHi()}ctx=hctx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,hiC.width,hiC.height);
-  ctx.setTransform(hiK,0,0,hiK,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx.shadowBlur=0;ctx=CTX0}}
+  ctx.setTransform(hiKX,0,0,hiKY,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx.shadowBlur=0;ctx=CTX0}}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function neon(t,x,y,font,col,glow,al='left'){ctx.font=font;ctx.textAlign=al;ctx.shadowColor=glow;ctx.shadowBlur=7;ctx.fillStyle=col;ctx.fillText(t,x,y);ctx.shadowBlur=2.5;ctx.fillText(t,x,y);
   ctx.shadowBlur=0;ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillText(t,x,y-.25);ctx.textAlign='left'}
@@ -2063,28 +2062,28 @@ function frame(now){
 
   // ----- 오버레이 & HUD -----
   ctx.textAlign='center';
-  if(state==='warning'&&stT%.5<.3){ctx.fillStyle='rgba(200,0,0,.35)';ctx.fillRect(0,140,W,30)}
-  if(state==='clear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,118,W,84)}
-  if(state==='segclear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,124,W,70)}
-  if(state==='over'){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,112,W,100)}
+  if(state==='warning'&&stT%.5<.3){ctx.fillStyle='rgba(200,0,0,.35)';ctx.fillRect(0,H*.4375,W,H*.094)}
+  if(state==='clear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,H*.369,W,H*.263)}
+  if(state==='segclear'){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(0,H*.388,W,H*.219)}
+  if(state==='over'){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,H*.35,W,H*.313)}
   ctx.textAlign='left';
   hiHUD(()=>{drawHeroLive(now);drawNeonHUD(now);drawOverlayText(now)});
   requestAnimationFrame(frame);
 }
 
 function drawOverlayText(now){
-  if(state==='warning'&&stT%.5<.3)neon('WARNING',CX,161,`700 16px ${NEO}`,'#ff4040','rgba(255,40,40,.9)','center');
+  if(state==='warning'&&stT%.5<.3)neon('WARNING',CX,H*.503,`700 16px ${NEO}`,'#ff4040','rgba(255,40,40,.9)','center');
   if(state==='clear'){const ct=isFinal?'FINAL VICTORY':'SECTOR '+stage+' CLEAR';
-    neon(ct,CX,152,`900 20px ${NEO}`,'#ffd84a','rgba(255,200,60,.9)','center');
-    neon('SCORE '+score,CX,174,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
-    if(stT%1<.6)neon(isFinal?'MISSION COMPLETE':'RETURNING TO HANGAR...',CX,190,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
-  if(state==='segclear'){neon(run.mode==='treasure'?'CHASE OVER':run.elite?'ELITE CLEAR':'AREA CLEAR',CX,152,`900 18px ${NEO}`,'#9ad8ff','rgba(80,170,255,.9)','center');
-    neon(`+${stageGold} G${run.bonus?`  (보너스 +${run.bonus})`:''}`,CX,172,`700 10px ${NEO}`,'#ffd040','rgba(255,200,60,.7)','center');
-    if(stT%1<.6)neon('항로 지도로 복귀...',CX,186,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
-  if(state==='over'){neon('GAME OVER',CX,144,`900 22px ${NEO}`,'#ff5050','rgba(255,60,60,.9)','center');
-    neon(`SECTOR ${stage} \u00b7 SCORE ${score}`,CX,166,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
-    const nb=score>0&&score>=best;neon(nb?'\u2605 NEW BEST \u2605':'BEST '+best,CX,182,`700 10px ${NEO}`,nb?'#ffd040':'#9ad0ff',nb?'rgba(255,200,60,.9)':'rgba(60,160,255,.7)','center');
-    if(stT>1.5&&stT%1<.6)neon(IS_MOBILE?'TAP TO CONTINUE':'CLICK TO CONTINUE',CX,202,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center')}
+    neon(ct,CX,H*.475,`900 20px ${NEO}`,'#ffd84a','rgba(255,200,60,.9)','center');
+    neon('SCORE '+score,CX,H*.544,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
+    if(stT%1<.6)neon(isFinal?'MISSION COMPLETE':'RETURNING TO HANGAR...',CX,H*.594,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
+  if(state==='segclear'){neon(run.mode==='treasure'?'CHASE OVER':run.elite?'ELITE CLEAR':'AREA CLEAR',CX,H*.475,`900 18px ${NEO}`,'#9ad8ff','rgba(80,170,255,.9)','center');
+    neon(`+${stageGold} G${run.bonus?`  (보너스 +${run.bonus})`:''}`,CX,H*.538,`700 10px ${NEO}`,'#ffd040','rgba(255,200,60,.7)','center');
+    if(stT%1<.6)neon('항로 지도로 복귀...',CX,H*.581,`600 9px ${NEO}`,'#ffffff','rgba(255,255,255,.5)','center')}
+  if(state==='over'){neon('GAME OVER',CX,H*.45,`900 22px ${NEO}`,'#ff5050','rgba(255,60,60,.9)','center');
+    neon(`SECTOR ${stage} \u00b7 SCORE ${score}`,CX,H*.519,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center');
+    const nb=score>0&&score>=best;neon(nb?'\u2605 NEW BEST \u2605':'BEST '+best,CX,H*.569,`700 10px ${NEO}`,nb?'#ffd040':'#9ad0ff',nb?'rgba(255,200,60,.9)':'rgba(60,160,255,.7)','center');
+    if(stT>1.5&&stT%1<.6)neon(IS_MOBILE?'TAP TO CONTINUE':'CLICK TO CONTINUE',CX,H*.631,`700 10px ${NEO}`,'#ffffff','rgba(255,255,255,.6)','center')}
 }
 if(!window.GALLERY)requestAnimationFrame(frame);
 else window.GAME={ET,BOSSES,heroShip,drawEB,get ctx(){return ctx},set ctx(v){ctx=v},setFL:v=>{FL=v},mouseOff:()=>{mouse=null},set ship(v){Object.assign(ship,v)},get stage(){return stage},set stage(v){stage=v}};
