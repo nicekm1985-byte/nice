@@ -41,7 +41,7 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #menu input[type=checkbox]{width:22px;height:22px;accent-color:#ffd040}
 #menu.muted .row:not(.mute){opacity:.4}
 #menu #mClose{font:800 15px -apple-system,sans-serif;padding:12px;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;border-radius:8px;cursor:pointer}
-#menuBtn{font-weight:700}
+#menuBtn{font-weight:700;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:50%}
 #dev{display:flex;flex-direction:column;gap:8px;border-top:1px solid #3a4250;padding-top:12px}
 #dev button{font:700 13px -apple-system,sans-serif;padding:9px;border:0;border-radius:8px;cursor:pointer;background:#2a3038;color:#9aa4b0}
 #dPass,#dPanel{display:none}#dev.ask #dPass{display:flex;gap:6px}#dev.on #dPanel{display:flex;flex-direction:column;gap:8px}#dev.on #dLock,#dev.ask #dLock{display:none}
@@ -103,10 +103,12 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #map .cred{height:15cqh;overflow:hidden;mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);width:100%}
 #map .cred div{animation:roll 14s linear infinite}#map .cred p{margin:.5cqh 0;font-size:1.7cqh;color:#c8b8f0}@keyframes roll{from{transform:translateY(15cqh)}to{transform:translateY(-100%)}}
 #map .evc button.ok{align-items:center;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;font:800 2.4cqh/1 -apple-system,sans-serif;letter-spacing:.12em;padding:1.6cqh}
+@media(pointer:coarse),(hover:none){canvas,#shop,#map{width:100dvw!important;height:100dvh!important}
+#shop .hd b{font-size:5.6cqh}#shop .hd span{font-size:2.6cqh}#shop .st{font-size:2.4cqh}#shop .own{font-size:2.1cqh}#shop .cat{font-size:1.9cqh}#shop .nm{font-size:2.8cqh}#shop .lv{font-size:2cqh}#shop .ds{font-size:2.05cqh;line-height:1.4}#shop button{font-size:2.6cqh}#shop .ic{font-size:4.4cqh}}
 </style></head><body>
 <canvas id="c" width="240" height="320"></canvas>
 <canvas id="hi" style="position:fixed;display:none;pointer-events:none;z-index:1"></canvas>
-<div id="ui"><button id="menuBtn">☰ MENU</button></div>
+<div id="ui"><button id="menuBtn">M</button></div>
 <div id="menu"><div class="mbox"><div class="mt">MENU</div>
 <label class="row mute"><span>🔇 음소거</span><input type="checkbox" id="vMute"></label>
 <label class="row"><span>전체</span><input type="range" id="vMaster" min="0" max="100"><b id="tMaster"></b></label>
@@ -703,7 +705,7 @@ function bgmTick(){   // 매 프레임 호출: 0.12초 앞까지 미리 예약
 
 // ---------- 외계 비행체 14종 ----------
 const enemies=[],ebul=[],coins=[];
-const GROUND_FIRE_Y=H*.8,NO_UP_Y=H*.8;   // NO_UP_Y 아래에서는 위로 향하는 적 탄·미사일·거미줄이 생기지 않음
+const GROUND_FIRE_Y=H*.8;
 let EASY=false,BSPD=1,FRATE=1;   // 섹터 1 보정: 적 탄 속도 ×0.8, 발사 간격 ×1.25 (FRATE=0.8), 출현량 ×0.75   // 지상형 적은 화면 아래 1/5(y≥256)부터 사격 중지
 let gold=0,spawnT=2,FL=null;   // FL: 그림자/외곽선/피격 플래시용 단색 덮어쓰기
 const R=(x,y,w,h,c)=>{ctx.fillStyle=FL||c;ctx.fillRect(x,y,w,h)};
@@ -855,9 +857,7 @@ function updateField(dt){
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i],T=ET[e.type];e.t+=dt;e.flash=Math.max(0,e.flash-dt);T.upd(e,dt);
     if(!T.ground&&!ship.dead&&Math.hypot(e.x-ship.x,e.y-ship.y)<T.r+(UP.small?2.5:4)){hitShip();killEnemy(i,false);continue}
     if(e.t>1&&(e.y>H+30||e.y<-60||e.x<-40||e.x>W+40))enemies.splice(i,1)}
-  for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];
-    if(!b.chk){b.chk=1;if(b.vy<0&&(b.y>NO_UP_Y||b.y>ship.y)){ebul.splice(i,1);continue}}   // 아래쪽(화면 아래 20% 또는 기체보다 아래)에서 올라오는 탄 금지
-    b.t+=dt;b.x+=b.vx*dt*BSPD;b.y+=b.vy*dt*BSPD;
+  for(let i=ebul.length-1;i>=0;i--){const b=ebul[i];b.t+=dt;b.x+=b.vx*dt*BSPD;b.y+=b.vy*dt*BSPD;
     if(b.k==='m'&&b.t>1.8){ring(b.x,b.y,8,65,b.t);addFx(b.x,b.y,6,.25);ebul.splice(i,1);continue}
     if(b.k==='s'&&b.t>.9){ring(b.x,b.y,6,70,b.t*3);addFx(b.x,b.y,5,.2);ebul.splice(i,1);continue}
     if(b.k==='w')b.x+=Math.cos(b.t*5+b.ph)*40*dt;
@@ -1145,7 +1145,7 @@ function drawIceProps(){const STEP=52,K0=Math.ceil((scroll-60)/STEP),K1=Math.flo
       drawPrism(x,y,pts,h,PP.c[0],PP.c[1],PP.halo,PP)}}}
 // 눈보라 3층: 먼 층(작고 느림) → 가까운 층(크고 빠름, 기체보다 앞에 그림)
 const SNOWL=[46,28,12].map((n,l)=>{const r=rng(300+l);return Array.from({length:n},()=>[r()*W,r()*H,r()*TAU])});
-function drawSnow(l,now){const t=now/1000,up=TH.partUp?.45:1,sp=[46,72,128][l]*up,par=[.25,.5,1][l],sz=[1,1.6,2.6][l],wind=[5,9,15][l];
+function drawSnow(l,now){const t=now/1000,up=TH.partUp?-.55:1,sp=[46,72,128][l]*up,par=[.25,.5,1][l],sz=[1,1.6,2.6][l],wind=[5,9,15][l];
   ctx.fillStyle=`rgba(${TH.partC||'255,255,255'},${[.55,.75,.9][l]})`;
   for(const [x0,y0,ph] of SNOWL[l]){const x=mod(x0+Math.sin(t*1.2+ph)*6+t*wind-camX*par,W+10)-5,y=mod(y0+t*sp,H+10)-5;
     if(sz<2)ctx.fillRect(x|0,y|0,sz>1?2:1,sz>1?2:1);else{ctx.beginPath();ctx.arc(x,y,sz*.5+.6,0,7);ctx.fill()}}}
@@ -1227,7 +1227,8 @@ const BOSSES={
 let best=0;try{best=+(localStorage.getItem('air_best')||0)}catch(e){}
 function toTitle(){DEV.boss=false;isFinal=false;stage=1;TH=THEMES.coast;state='title';stT=0;mapEl.classList.remove('on');shopEl.classList.remove('on');boss=null;
   for(const a of[bullets,missiles,webs,fx,smoke,enemies,ebul,coins,homers,trail])a.length=0;bgmPlay('title')}
-function startRun(){unlock();reset();SFX.respawn()}
+function startRun(){unlock();state='howto';stT=0}
+function confirmHowTo(){reset();SFX.respawn()}
 
 // ---------- 고해상도 오버레이 (타이틀·지도·이벤트 화면) ----------
 const hiC=document.getElementById('hi'),hctx=hiC.getContext('2d');let hiK=1,hiOn=false;
@@ -1687,7 +1688,7 @@ function drawNeonHUD(now){
   for(let k=0;k<Math.min(lives,8);k++)heroShip(8+k*9,27,.085,0,now,false);
   if(DEV.on)neon(DEV.god?'DEV · GOD':'DEV',W-4,46,'700 5px '+NEO,'#c0ffd0','rgba(60,255,120,1)','right');
   // 섹터 · 진행도
-  neon((run.elite?'ELITE  ':'')+(isFinal?'FINAL':`SECTOR ${stage}/${SECTORS}`),W-4,8,`600 5.5px ${NEO}`,run.elite?'#ff9aa8':'#bfe8ff',run.elite?'rgba(255,60,80,.9)':'rgba(40,170,255,.9)','right');
+  neon((run.elite?'ELITE  ':'')+(isFinal?'FINAL':`SECTOR ${stage}/${SECTORS}`),W-26,8,`600 5.5px ${NEO}`,run.elite?'#ff9aa8':'#bfe8ff',run.elite?'rgba(255,60,80,.9)':'rgba(40,170,255,.9)','right');
   if(state==='play'&&run.end<Infinity){const p=Math.min(1,(scroll-run.start)/(run.end-run.start));ctx.fillStyle='rgba(120,200,255,.18)';rrect(W-48,11,44,3,1.5);ctx.fill();
     ctx.shadowColor='rgba(40,200,255,1)';ctx.shadowBlur=5;ctx.fillStyle='#7ad8ff';rrect(W-48,11,Math.max(3,44*p),3,1.5);ctx.fill();ctx.shadowBlur=0}
   // 골드
@@ -1757,6 +1758,29 @@ function drawTitle(now){const t=now/1000,g=ctx,TT='에일리언 프론티어',px
   g.font='6.5px "Apple SD Gothic Neo",sans-serif';g.fillStyle='rgba(220,230,245,.85)';g.textAlign='center';
   g.fillText(IS_MOBILE?'드래그로 이동 · 자동 사격 · 좌하단 💣 폭탄':'마우스로 이동 · 자동 사격 · 우클릭/스페이스 폭탄',CX,308);
   g.textAlign='left'}
+function drawHowTo(now){const g=ctx;g.textAlign='center';
+  g.font='900 15px "Apple SD Gothic Neo",sans-serif';g.fillStyle='#ffd84a';g.shadowColor='rgba(255,200,60,.8)';g.shadowBlur=8;g.fillText('HOW TO PLAY',CX,40);g.shadowBlur=0;
+  const lines=IS_MOBILE?[
+    ['👆','드래그로 이동','손가락이 움직인 만큼 기체가 따라갑니다'],
+    ['🔫','자동 사격','가만히 있어도 전방으로 계속 발사됩니다'],
+    ['💣','폭탄','좌하단 폭탄 아이콘을 탭하면 바로 발동합니다'],
+    ['🛠️','격납고·상점','항로의 격납고에서 무기·실드를 구매하세요'],
+    ['👑','섹터 보스','보스를 처치하면 다음 섹터로 진행합니다']
+  ]:[
+    ['🖱️','마우스 이동','커서 위치로 기체가 즉시 이동합니다'],
+    ['🔫','자동 사격','가만히 있어도 전방으로 계속 발사됩니다'],
+    ['💣','폭탄','우클릭 또는 스페이스바로 발동합니다'],
+    ['🛠️','격납고·상점','항로의 격납고에서 무기·실드를 구매하세요'],
+    ['👑','섹터 보스','보스를 처치하면 다음 섹터로 진행합니다']
+  ];
+  let y=78;for(const[ic,t,d]of lines){
+    g.font='18px -apple-system,sans-serif';g.fillText(ic,CX-78,y+2);
+    g.textAlign='left';g.font='800 9.5px -apple-system,"Apple SD Gothic Neo",sans-serif';g.fillStyle='#9ad8ff';g.fillText(t,CX-56,y-3);
+    g.font='7.5px -apple-system,"Apple SD Gothic Neo",sans-serif';g.fillStyle='rgba(220,230,245,.85)';g.fillText(d,CX-56,y+9);
+    g.textAlign='center';y+=42}
+  if((now/550|0)%2===0)neon(IS_MOBILE?'TAP TO CONTINUE':'CLICK TO CONTINUE',CX,300,`700 10px ${NEO}`,'#ffffff','rgba(80,170,255,1)','center');
+  g.textAlign='left'}
+
 
 // ---------- 도시 지상 유닛: 건물 옥상 블록 하나를 통째로 차지 ----------
 function cityRoofSpots(){const out=[],ox=Math.round(mod(-camX,256)),oy=Math.round(mod(scroll,256));
@@ -1825,7 +1849,7 @@ function hitShip(){if(DEV.god||inv>0||ship.dead>0||!(state==='play'||state==='wa
   if(lives<=0){state='over';stT=0;bgmStop();if(score>best){best=score;try{localStorage.setItem('air_best',best)}catch(e){}}}}
 
 addEventListener('keydown',e=>{keys[e.key]=1;
-  if((e.key==='Enter'||e.code==='Space')&&!menuOpen){if(state==='title'){startRun();e.preventDefault();return}if(state==='over'&&stT>1.5){toTitle();e.preventDefault();return}}
+  if((e.key==='Enter'||e.code==='Space')&&!menuOpen){if(state==='title'){startRun();e.preventDefault();return}if(state==='howto'){confirmHowTo();e.preventDefault();return}if(state==='over'&&stT>1.5){toTitle();e.preventDefault();return}}
   if((e.code==='Space'||e.key==='b'||e.key==='B')&&!e.repeat&&!menuOpen){useBomb();e.preventDefault()}});
 cv.addEventListener('contextmenu',e=>{e.preventDefault();useBomb()});   // 우클릭 = 폭탄
 addEventListener('keyup',e=>keys[e.key]=0);
@@ -1834,11 +1858,12 @@ addEventListener('keyup',e=>keys[e.key]=0);
 // 모바일: 손가락이 움직인 만큼 기체가 1:1로 이동 (화면 어디를 터치해도 됨, 기체가 손가락에 가려지지 않음)
 let mouse=null;const touch={id:null,x:0,y:0};
 const toCanvas=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]};
-const canSteer=()=>!frozen&&!ship.dead&&!ship.enter&&state!=='over'&&state!=='shop'&&state!=='map'&&state!=='title'&&state!=='event'&&state!=='ending'&&!menuOpen;
+const canSteer=()=>!frozen&&!ship.dead&&!ship.enter&&state!=='over'&&state!=='shop'&&state!=='map'&&state!=='title'&&state!=='howto'&&state!=='event'&&state!=='ending'&&!menuOpen;
 const clampShip=()=>{ship.x=Math.max(10,Math.min(W-10,ship.x));ship.y=Math.max(20,Math.min(H-14,ship.y))};
 const onBomb=(x,y)=>x<48&&y>H-24;
 cv.addEventListener('pointerdown',e=>{const [x,y]=toCanvas(e);
   if(state==='title'&&!menuOpen){startRun();e.preventDefault();return}
+  if(state==='howto'&&!menuOpen){confirmHowTo();e.preventDefault();return}
   if(state==='over'){if(stT>1.5)toTitle();e.preventDefault();return}
   if(onBomb(x,y)){useBomb();e.preventDefault();return}
   if(e.pointerType==='mouse'){mouse=[x,y];if(canSteer()){ship.x=x;ship.y=y;clampShip()}return}
@@ -1858,7 +1883,7 @@ cv.style.cursor='none';cv.style.touchAction='none';
 // ---------- 메뉴 ----------
 let menuOpen=false;const $=id=>document.getElementById(id),menuEl=$('menu');
 function syncMenu(){for(const k of['Master','Bgm','Sfx']){const v=VOL[k.toLowerCase()];$('v'+k).value=v;$('t'+k).textContent=v}
-  $('vMute').checked=VOL.mute;menuEl.classList.toggle('muted',VOL.mute);$('menuBtn').textContent=(VOL.mute?'🔇':'☰')+' MENU'}
+  $('vMute').checked=VOL.mute;menuEl.classList.toggle('muted',VOL.mute);$('menuBtn').textContent=VOL.mute?'🔇':'M'}
 function saveVol(){try{localStorage.setItem('air_vol',JSON.stringify(VOL))}catch(e){}applyVol();syncMenu()}
 function setMenu(o){menuOpen=o;menuEl.classList.toggle('on',o);if(o){unlock();syncMenu();touch.id=null;if(DEV.on){renderDevS();renderDevW()}}else{last=performance.now()}}
 $('menuBtn').onclick=e=>{e.stopPropagation();setMenu(!menuOpen)};
@@ -1906,6 +1931,7 @@ let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000)||.016;last=now;stT+=dt;bgmTick();
   if(state==='title'){if(cv.style.cursor!=='default')cv.style.cursor='default';hiDraw(()=>{drawSpace(now);drawTitle(now)});return requestAnimationFrame(frame)}
+  if(state==='howto'){if(cv.style.cursor!=='default')cv.style.cursor='default';hiDraw(()=>{drawSpace(now);drawHowTo(now)});return requestAnimationFrame(frame)}
   // ----- 업데이트 -----
   const slowF=1,alive=!ship.dead&&state!=='over';
   if(ship.dead>0&&state!=='over'){ship.dead-=dt;if(ship.dead<=0){ship.dead=0;ship.x=ship.tx=CX;ship.y=H+20;ship.ty=260;inv=2.5;ship.enter=1;SFX.respawn()}}
@@ -1954,13 +1980,12 @@ function frame(now){
       if(boss.hp<=0){state='dying';stT=0;boss.dead=1;missiles.length=webs.length=0}}
     if(hit)bullets.splice(i,1)}
   for(let i=missiles.length-1;i>=0;i--){const m=missiles[i];m.t+=dt;
-    if(m.y>ship.y+8||m.y>NO_UP_Y)m.lost=1;   // 기체 아래로 지나간 미사일은 직진해서 빠져나감
-    if(m.t>.35&&!m.lost){const ta=Math.atan2(ship.y-m.y,ship.x-m.x),da=mod(ta-m.a+Math.PI,Math.PI*2)-Math.PI;m.a+=Math.max(-2.4*dt,Math.min(2.4*dt,da))}
+    if(m.t>.35){const ta=Math.atan2(ship.y-m.y,ship.x-m.x),da=mod(ta-m.a+Math.PI,Math.PI*2)-Math.PI;m.a+=Math.max(-2.4*dt,Math.min(2.4*dt,da))}
     m.v=Math.min(130,m.v+110*dt);m.x+=Math.cos(m.a)*m.v*dt;m.y+=Math.sin(m.a)*m.v*dt;
     if((m.sm+=dt)>.03){m.sm=0;smoke.push({x:m.x-Math.cos(m.a)*4,y:m.y-Math.sin(m.a)*4,t:0})}
     if(!ship.dead&&Math.hypot(m.x-ship.x,m.y-ship.y)<(UP.small?4.2:6)){missiles.splice(i,1);addFx(m.x,m.y,10,.4);hitShip();if(!missiles.length)break;continue}
-    if(m.t>5||m.y>H+4||m.x<-20||m.x>W+20)missiles.splice(i,1)}
-  for(let i=webs.length-1;i>=0;i--){const w=webs[i];if(!w.chk){w.chk=1;if(w.vy<0&&(w.y>NO_UP_Y||w.y>ship.y)){webs.splice(i,1);continue}}w.t+=dt;w.x+=w.vx*dt;w.y+=w.vy*dt;w.r=Math.min(13,3+w.t*9);w.rot+=dt*1.5;
+    if(m.t>5||m.y>H+20||m.x<-20||m.x>W+20)missiles.splice(i,1)}
+  for(let i=webs.length-1;i>=0;i--){const w=webs[i];w.t+=dt;w.x+=w.vx*dt;w.y+=w.vy*dt;w.r=Math.min(13,3+w.t*9);w.rot+=dt*1.5;
     if(!ship.dead&&Math.hypot(w.x-ship.x,w.y-ship.y)<w.r*.7+3){if(w.k==='frost'){frozen=1;frozeAt=[ship.x,ship.y];slow=1.6;slowK='frost';SFX.freeze()}else if(!UP.webcut){slow=2.2;slowK='web';SFX.web()}webs.splice(i,1);continue}
     if(w.y>H+20||w.x<-20||w.x>W+20)webs.splice(i,1)}
   for(let i=smoke.length-1;i>=0;i--){const s=smoke[i];s.t+=dt;s.y+=SPEED*mult*dt*.5;if(s.t>.6)smoke.splice(i,1)}
