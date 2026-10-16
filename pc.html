@@ -107,7 +107,7 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 @media(pointer:coarse),(hover:none){#shop .hd b{font-size:5.6cqh}#shop .hd span{font-size:2.6cqh}#shop .st{font-size:2.4cqh}#shop .own{font-size:2.1cqh}#shop .cat{font-size:1.9cqh}#shop .nm{font-size:2.8cqh}#shop .lv{font-size:2cqh}#shop .ds{font-size:2.05cqh;line-height:1.4}#shop button{font-size:2.6cqh}#shop .ic{font-size:4.4cqh}
 #map .mhd b{font-size:4.8cqh}#map .mhd span{font-size:2.4cqh}#map .nd small{font-size:1.7cqh}#map .nd{font-size:3.4cqh}#map .nd.boss{font-size:4.4cqh}#map .info .t{font-size:3.2cqh}#map .info .d{font-size:2.3cqh;line-height:1.5}#map .info button{font-size:3.2cqh}#map .evt{font-size:4.6cqh}#map .evd{font-size:2.6cqh}#map .evc button b{font-size:2.8cqh}#map .evc button small{font-size:2.1cqh}#map .evc button.ok{font-size:3.2cqh}#map .cred p{font-size:2.2cqh}
 body{display:flex;flex-direction:column;align-items:center;height:100dvh}
-canvas{width:100dvw;height:auto;aspect-ratio:3/4;max-height:96dvh;flex:0 0 auto}
+canvas{width:100dvw;height:auto;aspect-ratio:5/9;max-height:96dvh;flex:0 0 auto}
 #ctrlZone{display:flex;flex:1;min-height:14px;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
   background:linear-gradient(#1c2026,#101317);border-top:1px solid #4a5660;
   background-image:linear-gradient(#1c2026,#101317),repeating-linear-gradient(0deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px);
@@ -145,7 +145,9 @@ canvas{width:100dvw;height:auto;aspect-ratio:3/4;max-height:96dvh;flex:0 0 auto}
 <div id="map"></div>
 <script>
 const cv=document.getElementById('c'),CTX0=cv.getContext('2d');let ctx=CTX0;
-const W=240,H=320,CX=W/2,SPEED=40;   // 스크롤 속도 (px/s)
+const IS_MOBILE_UA=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
+const W=240,H=IS_MOBILE_UA?432:320,CX=W/2,SPEED=40;   // 스크롤 속도 (px/s)   // 모바일은 세로 비율을 더 길게(5:9)
+cv.width=W;cv.height=H;
 const LAYERS=[{f:1,shade:0},{f:.78,shade:.3},{f:.6,shade:.55}];   // 위(가까움) → 아래(멂)
 let camX=0;   // 좌우 카메라 오프셋 (지면·지상 유닛 공통)
 
@@ -1087,7 +1089,7 @@ function openMap(){if(!SHIP_URL)mkShipURL();state='map';stT=0;boss=null;run.sel=
 function beginFlight(start,end,elite,mode=''){
   EASY=stage===1&&loop===0&&!isFinal;BSPD=EASY?.8:1;FRATE=EASY?.8:1;
   stageGold=0;noDmg=true;UP.shield=UP.shieldMax;frozen=0;frozeAt=null;shards.length=0;run.elite=elite;run.mode=mode;run.start=start;run.end=end;
-  scroll=start;state='play';stT=0;boss=null;inv=1.5;slow=0;spawnT=1.5;ship.dead=0;ship.enter=0;ship.x=CX;ship.y=260;touch.id=null;
+  scroll=start;state='play';stT=0;boss=null;inv=1.5;slow=0;spawnT=1.5;ship.dead=0;ship.enter=0;ship.x=CX;ship.y=SHIP_Y;touch.id=null;
   for(const a of[bullets,missiles,webs,fx,smoke,enemies,ebul,coins,homers,trail])a.length=0;bgmPlay(TH.song)}
 function launch(){const [r,i]=run.sel,n=nodeAt(r,i);
   run.path.push([run.pos.r,run.pos.i,r,i]);run.pos={r,i};n.vis=1;run.node=n;run.sel=null;run.toast='';
@@ -1114,7 +1116,7 @@ function drawSpace(now){
     ctx.fillStyle=['#4a5a80','#a0b0d8','#ffffff'][l];
     for(const [x,y] of S)ctx.fillRect(mod(x-px*par,W)|0,mod(y+t*sp-py*par*.5,H)|0,sz,sz)});
   // 행성: 화면 아래 거대 구체. 대륙이 천천히 자전하고, 가장 가까운 층이라 커서에 가장 크게 반응
-  const cx=CX-px*24,cy=H+(state==='title'?128:150)-py*10,Rr=state==='title'?235:215;
+  const cx=CX-px*24,cy=H+(state==='title'?H*.4:H*.469)-py*10,Rr=state==='title'?H*.734:H*.672;
   const at=ctx.createRadialGradient(cx,cy,Rr-4,cx,cy,Rr+22);at.addColorStop(0,`rgba(${TH.pl.atm},.55)`);at.addColorStop(1,`rgba(${TH.pl.atm},0)`);
   ctx.fillStyle=at;ctx.beginPath();ctx.arc(cx,cy,Rr+22,0,7);ctx.fill();
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,Rr,0,7);ctx.clip();
@@ -1848,9 +1850,10 @@ function drawCityNest(e,now){if(FL){const m=Math.min(e.bw,e.bh);O(0,0,m*.36,FL);
     ctx.fillStyle=EYE;for(const [x,y] of[[-R*.35,-R*.35],[R*.3,-R*.4],[R*.4,R*.3]]){ctx.beginPath();ctx.arc(x,y,R*.09,0,7);ctx.fill()}}}
 
 // ---------- 게임 상태 ----------
-const ship={x:CX,y:260,tx:CX,ty:260},keys={},bullets=[],missiles=[],webs=[],fx=[],smoke=[];
+const SHIP_Y=Math.round(H*.8125);   // 320 기준 260(=81.25%), 모바일 세로 비율에서도 동일 위치 비율 유지
+const ship={x:CX,y:SHIP_Y,tx:CX,ty:SHIP_Y},keys={},bullets=[],missiles=[],webs=[],fx=[],smoke=[];
 let scroll,state,stT,boss,lives,inv,slow,score,fireT=0,flashT=0;
-function reset(){stage=1;loop=0;isFinal=false;setTheme();stageGold=0;noDmg=true;goldFrac=0;Object.assign(UP,UP0);bought={};homers.length=trail.length=0;shopEl.classList.remove('on');lvl=0;scroll=0;state='play';stT=0;boss=null;lives=3;inv=0;slow=0;score=0;gold=0;spawnT=2;ship.dead=0;ship.x=ship.tx=CX;ship.y=ship.ty=260;
+function reset(){stage=1;loop=0;isFinal=false;setTheme();stageGold=0;noDmg=true;goldFrac=0;Object.assign(UP,UP0);bought={};homers.length=trail.length=0;shopEl.classList.remove('on');lvl=0;scroll=0;state='play';stT=0;boss=null;lives=3;inv=0;slow=0;score=0;gold=0;spawnT=2;ship.dead=0;ship.x=ship.tx=CX;ship.y=ship.ty=SHIP_Y;
   for(const a of[bullets,missiles,webs,fx,smoke,enemies,ebul,coins])a.length=0;
   run.map=genMap();run.pos={r:-1,i:0};run.path=[];run.node=null;run.elite=false;run.toast='🚀 출격 준비 완료. 첫 항로를 고르세요.';openMap()}
 if(!window.GALLERY)toTitle();   // GALLERY: 도감(bestiary.html)에서 그리기 함수만 빌려 쓸 때 게임을 시작하지 않음
@@ -1963,8 +1966,8 @@ function frame(now){
   if(state==='howto'){if(cv.style.cursor!=='default')cv.style.cursor='default';hiDraw(()=>{drawSpace(now);drawHowTo(now)});return requestAnimationFrame(frame)}
   // ----- 업데이트 -----
   const slowF=1,alive=!ship.dead&&state!=='over';
-  if(ship.dead>0&&state!=='over'){ship.dead-=dt;if(ship.dead<=0){ship.dead=0;ship.x=ship.tx=CX;ship.y=H+20;ship.ty=260;inv=2.5;ship.enter=1;SFX.respawn()}}
-  if(ship.enter){ship.y-=120*dt;if(ship.y<=260){ship.y=260;ship.enter=0}}
+  if(ship.dead>0&&state!=='over'){ship.dead-=dt;if(ship.dead<=0){ship.dead=0;ship.x=ship.tx=CX;ship.y=H+20;ship.ty=SHIP_Y;inv=2.5;ship.enter=1;SFX.respawn()}}
+  if(ship.enter){ship.y-=120*dt;if(ship.y<=SHIP_Y){ship.y=SHIP_Y;ship.enter=0}}
   if(menuOpen)return requestAnimationFrame(frame);   // 메뉴가 열려 있으면 일시정지   // 재출격 연출: 아래에서 올라옴
   if(alive&&!ship.enter){
     const sp=frozen?0:90*dt*slowF;
