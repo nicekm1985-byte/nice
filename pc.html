@@ -42,6 +42,15 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #menu.muted .row:not(.mute){opacity:.4}
 #menu #mClose{font:800 15px -apple-system,sans-serif;padding:12px;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;border-radius:8px;cursor:pointer}
 #menuBtn{font-weight:700}
+#dev{display:flex;flex-direction:column;gap:8px;border-top:1px solid #3a4250;padding-top:12px}
+#dev button{font:700 13px -apple-system,sans-serif;padding:9px;border:0;border-radius:8px;cursor:pointer;background:#2a3038;color:#9aa4b0}
+#dPass,#dPanel{display:none}#dev.ask #dPass{display:flex;gap:6px}#dev.on #dPanel{display:flex;flex-direction:column;gap:8px}#dev.on #dLock,#dev.ask #dLock{display:none}
+#dCode{flex:1;min-width:0;font:700 16px Menlo,monospace;letter-spacing:.3em;text-align:center;padding:8px;border-radius:8px;border:1px solid #4a5360;background:#12161c;color:#ffd84a}
+#dCode.bad{border-color:#ff4a5a;animation:dshake .3s}@keyframes dshake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#dev #dOk{background:#ffd040;color:#2a1e00}
+#dPanel .dt{font:800 12px Menlo,monospace;color:#7cf0a0;letter-spacing:.06em}
+#dBoss{display:grid;grid-template-columns:1fr 1fr;gap:6px}#dev #dBoss button{background:#3a2a30;color:#ffd8e0;padding:8px 4px;font-size:12px;line-height:1.3}#dev #dBoss button small{display:block;color:#c08a98;font-size:10px;font-weight:600}
+#dev #dOff{background:#2a3038;color:#8a94a0;font-size:12px}
 #menu #mQuit{font:700 13px -apple-system,sans-serif;padding:10px;background:#3a4450;color:#e8ecf0;border:0;border-radius:8px;cursor:pointer;margin-top:-6px}
 #map{position:fixed;top:0;left:50%;transform:translateX(-50%);height:100vh;aspect-ratio:3/4;max-width:100vw;display:none;container-type:size;flex-direction:column;padding:2cqh 3cqw;box-sizing:border-box;gap:1.2cqh;
  font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#e8ecf0;cursor:default;user-select:none;-webkit-user-select:none;z-index:5}
@@ -92,6 +101,12 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 <label class="row"><span>전체</span><input type="range" id="vMaster" min="0" max="100"><b id="tMaster"></b></label>
 <label class="row"><span>배경음</span><input type="range" id="vBgm" min="0" max="100"><b id="tBgm"></b></label>
 <label class="row"><span>효과음</span><input type="range" id="vSfx" min="0" max="100"><b id="tSfx"></b></label>
+<div id="dev"><button id="dLock">🔒 개발자 모드</button>
+<div id="dPass"><input id="dCode" type="password" inputmode="numeric" maxlength="8" placeholder="암호 입력" autocomplete="off"><button id="dOk">확인</button></div>
+<div id="dPanel"><div class="dt">🛠 DEV · 보스전 바로 시작</div><div id="dBoss"></div>
+<label class="row mute"><span>무적</span><input type="checkbox" id="dGod"></label>
+<label class="row mute"><span>풀장비 (무기·방어 최대)</span><input type="checkbox" id="dFull"></label>
+<button id="dOff">개발자 모드 끄기</button></div></div>
 <button id="mClose">계속하기 ▶</button><button id="mQuit">타이틀로</button></div></div>
 <div id="shop"></div>
 <div id="map"></div>
@@ -832,7 +847,7 @@ function updateField(dt){
     if(!ship.dead&&inv<=0&&Math.hypot(b.x-ship.x,b.y-ship.y)<(b.k==='m'?9:7)*(UP.small?.7:1)){ebul.splice(i,1);hitShip();if(!ebul.length)break;continue}   // 피격 시 hitShip이 탄 목록을 비움 (무적 중엔 통과)
     if(b.y>H+10||b.y<-20||b.x<-10||b.x>W+10)ebul.splice(i,1)}
   // 코인 흡수: 매 프레임 기체 쪽으로 직진(속도 점점 증가, 기체를 지나치지 않음) → 기체 주위를 맴돌다 뭉치는 현상 방지
-  const canTake=!ship.dead&&state!=='over',take=i=>{gainGold(1);SFX.coin();coins.splice(i,1)};
+  const canTake=!ship.dead&&state!=='over',take=i=>{gainGold(COIN_V);SFX.coin();coins.splice(i,1)};
   for(let i=coins.length-1;i>=0;i--){const c=coins[i];c.t+=dt;let dx=ship.x-c.x,dy=ship.y-c.y,d=Math.hypot(dx,dy);
     if(canTake&&d<12){take(i);continue}
     if(canTake&&(c.t>.35||c.pull)&&(d<(UP.magnet?95:45)||state==='clear'||c.pull)){c.pull=(c.pull||0)+dt;
@@ -875,10 +890,11 @@ function drawTwist(b){const a=Math.atan2(b.vy,b.vx),c=Math.cos(a),s=Math.sin(a),
 
 // ---------- 업그레이드 & 상점(격납고) ----------
 let shopFrom='node',stage=1,stageGold=0,noDmg=true,goldFrac=0,shotN=0,homT=0,bought={},shopState=null;
+const DEV={on:false,god:false,full:false,boss:false};   // 개발자 모드 상태 (메뉴에서 암호 1029)
 const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,webcut:0};
 const UP={...UP0},homers=[],trail=[];
 const ITEMS=[
- {id:'spread',cat:'무기',icon:'🔱',name:'확산탄',max:3,price:[120,200,320],desc:l=>['좌우로 비스듬한 보조탄 2발 추가','보조탄 4발로 증가','보조탄 6발로 증가'][l]},
+ {id:'spread',cat:'무기',icon:'🔱',name:'확산탄',max:3,price:[120,200,320],desc:l=>['좌우로 비스듬한 보조탄 2발 추가 (보조탄 공격력 0.5)','보조탄 4발로 증가','보조탄 6발로 증가'][l]},
  {id:'rapid',cat:'무기',icon:'⚡',name:'연사 강화',max:3,price:[90,150,240],desc:'연사 속도 약 18% 증가'},
  {id:'pierce',cat:'무기',icon:'🗡️',name:'관통탄',max:2,price:[180,300],desc:l=>l?'탄이 적 2기까지 관통':'탄이 적 1기를 관통'},
  {id:'homing',cat:'무기',icon:'🚀',name:'유도 미사일',max:2,price:[160,260],desc:l=>l?'2발 동시 발사, 발사 간격 단축':'가장 가까운 적을 쫓는 미사일 (피해 3)'},
@@ -898,10 +914,11 @@ const lvOf=it=>it.id==='shield'?UP.shieldMax:it.id==='life'?(bought.life||0):it.
 const canBuy=it=>it.id==='bomb'?UP.bomb<3:it.id==='life'?lives<9:lvOf(it)<it.max;
 const priceOf=it=>{const l=lvOf(it);return pr(typeof it.price==='function'?it.price(l):it.price[l])};
 function buy(it){if(it.id==='shield'){UP.shieldMax++;UP.shield=UP.shieldMax}else if(it.id==='life'){lives++;bought.life=(bought.life||0)+1}else UP[it.id]++}
+const COIN_V=.3;   // 코인 1개 가치 (G). 드롭 수는 그대로, 1개당 가치만 낮춤 (소수점은 goldFrac에 누적)
 function gainGold(n){goldFrac+=n*(UP.amp?1.25:1)*(run.elite?1.5:1);const g=Math.floor(goldFrac+1e-9);goldFrac-=g;gold+=g;stageGold+=g}
 function rollSlots(){const pool=ITEMS.filter(it=>!it.fixed&&canBuy(it)),out=[];while(out.length<3&&pool.length)out.push({it:pool.splice(Math.random()*pool.length|0,1)[0],sold:0});return out}
 function openShop(from){
-  for(const c of coins)gainGold(1);coins.length=0;                    // 화면에 남은 코인도 정산
+  for(const c of coins)gainGold(COIN_V);coins.length=0;                    // 화면에 남은 코인도 정산
   const bb=from==='boss'?150+50*(stage-1):0,nb=from==='boss'&&noDmg?80:0;gold+=bb+nb;shopFrom=from;
   const fx_=ITEMS.filter(it=>it.fixed&&canBuy(it));
   shopState={earned:from==='node'?0:stageGold,bb,nb,slots:rollSlots(),fixed:fx_.length?{it:fx_[Math.random()*fx_.length|0],sold:0}:null,rr:30};
@@ -939,10 +956,11 @@ shopEl.addEventListener('click',e=>{const t=e.target.closest('button');if(!t||t.
   SFX.buy();renderShop()});
 // ---------- 무기 ----------
 const optPos=k=>trail[Math.min(trail.length-1,10*(k+1))]||[ship.x,ship.y];   // 옵션 드론: 기체가 지나간 경로를 따라옴
-function pb(x,y,a=-Math.PI/2){bullets.push({x,y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,pierce:UP.pierce,hits:null})}
+const SIDE_DMG=.5;   // 확산탄 보조탄 공격력 (주포·후방포·옵션 드론은 1)
+function pb(x,y,a=-Math.PI/2,dmg=1){bullets.push({x,y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,pierce:UP.pierce,hits:null,dmg})}
 function firePlayer(weak){
   pb(ship.x,ship.y-10);if(weak){shotN++;SFX.shot();return}
-  for(const a of[[],[.18],[.14,.28],[.12,.24,.36]][UP.spread]){pb(ship.x-3,ship.y-6,-Math.PI/2-a);pb(ship.x+3,ship.y-6,-Math.PI/2+a)}
+  for(const a of[[],[.18],[.14,.28],[.12,.24,.36]][UP.spread]){pb(ship.x-3,ship.y-6,-Math.PI/2-a,SIDE_DMG);pb(ship.x+3,ship.y-6,-Math.PI/2+a,SIDE_DMG)}
   if(UP.rear&&shotN%2===0)pb(ship.x,ship.y+8,Math.PI/2);
   for(let k=0;k<UP.option;k++){const [x,y]=optPos(k);pb(x,y-4)}
   shotN++;SFX.shot()}
@@ -1189,7 +1207,7 @@ const BOSSES={
 
 // ---------- 타이틀 / 게임 오버 ----------
 let best=0;try{best=+(localStorage.getItem('air_best')||0)}catch(e){}
-function toTitle(){isFinal=false;stage=1;TH=THEMES.coast;state='title';stT=0;mapEl.classList.remove('on');shopEl.classList.remove('on');boss=null;
+function toTitle(){DEV.boss=false;isFinal=false;stage=1;TH=THEMES.coast;state='title';stT=0;mapEl.classList.remove('on');shopEl.classList.remove('on');boss=null;
   for(const a of[bullets,missiles,webs,fx,smoke,enemies,ebul,coins,homers,trail])a.length=0;bgmPlay('title')}
 function startRun(){unlock();reset();SFX.respawn()}
 
@@ -1590,7 +1608,7 @@ Object.assign(BOSSES,{
   hive:{make:makeHive,upd:updHive,draw:drawHive,hit:(b,x,y)=>Math.hypot(x-b.x,y-b.y)<25}});
 
 // ---------- 최종 결전 / 엔딩 / NEW GAME+ ----------
-function startFinal(){isFinal=true;setTheme();shopEl.classList.remove('on');lvl=DF()+.5;beginFlight(BOSS_S-sec(28),Infinity,false,'final')}
+function startFinal(lead=28){isFinal=true;setTheme();shopEl.classList.remove('on');lvl=DF()+.5;beginFlight(BOSS_S-sec(lead),Infinity,false,'final')}   // lead: 보스까지 남은 비행 시간(초)
 const CREDITS=['— STAFF —','기획 · 디렉션: homeoffice','게임 디자인 · 프로그래밍: Enchanté','그래픽: 절차적 생성 픽셀 & 벡터','음악 · 효과음: WebAudio 실시간 합성','','THANK YOU FOR PLAYING'];
 function openEnding(){state='ending';stT=0;boss=null;for(const a of[bullets,missiles,webs,fx,smoke,enemies,ebul,coins,homers,trail])a.length=0;
   if(score>best){best=score;try{localStorage.setItem('air_best',best)}catch(e){}}
@@ -1644,6 +1662,7 @@ function drawNeonHUD(now){
   neon('SCORE',4,8,`600 5px ${NEO}`,'#ff9ad8','rgba(255,60,180,.9)');
   neon(String(score).padStart(7,'0'),4,18,`700 10.5px ${NEO}`,'#bff4ff','rgba(40,210,255,1)');
   for(let k=0;k<Math.min(lives,8);k++)heroShip(8+k*9,27,.085,0,now,false);
+  if(DEV.on)neon(DEV.god?'DEV · GOD':'DEV',W-4,46,'700 5px '+NEO,'#c0ffd0','rgba(60,255,120,1)','right');
   // 섹터 · 진행도
   neon((run.elite?'ELITE  ':'')+(isFinal?'FINAL':`SECTOR ${stage}/${SECTORS}`),W-4,8,`600 5.5px ${NEO}`,run.elite?'#ff9aa8':'#bfe8ff',run.elite?'rgba(255,60,80,.9)':'rgba(40,170,255,.9)','right');
   if(state==='play'&&run.end<Infinity){const p=Math.min(1,(scroll-run.start)/(run.end-run.start));ctx.fillStyle='rgba(120,200,255,.18)';rrect(W-48,11,44,3,1.5);ctx.fill();
@@ -1774,7 +1793,7 @@ function reset(){stage=1;loop=0;isFinal=false;setTheme();stageGold=0;noDmg=true;
 if(!window.GALLERY)toTitle();   // GALLERY: 도감(bestiary.html)에서 그리기 함수만 빌려 쓸 때 게임을 시작하지 않음
 const addFx=(x,y,r,life,delay=0)=>fx.push({x,y,r,life,t:-delay});
 // 피격: 기체 폭발 → 1.2초 후 화면 아래에서 재출격(무적 2.5초). 공정하도록 화면의 적 탄은 제거
-function hitShip(){if(inv>0||ship.dead>0||!(state==='play'||state==='warning'||state==='boss'))return;noDmg=false;
+function hitShip(){if(DEV.god||inv>0||ship.dead>0||!(state==='play'||state==='warning'||state==='boss'))return;noDmg=false;
   if(UP.shield>0){UP.shield--;inv=1.5;SFX.shield();addFx(ship.x,ship.y,20,.4);for(const b of ebul)addFx(b.x,b.y,3,.2);ebul.length=missiles.length=webs.length=0;return}   // 실드가 대신 맞음
   lives--;ship.dead=1.2;slow=0;flashT=.2;SFX.die();
   addFx(ship.x,ship.y,24,.6);
@@ -1821,6 +1840,22 @@ function saveVol(){try{localStorage.setItem('air_vol',JSON.stringify(VOL))}catch
 function setMenu(o){menuOpen=o;menuEl.classList.toggle('on',o);if(o){unlock();syncMenu();touch.id=null}else{last=performance.now()}}
 $('menuBtn').onclick=e=>{e.stopPropagation();setMenu(!menuOpen)};
 $('mClose').onclick=()=>setMenu(false);
+// ---------- 개발자 모드 (암호 1029): 보스전 바로 시작 ----------
+const devEl=$('dev');
+const DEV_BOSS=[[1,'coast'],[2,'ice'],[3,'volcano'],[4,'base'],[5,'orbit'],[6,'hive']];
+$('dBoss').innerHTML=DEV_BOSS.map(([n,k])=>`<button data-db="${n}">${THEMES[k].bossName}<small>${n<6?'SECTOR '+n+' · '+THEMES[k].planet:'최종전'}</small></button>`).join('');
+$('dLock').onclick=()=>{devEl.classList.add('ask');$('dCode').value='';$('dCode').focus()};
+function devTry(){const c=$('dCode');if(c.value==='1029'){DEV.on=true;devEl.classList.remove('ask');devEl.classList.add('on');SFX.coin()}
+  else{c.classList.remove('bad');void c.offsetWidth;c.classList.add('bad');c.value='';SFX.shield()}}
+$('dOk').onclick=devTry;$('dCode').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')devTry()});
+$('dOff').onclick=()=>{Object.assign(DEV,{on:false,god:false,full:false});$('dGod').checked=$('dFull').checked=false;devEl.classList.remove('on')};
+$('dGod').onchange=e=>DEV.god=e.target.checked;$('dFull').onchange=e=>DEV.full=e.target.checked;
+$('dBoss').onclick=e=>{const b=e.target.closest('[data-db]');if(b)devBoss(+b.dataset.db)};
+function devBoss(n){setMenu(false);unlock();reset();mapEl.classList.remove('on');DEV.boss=true;
+  if(DEV.full)for(const it of ITEMS)if(it.cat==='무기'||it.cat==='방어'){if(it.id==='shield'){UP.shieldMax=it.max;UP.shield=it.max}else UP[it.id]=it.max}
+  if(DEV.full){UP.bomb=3;lives=9}
+  if(n===6)return startFinal(8);
+  stage=n;isFinal=false;setTheme();lvl=DF()+.5;beginFlight(BOSS_S-sec(8),Infinity,false)}
 $('mQuit').onclick=()=>{setMenu(false);if(state!=='title'){if(score>best){best=score;try{localStorage.setItem('air_best',best)}catch(e){}}toTitle()}};
 menuEl.addEventListener('pointerdown',e=>{if(e.target===menuEl)setMenu(false)});   // 바깥 탭 → 닫기
 for(const k of['Master','Bgm','Sfx'])$('v'+k).addEventListener('input',e=>{VOL[k.toLowerCase()]=+e.target.value;if(VOL.mute&&+e.target.value>0)VOL.mute=false;saveVol();if(k==='Sfx')SFX.coin()});
@@ -1846,7 +1881,7 @@ function frame(now){
   {const vx=(ship.x-(ship.px??ship.x))/dt;ship.px=ship.x;   // 좌우 이동 → 기울기(뱅크)
    ship.bank=(ship.bank||0)+(Math.max(-1,Math.min(1,vx/80))-(ship.bank||0))*Math.min(1,dt*10)}
   if(state!=='shop'&&state!=='map'&&state!=='event'&&state!=='ending')scroll+=SPEED*mult*dt;camX=(ship.x-CX)*.3;inv=Math.max(0,inv-dt);slow=Math.max(0,slow-dt);flashT=Math.max(0,flashT-dt);
-  if(state==='play'&&scroll>=run.end){state='segclear';stT=0;bgmStop();SFX.clear();for(const c of coins)gainGold(1);coins.length=0;
+  if(state==='play'&&scroll>=run.end){state='segclear';stT=0;bgmStop();SFX.clear();for(const c of coins)gainGold(COIN_V);coins.length=0;
     run.bonus=(run.mode==='treasure'?0:40+20*(stage-1))+(run.elite?80:0)+(noDmg?40:0)+(EASY&&run.pos.r===0&&run.mode!=='treasure'?80:0);gold+=run.bonus}   // 마지막 항: 섹터 1 첫 전투 보너스
   if(state==='segclear'&&stT>2.6)openMap();
   if(state==='play'&&scroll>=BOSS_S){state='warning';stT=0;bgmStop();SFX.warn()}
@@ -1858,7 +1893,7 @@ function frame(now){
     if(stT>2.4){for(let k=0;k<12;k++)addFx(boss.x+(Math.random()-.5)*60,boss.y-14+(Math.random()-.5)*60,18,.8);
       boss=null;state='clear';stT=0;score+=5000;flashT=.35;bgmStop();SFX.boom(true);SFX.clear()}
   }
-  if(state==='clear'&&stT>3.5){if(isFinal)openEnding();else openShop('boss')}
+  if(state==='clear'&&stT>3.5){if(DEV.boss){DEV.boss=false;toTitle()}else if(isFinal)openEnding();else openShop('boss')}
   if(state==='over'&&stT>8)toTitle();
 
   if(frozen>0){frozen-=dt;if(frozeAt){ship.x=frozeAt[0];ship.y=frozeAt[1]}
@@ -1870,12 +1905,12 @@ function frame(now){
   if(combat)updateWeapons(dt);   // 남은 시간 이월 → 프레임 단위 손실 없음
   for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;let hit=b.y<-10||b.y>H+10||b.x<-10||b.x>W+10;
     if(!hit)for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];
-      if(e.y>-4&&!(b.hits&&b.hits.has(e))&&(e.bw?Math.abs(e.x-b.x)<e.bw/2+1&&Math.abs(e.y-b.y)<e.bh/2+1:Math.hypot(e.x-b.x,e.y-b.y)<ET[e.type].r+2)){e.hp--;e.flash=.05;score+=5;SFX.hit();if(e.hp<=0)killEnemy(j);
+      if(e.y>-4&&!(b.hits&&b.hits.has(e))&&(e.bw?Math.abs(e.x-b.x)<e.bw/2+1&&Math.abs(e.y-b.y)<e.bh/2+1:Math.hypot(e.x-b.x,e.y-b.y)<ET[e.type].r+2)){e.hp-=b.dmg;e.flash=.05;score+=5;SFX.hit();if(e.hp<=0)killEnemy(j);
         if(b.pierce>0){b.pierce--;(b.hits=b.hits||new Set).add(e)}else hit=true;break}}
     if(!hit)for(let j=missiles.length-1;j>=0;j--){const m=missiles[j];
       if(Math.abs(m.x-b.x)<5&&Math.abs(m.y-b.y)<7){missiles.splice(j,1);addFx(m.x,m.y,8,.35);score+=50;SFX.boom(false);hit=true;break}}
     if(!hit&&boss&&state==='boss'&&boss.t>3&&BOSSES[boss.kind].hit(boss,b.x,b.y)){
-      hit=true;boss.hp--;boss.flash=.05;SFX.hit();score+=10;addFx(b.x,b.y,3,.15);
+      hit=true;boss.hp-=b.dmg;boss.flash=.05;SFX.hit();score+=10;addFx(b.x,b.y,3,.15);
       if(boss.hp<=0){state='dying';stT=0;boss.dead=1;missiles.length=webs.length=0}}
     if(hit)bullets.splice(i,1)}
   for(let i=missiles.length-1;i>=0;i--){const m=missiles[i];m.t+=dt;
