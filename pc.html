@@ -1550,7 +1550,7 @@ function updGolem(b,dt){b.t+=dt;b.flash=Math.max(0,b.flash-dt);const p2=b.hp<b.m
     else if(f.st===3){f.t+=dt;const k=Math.min(1,f.t/1.5),j=1.5+3*k;   // 예비 동작: 점점 세게 떨며 살짝 뒤로 젖힘
       f.x=hx+(Math.random()-.5)*j-f.s*4*k;f.y=hy-6*k+(Math.random()-.5)*j;
       if(f.t>=1.5){const a=aimA(f.x,f.y);f.st=1;f.t=0;f.vx=Math.cos(a)*230;f.vy=Math.sin(a)*230;SFX.dash()}}
-    else if(f.st===1){f.t+=dt;f.x+=f.vx*dt;f.y+=f.vy*dt;if(f.t>1.1||f.y>H+10||f.x<-10||f.x>W+10){f.st=2;ring(f.x,f.y,p2?10:7,70,f.t);SFX.boom(false)}}
+    else if(f.st===1){f.t+=dt;f.x+=f.vx*dt;f.y+=f.vy*dt;if(f.t>1.1||f.y>H+10||f.x<-10||f.x>W+10){f.st=2;addFx(f.x,f.y,14,.4);SFX.boom(false)}}
     else{const dx=hx-f.x,dy=hy-f.y,d=Math.hypot(dx,dy);if(d<6)f.st=0;else{f.x+=dx/d*240*dt;f.y+=dy/d*240*dt}}
     if(!b.dead&&f.st===1&&Math.hypot(f.x-ship.x,f.y-ship.y)<13)hitShip()}
   if(b.dead||b.t<3.3)return;
@@ -1872,7 +1872,7 @@ function isInsideShipHit(px,py,r){const dx=px-ship.x,dy=py-ship.y;let inside=fal
     const xi=SHIP_HIT_SHAPE[i][0]*r,yi=SHIP_HIT_SHAPE[i][1]*r,xj=SHIP_HIT_SHAPE[j][0]*r,yj=SHIP_HIT_SHAPE[j][1]*r;
     if(((yi>dy)!==(yj>dy))&&(dx<(xj-xi)*(dy-yi)/(yj-yi)+xi))inside=!inside}
   return inside}
-const SHIP_HIT_BASE_R=6.0;   // 기본 히트박스 크기 (hitbox_view.html 100% 기준과 동일)
+const SHIP_HIT_BASE_R=4.5;   // 기본 히트박스 크기 (hitbox_view.html 100% 기준과 동일)
 const shipHitScale=()=>1-UP.small*.01;   // 격납고 '히트박스 축소' 레벨당 1%씩 감소 (최대 5%)
 let scroll,state,stT,boss,lives,inv,slow,score,fireT=0,flashT=0;
 function reset(){stage=1;loop=0;isFinal=false;setTheme();stageGold=0;noDmg=true;goldFrac=0;Object.assign(UP,UP0);bought={};homers.length=trail.length=0;shopEl.classList.remove('on');lvl=0;scroll=0;state='play';stT=0;boss=null;lives=3;inv=0;slow=0;score=0;gold=0;spawnT=2;ship.dead=0;ship.x=ship.tx=CX;ship.y=ship.ty=SHIP_Y;
