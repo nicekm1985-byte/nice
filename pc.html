@@ -109,10 +109,10 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #map .mhd b{font-size:4.4cqh}#map .mhd span{font-size:2.3cqh}#map .nd small{font-size:1.6cqh}#map .nd{font-size:3.3cqh}#map .nd.boss{font-size:4.2cqh}#map .info .t{font-size:3cqh}#map .info .d{font-size:2.2cqh;line-height:1.5}#map .info button{font-size:3cqh}#map .evt{font-size:4.4cqh}#map .evd{font-size:2.5cqh}#map .evc button b{font-size:2.7cqh}#map .evc button small{font-size:2cqh}#map .evc button.ok{font-size:3cqh}#map .cred p{font-size:2.1cqh}
 body{display:flex;flex-direction:column;align-items:center;height:100dvh}
 #shop,#map{width:100dvw!important;height:100dvh!important}
-canvas{width:auto;height:min(92dvh,100dvw*4/3);aspect-ratio:3/4;max-width:100dvw;flex:0 0 auto}
+canvas{width:auto;height:min(80dvh,100dvw*4/3);aspect-ratio:3/4;max-width:100dvw;flex:0 0 auto}
 body.full canvas{width:100dvw;height:100dvh;max-width:none;aspect-ratio:auto}
 body.full #ctrlZone{display:none!important}
-#ctrlZone{display:flex!important;flex:1;min-height:0;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
+#ctrlZone{display:flex!important;flex:0 0 auto;height:min(20dvh,100dvw/3);min-height:0;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
   background:linear-gradient(#1c2026,#101317);border-top:1px solid #4a5660;
   background-image:linear-gradient(#1c2026,#101317),repeating-linear-gradient(0deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px);
   background-blend-mode:normal,screen,screen}
@@ -1259,7 +1259,7 @@ function sizeHi(){const r=cv.getBoundingClientRect(),d=Math.min(3,window.deviceP
   Object.assign(hiC.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
   const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(hiC.width!==w||hiC.height!==h){hiC.width=w;hiC.height=h}hiK=hiC.width/W;hiKX=hiC.width/W;hiKY=hiC.height/H}
 addEventListener('resize',()=>{if(hiOn)sizeHi()});
-function hiDraw(fn){if(!hiOn){hiOn=true;hiC.style.display='block';sizeHi()}ctx=hctx;ctx.setTransform(hiKX,0,0,hiKY,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx=CTX0}}
+function hiDraw(fn){if(!hiOn){hiOn=true;hiC.style.display='block'}sizeHi();ctx=hctx;ctx.setTransform(hiKX,0,0,hiKY,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx=CTX0}}
 function hiHide(){if(hiOn){hiOn=false;hiC.style.display='none'}}
 
 // ---------- 주인공 기체 (벡터, 고해상도용) ----------
@@ -1685,7 +1685,7 @@ function drawFireworks(now){const t=now/1000;ctx.save();ctx.globalCompositeOpera
 
 // ---------- 고해상도 HUD · 네온 레트로 ----------
 let shipVis=false;
-function hiHUD(fn){if(!hiOn){hiOn=true;hiC.style.display='block';sizeHi()}ctx=hctx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,hiC.width,hiC.height);
+function hiHUD(fn){if(!hiOn){hiOn=true;hiC.style.display='block'}sizeHi();ctx=hctx;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,hiC.width,hiC.height);
   ctx.setTransform(hiKX,0,0,hiKY,0,0);ctx.imageSmoothingEnabled=true;try{fn()}finally{ctx.shadowBlur=0;ctx=CTX0}}
 function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 function neon(t,x,y,font,col,glow,al='left'){ctx.font=font;ctx.textAlign=al;ctx.shadowColor=glow;ctx.shadowBlur=7;ctx.fillStyle=col;ctx.fillText(t,x,y);ctx.shadowBlur=2.5;ctx.fillText(t,x,y);
