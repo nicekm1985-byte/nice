@@ -4,6 +4,7 @@
 <title>에일리언 프론티어</title>
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none}
+#ctrlZone{display:none}
 canvas{display:block;margin:0 auto;height:min(100dvh,100dvw*4/3);width:min(100dvw,100dvh*3/4);image-rendering:pixelated}
 #ui{position:fixed;top:8px;right:8px;display:flex;gap:6px;z-index:30}
 button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1px solid #666;border-radius:4px}
@@ -103,10 +104,25 @@ button{font:12px monospace;padding:6px 10px;background:#222;color:#fff;border:1p
 #map .cred{height:15cqh;overflow:hidden;mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 25%,#000 75%,transparent);width:100%}
 #map .cred div{animation:roll 14s linear infinite}#map .cred p{margin:.5cqh 0;font-size:1.7cqh;color:#c8b8f0}@keyframes roll{from{transform:translateY(15cqh)}to{transform:translateY(-100%)}}
 #map .evc button.ok{align-items:center;background:linear-gradient(#ffe070,#f0b020);color:#2a1e00;border:0;font:800 2.4cqh/1 -apple-system,sans-serif;letter-spacing:.12em;padding:1.6cqh}
-@media(pointer:coarse),(hover:none){#shop .hd b{font-size:5.6cqh}#shop .hd span{font-size:2.6cqh}#shop .st{font-size:2.4cqh}#shop .own{font-size:2.1cqh}#shop .cat{font-size:1.9cqh}#shop .nm{font-size:2.8cqh}#shop .lv{font-size:2cqh}#shop .ds{font-size:2.05cqh;line-height:1.4}#shop button{font-size:2.6cqh}#shop .ic{font-size:4.4cqh}}
+@media(pointer:coarse),(hover:none){#shop .hd b{font-size:5.6cqh}#shop .hd span{font-size:2.6cqh}#shop .st{font-size:2.4cqh}#shop .own{font-size:2.1cqh}#shop .cat{font-size:1.9cqh}#shop .nm{font-size:2.8cqh}#shop .lv{font-size:2cqh}#shop .ds{font-size:2.05cqh;line-height:1.4}#shop button{font-size:2.6cqh}#shop .ic{font-size:4.4cqh}
+body{display:flex;flex-direction:column;align-items:center;height:100dvh}
+canvas{width:100dvw;height:auto;aspect-ratio:3/4;max-height:76dvh;flex:0 0 auto}
+#ctrlZone{display:flex;flex:1;min-height:46px;width:100dvw;position:relative;box-sizing:border-box;touch-action:none;
+  background:linear-gradient(#1c2026,#101317);border-top:1px solid #4a5660;
+  background-image:linear-gradient(#1c2026,#101317),repeating-linear-gradient(0deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px),repeating-linear-gradient(90deg,rgba(140,170,200,.06) 0 1px,transparent 1px 10px);
+  background-blend-mode:normal,screen,screen}
+#ctrlZone::before{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(120,200,255,.7),transparent)}
+#ctrlZone .cz-label{position:absolute;top:6px;left:50%;transform:translateX(-50%);font:700 10px Menlo,monospace;letter-spacing:.25em;color:rgba(154,208,255,.55)}
+#ctrlZone .cz-corner{position:absolute;width:10px;height:10px;border:1px solid rgba(154,208,255,.45)}
+#ctrlZone .cz-corner.tl{top:5px;left:5px;border-right:0;border-bottom:0}
+#ctrlZone .cz-corner.tr{top:5px;right:5px;border-left:0;border-bottom:0}
+#ctrlZone .cz-corner.bl{bottom:5px;left:5px;border-right:0;border-top:0}
+#ctrlZone .cz-corner.br{bottom:5px;right:5px;border-left:0;border-top:0}
+}
 </style></head><body>
 <canvas id="c" width="240" height="320"></canvas>
 <canvas id="hi" style="position:fixed;display:none;pointer-events:none;z-index:1"></canvas>
+<div id="ctrlZone"><span class="cz-corner tl"></span><span class="cz-corner tr"></span><span class="cz-corner bl"></span><span class="cz-corner br"></span><span class="cz-label">CONTROL ZONE</span></div>
 <div id="ui"><button id="menuBtn">M</button></div>
 <div id="menu"><div class="mbox"><div class="mt">MENU</div>
 <label class="row mute"><span>🔇 음소거</span><input type="checkbox" id="vMute"></label>
@@ -1878,6 +1894,19 @@ cv.addEventListener('pointerup',endTouch);cv.addEventListener('pointercancel',en
 cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')mouse=null});
 cv.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});   // iOS 스크롤·확대 방지
 cv.style.cursor='none';cv.style.touchAction='none';
+// ---------- Control Zone: 캔버스 아래 남는 공간도 터치 조작 영역으로 사용 (캔버스와 동일한 상대 드래그 방식) ----------
+const ctrlZone=document.getElementById('ctrlZone');
+ctrlZone.addEventListener('pointerdown',e=>{const [x,y]=toCanvas(e);
+  if(state==='title'&&!menuOpen){startRun();e.preventDefault();return}
+  if(state==='howto'&&!menuOpen){confirmHowTo();e.preventDefault();return}
+  if(state==='over'){if(stT>1.5)toTitle();e.preventDefault();return}
+  if(touch.id===null){touch.id=e.pointerId;touch.x=x;touch.y=y;ctrlZone.setPointerCapture&&ctrlZone.setPointerCapture(e.pointerId)}
+  e.preventDefault()});
+ctrlZone.addEventListener('pointermove',e=>{if(e.pointerId!==touch.id)return;const [x,y]=toCanvas(e);
+  if(canSteer()){ship.x+=x-touch.x;ship.y+=y-touch.y;clampShip()}
+  touch.x=x;touch.y=y;e.preventDefault()});
+ctrlZone.addEventListener('pointerup',endTouch);ctrlZone.addEventListener('pointercancel',endTouch);
+ctrlZone.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 
 // ---------- 메뉴 ----------
 let menuOpen=false;const $=id=>document.getElementById(id),menuEl=$('menu');
