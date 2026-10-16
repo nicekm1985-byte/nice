@@ -712,7 +712,7 @@ const ET={
   rot:e=>e.ang,
   draw:(e,now)=>{GL(0,0,13,`rgba(80,220,255,${.2+.2*pulse(now,90)})`);for(let k=0;k<8;k++){const a=k*Math.PI/4;O(Math.cos(a)*7,Math.sin(a)*7,1.8,k%2?'#40c8f0':'#2060a0')}
     O(0,0,4,'#103050');O(0,0,2.5,'#80f0ff');O(0,0,1,'#fff')}},
- squid:{name:'촉수 오징어',hp:5,r:8,gold:2,score:200,          // 측면에서 곡선 진입. 촉수 끝에서 아래로 2연 낙하탄
+ squid:{name:'촉수 오징어',hp:3,r:8,gold:2,score:200,          // 측면에서 곡선 진입. 촉수 끝에서 아래로 2연 낙하탄
   init:e=>{e.side=e.x<CX?1:-1;e.vx=115*e.side;e.vy=8;e.fireT=.5},
   upd:(e,dt)=>{e.vy+=65*dt;e.vx*=1-.4*dt;e.x+=e.vx*dt;e.y+=e.vy*dt;if((e.fireT-=dt)<=0){e.fireT=.75;e.sw=(e.sw||0)+1;shoot(e.x,e.y+6,Math.PI/2+Math.sin(e.sw*1.4+e.x*.05)*.6,92)}},
   rot:e=>Math.atan2(e.vy,e.vx)-Math.PI/2,
