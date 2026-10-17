@@ -149,6 +149,9 @@ body.full #ctrlZone{display:none!important}
 const cv=document.getElementById('c'),CTX0=cv.getContext('2d');let ctx=CTX0;
 const IS_MOBILE_UA=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
 const W=240,H=IS_MOBILE_UA?384:320,CX=W/2,SPEED=40;   // 스크롤 속도 (px/s)   // 모바일은 세로 비율을 더 길게
+// 모바일 전용 배경 확대(그림만, 적/탄/기체 좌표에는 적용 안 됨). 이 배율/중심을 바꿀 때는 여기 한 곳만 고치면
+// 렌더링(frame 함수의 ctx.scale 호출)과 지상 유닛 스폰 좌표 계산(cityRoofSpots)이 항상 같이 맞물려 움직인다.
+const BG_ZOOM=IS_MOBILE_UA?1.25:1,BG_ZOOM_CX=CX,BG_ZOOM_CY=H*.5;
 cv.width=W;cv.height=H;
 const LAYERS=[{f:1,shade:0},{f:.78,shade:.3},{f:.6,shade:.55}];   // 위(가까움) → 아래(멂)
 let camX=0;   // 좌우 카메라 오프셋 (지면·지상 유닛 공통)
@@ -1839,9 +1842,14 @@ function drawHowTo(now){const g=ctx;g.textAlign='center';
 
 
 // ---------- 도시 지상 유닛: 건물 옥상 블록 하나를 통째로 차지 ----------
+// 배경은 모바일에서 1.25배 확대돼 그려지는데(중심 CX,H*.5) 지상 유닛은 확대되지 않은 원좌표계에 스폰되므로,
+// 여기서 건물의 "화면상 보이는 위치"를 먼저 구한 뒤 그 확대를 역산해 "확대 전 좌표"로 변환해 돌려준다.
+// 캔버스 확대 배율/중심이 바뀌어도(BG_ZOOM, BG_ZOOM_CX, BG_ZOOM_CY) 이 함수만 보고 따라가면 항상 일치한다.
 function cityRoofSpots(){const out=[],ox=Math.round(mod(-camX,256)),oy=Math.round(mod(scroll,256));
-  for(const [tx,ty,w,h] of CITY_ROOFS){const cx=tx+w/2,cy=ty+h/2;for(let n=-1;n<=1;n++)for(let m=-2;m<=0;m++){const sx=cx+ox+n*256,sy=cy+oy+m*256;
-    if(sx>w/2+4&&sx<W-w/2-4&&sy>-80&&sy<-h/2-2&&groundLook(sy)==='city'&&openAt(scroll+H-sy)<.02)out.push({sx,sy,w,h})}}return out}
+  const zoom=BG_ZOOM,zcx=BG_ZOOM_CX,zcy=BG_ZOOM_CY;
+  for(const [tx,ty,w,h] of CITY_ROOFS){const cx=tx+w/2,cy=ty+h/2;for(let n=-1;n<=1;n++)for(let m=-2;m<=0;m++){const sxZoomed=cx+ox+n*256,syZoomed=cy+oy+m*256;
+    const sx=zcx+(sxZoomed-zcx)/zoom,sy=zcy+(syZoomed-zcy)/zoom;   // 확대된 화면좌표 → 확대 전 좌표로 역변환
+    if(sx>w/2+4&&sx<W-w/2-4&&sy>-80&&sy<-h/2-2&&groundLook(syZoomed)==='city'&&openAt(scroll+H-syZoomed)<.02)out.push({sx,sy,w:w/zoom,h:h/zoom})}}return out}
 // 도시 옥상 기생체: 블록에 딱 맞게 자리잡되, 건물이 아니라 외계 생물이 옥상을 점령한 모습
 const FLESH='#5a1060',FLESH_L='#b03ab0',FLESH_D='#22042a',VEIN='#ff4ad0',EYE='#ffe23a';
 function roofGrip(w,h,now,ph){   // 블록 네 모서리와 변을 움켜쥔 촉수 (외곽선을 따라 꿈틀거림)
@@ -2073,7 +2081,7 @@ function frame(now){
   if(state==='map'||state==='event'){hiDraw(()=>drawSpace(now));return requestAnimationFrame(frame)}
   if(state==='ending'){hiDraw(()=>{drawSpace(now);drawFireworks(now)});return requestAnimationFrame(frame)}
   {const cur=state==='over'?'default':'none';if(cv.style.cursor!==cur)cv.style.cursor=cur}
-  if(IS_MOBILE_UA){ctx.save();ctx.translate(CX,H*.5);ctx.scale(1.25,1.25);ctx.translate(-CX,-H*.5)}   // 모바일 전용 배경 줌 (적/탄/기체는 영향 없음, 아래서 restore)
+  if(BG_ZOOM!==1){ctx.save();ctx.translate(BG_ZOOM_CX,BG_ZOOM_CY);ctx.scale(BG_ZOOM,BG_ZOOM);ctx.translate(-BG_ZOOM_CX,-BG_ZOOM_CY)}   // 모바일 전용 배경 줌 (적/탄/기체는 영향 없음, 아래서 restore)
   if(TH.space){drawOrbit(now)}else{
   ctx.fillStyle=TH.abyss;ctx.fillRect(0,0,W,H);                        // 맨 아래: 암흑
   if(TH.abyssTex){ctx.globalAlpha=.85;fillPat(TH.abyssTex,-camX*.4,scroll*.4,[()=>ctx.rect(0,0,W,H)]);ctx.globalAlpha=1}   // 협곡 바닥 (용암·반응로)
@@ -2088,7 +2096,7 @@ function frame(now){
   if(TH.snow){drawSnow(0,now);drawSnow(1,now)}
 
   if(!TH.noCloud&&!TH.space)drawClouds();
-  if(IS_MOBILE_UA)ctx.restore();   // 배경 줌 해제 — 이후 적/탄/보스/기체는 원래 좌표·크기로 그려짐
+  if(BG_ZOOM!==1)ctx.restore();   // 배경 줌 해제 — 이후 적/탄/보스/기체는 원래 좌표·크기로 그려짐
   drawEnemies(now);
   for(const s of smoke){ctx.fillStyle=`rgba(200,200,200,${.5*(1-s.t/.6)})`;ctx.beginPath();ctx.arc(s.x,s.y,1.5+s.t*4,0,7);ctx.fill()}
   if(boss)BOSSES[boss.kind].draw(boss,now);
