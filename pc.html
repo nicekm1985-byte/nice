@@ -819,8 +819,8 @@ const ET={
     EL(0,-4,7,5,'#40ff90');EL(-2,-6,2.5,1.5,'#e0fff0');for(let k=0;k<8;k++){const a=now/200+k*Math.PI/4;R(Math.cos(a)*13-1,1,2,1.5,(k%2)?'#ffe040':'#40ffa0')}
     R(-3,4,6,2,(now/150|0)%2?'#ff4040':'#601010')}},
  nest:{name:'매복 둥지',hp:10,r:10,gold:4,score:380,ground:1,   // 지면 구멍에 숨어 있다가 열리면 8방향 탄. 위장색은 지형을 따름
-  init:e=>{e.gx=e.x+camX;e.look=groundLook(e.y);e.ph=Math.random()*3;e.fired=0},
-  upd:(e,dt)=>{e.y+=SPEED*mult*dt;e.x=e.gx-camX;e.ph+=dt*FRATE;const c=e.ph%3.4;e.charge=c>2.4?(c-2.4):0;
+  init:e=>{e.gx=e.x+camX*(e.bw?BG_ZOOM:1);e.look=groundLook(e.y);e.ph=Math.random()*3;e.fired=0},
+  upd:(e,dt)=>{e.y+=SPEED*mult*dt*(e.bw?BG_ZOOM:1);e.x=e.gx-camX*(e.bw?BG_ZOOM:1);e.ph+=dt*FRATE;const c=e.ph%3.4;e.charge=c>2.4?(c-2.4):0;   // 옥상 점유형(e.bw)은 배경 확대(BG_ZOOM)와 같은 속도로 움직여야 건물과 계속 겹쳐 보임
     if(c<.1&&e.fired<e.ph-1&&e.y>10&&e.y<GROUND_FIRE_Y&&e.y<ship.y-30){e.fired=e.ph;ring(e.x,e.y,8,62,e.ph)}},
   draw:(e,now)=>drawNest(e,now)},
  courier:{name:'보물 수송선',hp:16,r:9,gold:10,score:800,      // 탄 없음. 지그재그로 버티다 7초 뒤 도주, 이동 중 코인을 흘림
@@ -830,8 +830,8 @@ const ET={
   draw:(e,now)=>{GL(0,0,16,'rgba(255,210,60,'+(.3+.2*pulse(now,120))+')');EL(0,0,10,6,'#6a5020');EL(0,-1,9,5,'#d8a830');EL(0,-2,5,3,'#fff0b0');
     for(let k=0;k<5;k++){const a=now/180+k*TAU/5;O(Math.cos(a)*8,Math.sin(a)*4,1.2,'#ffe060')}R(-1,4,2,3,'#ffe060')}},
  crawler:{name:'외계 포탑',hp:7,r:8,gold:2,score:220,ground:1,  // 지상 고정 배치 생체 포탑. 지면과 같이 스크롤, 촉수 포신이 조준
-  init:e=>{e.fireT=1+Math.random();e.ta=Math.PI/2;e.gx=e.x+camX;e.look=groundLook(e.y)},
-  upd:(e,dt)=>{e.y+=SPEED*mult*dt;e.x=e.gx-camX;const da=mod(aimA(e.x,e.y)-e.ta+Math.PI,Math.PI*2)-Math.PI;e.ta+=Math.max(-2*dt,Math.min(2*dt,da));
+  init:e=>{e.fireT=1+Math.random();e.ta=Math.PI/2;e.gx=e.x+camX*(e.bw?BG_ZOOM:1);e.look=groundLook(e.y)},
+  upd:(e,dt)=>{e.y+=SPEED*mult*dt*(e.bw?BG_ZOOM:1);e.x=e.gx-camX*(e.bw?BG_ZOOM:1);const da=mod(aimA(e.x,e.y)-e.ta+Math.PI,Math.PI*2)-Math.PI;e.ta+=Math.max(-2*dt,Math.min(2*dt,da));   // 옥상 점유형(e.bw)은 배경 확대(BG_ZOOM)와 같은 속도로 움직여야 건물과 계속 겹쳐 보임
     if((e.fireT-=dt*FRATE)<=0&&e.y>0&&e.y<GROUND_FIRE_Y&&e.y<ship.y-30){e.fireT=1.7;shoot(e.x+Math.cos(e.ta)*9,e.y+Math.sin(e.ta)*9,e.ta,78)}},
   draw:(e,now)=>drawCrawler(e,now)},
  seeder:{name:'씨앗 살포체',hp:10,r:10,gold:4,score:420,        // 식물형. 씨앗을 쏘면 0.9초 후 6방향으로 터짐
@@ -1842,14 +1842,16 @@ function drawHowTo(now){const g=ctx;g.textAlign='center';
 
 
 // ---------- 도시 지상 유닛: 건물 옥상 블록 하나를 통째로 차지 ----------
-// 배경은 모바일에서 1.25배 확대돼 그려지는데(중심 CX,H*.5) 지상 유닛은 확대되지 않은 원좌표계에 스폰되므로,
-// 여기서 건물의 "화면상 보이는 위치"를 먼저 구한 뒤 그 확대를 역산해 "확대 전 좌표"로 변환해 돌려준다.
+// 배경은 모바일에서 BG_ZOOM배로 확대돼 그려진다(중심 BG_ZOOM_CX,BG_ZOOM_CY, 변환: translate(c)->scale(zoom)->translate(-c)).
+// 이 변환 아래서 로컬좌표 L이 실제로 나타나는 화면 픽셀 위치는 P = c + (L-c)*zoom (곱셈, 순방향).
+// 지상 유닛(적)은 이 변환이 해제된 뒤 "최종 픽셀 좌표"에 그대로 그려지므로, 건물과 겹치려면
+// 적의 좌표를 반드시 이 순방향 공식으로 계산해야 한다(나눗셈 역변환 아님 — 과거 실수했던 지점).
 // 캔버스 확대 배율/중심이 바뀌어도(BG_ZOOM, BG_ZOOM_CX, BG_ZOOM_CY) 이 함수만 보고 따라가면 항상 일치한다.
 function cityRoofSpots(){const out=[],ox=Math.round(mod(-camX,256)),oy=Math.round(mod(scroll,256));
   const zoom=BG_ZOOM,zcx=BG_ZOOM_CX,zcy=BG_ZOOM_CY;
   for(const [tx,ty,w,h] of CITY_ROOFS){const cx=tx+w/2,cy=ty+h/2;for(let n=-1;n<=1;n++)for(let m=-2;m<=0;m++){const sxZoomed=cx+ox+n*256,syZoomed=cy+oy+m*256;
-    const sx=zcx+(sxZoomed-zcx)/zoom,sy=zcy+(syZoomed-zcy)/zoom;   // 확대된 화면좌표 → 확대 전 좌표로 역변환
-    if(sx>w/2+4&&sx<W-w/2-4&&sy>-80&&sy<-h/2-2&&groundLook(syZoomed)==='city'&&openAt(scroll+H-syZoomed)<.02)out.push({sx,sy,w:w/zoom,h:h/zoom})}}return out}
+    const sx=zcx+(sxZoomed-zcx)*zoom,sy=zcy+(syZoomed-zcy)*zoom;   // 로컬좌표 → 실제 화면 픽셀좌표 (순방향 곱셈)
+    if(sx>w*zoom/2+4&&sx<W-w*zoom/2-4&&sy>-80&&sy<-h*zoom/2-2&&groundLook(syZoomed)==='city'&&openAt(scroll+H-syZoomed)<.02)out.push({sx,sy,w:w*zoom,h:h*zoom})}}return out}
 // 도시 옥상 기생체: 블록에 딱 맞게 자리잡되, 건물이 아니라 외계 생물이 옥상을 점령한 모습
 const FLESH='#5a1060',FLESH_L='#b03ab0',FLESH_D='#22042a',VEIN='#ff4ad0',EYE='#ffe23a';
 function roofGrip(w,h,now,ph){   // 블록 네 모서리와 변을 움켜쥔 촉수 (외곽선을 따라 꿈틀거림)
