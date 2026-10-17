@@ -939,7 +939,7 @@ function drawTwist(b){const a=Math.atan2(b.vy,b.vx),c=Math.cos(a),s=Math.sin(a),
 // ---------- 업그레이드 & 상점(격납고) ----------
 let shopFrom='node',stage=1,stageGold=0,noDmg=true,goldFrac=0,shotN=0,homT=0,bought={},shopState=null;
 const DEV={on:false,god:false,full:false,boss:false,lives:3};   // lives: 개발자 패널에서 정한 출격 목숨   // 개발자 모드 상태 (메뉴에서 암호 1029)
-const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,power:0,cont:0,barrier:0};
+const UP0={spread:0,rapid:0,pierce:0,homing:0,option:0,rear:0,shield:0,shieldMax:0,bomb:1,small:0,magnet:0,amp:0,power:0,cont:0};
 const UP={...UP0},homers=[],trail=[];
 const ITEMS=[
  {id:'spread',cat:'무기',icon:'🔱',name:'확산탄',max:3,price:[120,200,320],desc:l=>['좌우로 비스듬한 보조탄 2발 추가 (보조탄 공격력 0.5)','보조탄 4발로 증가','보조탄 6발로 증가'][l]},
@@ -956,12 +956,11 @@ const ITEMS=[
  {id:'cont',cat:'보급',icon:'🔁',name:'컨티뉴',max:2,price:[450,700],desc:'게임오버 시 1회 자동으로 이어서 플레이 (최대 2개 보유)'},
  {id:'life',cat:'보급',icon:'❤️',name:'추가 목숨',fixed:1,price:l=>200+l*100,desc:'목숨 +1 (살 때마다 가격 상승)'},
  {id:'bomb',cat:'보급',icon:'💣',name:'폭탄',fixed:1,price:()=>60,desc:'적 탄 제거 + 화면 전체 피해 (최대 3개)'},
- {id:'barrier',cat:'보급',icon:'🔵',name:'서지 배리어',fixed:1,price:()=>70,desc:'3초간 무적 + 화면의 적 탄 즉시 제거 (최대 3개)'},
 ];
 const shopEl=document.getElementById('shop');
 const pr=b=>Math.round(b*(1+.15*(stage-1))/5)*5;   // 섹터마다 가격 15%씩 상승   // 스테이지마다 가격 15%씩 상승
-const lvOf=it=>it.id==='shield'?UP.shieldMax:it.id==='life'?(bought.life||0):it.id==='bomb'?UP.bomb:it.id==='barrier'?UP.barrier:UP[it.id];
-const canBuy=it=>it.id==='bomb'?UP.bomb<3:it.id==='barrier'?UP.barrier<3:it.id==='life'?lives<9:lvOf(it)<it.max;
+const lvOf=it=>it.id==='shield'?UP.shieldMax:it.id==='life'?(bought.life||0):it.id==='bomb'?UP.bomb:UP[it.id];
+const canBuy=it=>it.id==='bomb'?UP.bomb<3:it.id==='life'?lives<9:lvOf(it)<it.max;
 const priceOf=it=>{const l=lvOf(it);return pr(typeof it.price==='function'?it.price(l):it.price[l])};
 function buy(it){if(it.id==='shield'){UP.shieldMax++;UP.shield=UP.shieldMax}else if(it.id==='life'){lives++;bought.life=(bought.life||0)+1}else UP[it.id]++}
 const COIN_V=.3;   // 코인 1개 가치 (G). 드롭 수는 그대로, 1개당 가치만 낮춤 (소수점은 goldFrac에 누적)
@@ -975,7 +974,7 @@ function openShop(from){
   state='shop';stT=0;bgmPlay('hangar');renderShop();shopEl.classList.add('on')}
 function cardHTML(s,i,fixed){
   if(!s)return'';const it=s.it,l=lvOf(it),p=priceOf(it),can=canBuy(it);
-  const lvTxt=it.id==='bomb'?`보유 ${UP.bomb}/3`:it.id==='barrier'?`보유 ${UP.barrier}/3`:it.id==='life'?`현재 목숨 ${lives}`:it.max>1?`Lv ${l} → ${l+1}`:'신규 장착';
+  const lvTxt=it.id==='bomb'?`보유 ${UP.bomb}/3`:it.id==='life'?`현재 목숨 ${lives}`:it.max>1?`Lv ${l} → ${l+1}`:'신규 장착';
   const ds=typeof it.desc==='function'?it.desc(l):it.desc;
   return `<div class="card${fixed?' fx':''}${s.sold?' sold':''}">${fixed?'<div class="tag">상시 보급</div>':''}
     <div class="cat">${it.cat}</div><div class="ic">${it.icon}</div><div class="nm">${it.name}</div><div class="lv">${s.sold?'구매 완료':lvTxt}</div>
@@ -1024,22 +1023,11 @@ function useBomb(){if(UP.bomb<=0||ship.dead||!(state==='play'||state==='warning'
   for(const b of ebul)addFx(b.x,b.y,3,.25);ebul.length=missiles.length=webs.length=0;
   for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(e.y<-10||e.y>H+10)continue;e.hp-=100;e.flash=.1;if(e.hp<=0)killEnemy(i)}
   if(boss&&state==='boss'&&boss.t>3)damageBoss(150)}
-let barrierT=0;   // 서지 배리어 발동 시각 효과(지글거리는 파란 막) 유지 시간
-function useBarrier(){if(UP.barrier<=0||ship.dead||!(state==='play'||state==='warning'||state==='boss'))return;
-  UP.barrier--;inv=Math.max(inv,3);barrierT=3;SFX.shield();addFx(ship.x,ship.y,40,.5);
-  for(const b of ebul)addFx(b.x,b.y,3,.2);ebul.length=missiles.length=webs.length=0;slow=0;frozen=0;frozeAt=null}
 function drawWeapons(now){
   for(const m of homers){ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='rgba(120,200,255,.5)';ctx.fillRect(-8,-1,5,2);ctx.fillStyle='#e8f4ff';ctx.fillRect(-3,-1.5,6,3);ctx.fillStyle='#40a0ff';ctx.fillRect(3,-1,2,2);ctx.restore()}
   if(ship.dead||state==='over'||state==='shop')return;
   for(let k=0;k<UP.option;k++){const [x,y]=optPos(k);GL(x,y,8,`rgba(80,180,255,${.4+.2*pulse(now,100)})`);O(x,y,3.5,'#1a3a80');O(x,y,2.5,'#60b0ff');O(x-.8,y-.8,1,'#fff')}
-  if(UP.shield>0){ctx.strokeStyle=`rgba(120,220,255,${.45+.25*pulse(now,120)})`;ctx.lineWidth=1.5;for(let k=0;k<UP.shield;k++){ctx.beginPath();ctx.arc(ship.x,ship.y,22+k*4,0,7);ctx.stroke()}}
-  if(barrierT>0){const jr=24+Math.sin(now/40)*1.6,p=Math.min(1,barrierT/.4);   // 서지 배리어: 지글거리는 파란 막 (기체 전체를 감싸는 크기, 끝나기 0.4초 전부터 서서히 사라짐)
-    ctx.save();ctx.globalAlpha=p;
-    ctx.strokeStyle=`rgba(80,200,255,${.55+.3*Math.sin(now/55)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(ship.x,ship.y,jr,0,7);ctx.stroke();
-    ctx.strokeStyle=`rgba(180,240,255,${.35+.25*Math.sin(now/37+1)})`;ctx.lineWidth=1;ctx.beginPath();ctx.arc(ship.x,ship.y,jr-3+Math.sin(now/30)*1.4,0,7);ctx.stroke();
-    for(let k=0;k<6;k++){const a=k/6*TAU+now/260,jx=ship.x+Math.cos(a)*(jr+Math.sin(now/25+k)*2),jy=ship.y+Math.sin(a)*(jr+Math.sin(now/25+k)*2);
-      ctx.fillStyle='rgba(200,245,255,.8)';ctx.beginPath();ctx.arc(jx,jy,.8,0,7);ctx.fill()}
-    ctx.restore()}}
+  if(UP.shield>0){ctx.strokeStyle=`rgba(120,220,255,${.45+.25*pulse(now,120)})`;ctx.lineWidth=1.5;for(let k=0;k<UP.shield;k++){ctx.beginPath();ctx.arc(ship.x,ship.y,22+k*4,0,7);ctx.stroke()}}}
 
 // ---------- 섹터 지도 (로그라이크 항로) ----------
 // 한 섹터 = 노드 3줄 + 섹터 보스. 전투 노드는 줄마다 정해진 항로 구간을 비행
@@ -1744,15 +1732,6 @@ function bombIcon(x,y,on,now){const g=ctx;g.save();g.translate(x,y);
   g.fillStyle='rgba(255,255,255,.75)';g.beginPath();g.ellipse(-1.3,-.8,.9,1.8,-.3,0,7);g.fill();
   g.fillStyle='#ffe0a0';g.fillRect(-.4,-6.4,.8,1.8);g.fillStyle=(now/90|0)%2?'#fff':'#ffb040';g.beginPath();g.arc(0,-6.6,.8,0,7);g.fill();   // 도화선 불꽃
   g.restore()}
-function barrierIcon(x,y,on,now){const g=ctx;g.save();g.translate(x,y);
-  if(!on){g.strokeStyle='rgba(80,180,255,.35)';g.lineWidth=.7;g.setLineDash([1.2,1.2]);g.beginPath();g.arc(0,0,4,0,7);g.stroke();g.setLineDash([]);g.restore();return}
-  const p=.5+.5*Math.sin(now/160);
-  g.shadowColor='rgba(100,210,255,.9)';g.shadowBlur=3+2*p;
-  const q=g.createRadialGradient(-1,-1,0,0,0,4);q.addColorStop(0,'#e8fbff');q.addColorStop(.55,'#60c8ff');q.addColorStop(1,'#1858a0');
-  g.fillStyle=q;g.beginPath();g.arc(0,0,4,0,7);g.fill();g.shadowBlur=0;
-  g.strokeStyle=`rgba(180,235,255,${.6+.3*p})`;g.lineWidth=.6;g.beginPath();g.arc(0,0,4.8+p*.6,0,7);g.stroke();
-  g.fillStyle='rgba(255,255,255,.8)';g.beginPath();g.ellipse(-1.2,-1.2,1.1,.7,-.4,0,7);g.fill();
-  g.restore()}
 function drawNeonHUD(now){
   // 점수
   neon('SCORE',4,11,`600 7px ${NEO}`,'#ff9ad8','rgba(255,60,180,.9)');
@@ -1781,11 +1760,6 @@ function drawNeonHUD(now){
   if(state!=='shop'){const on=UP.bomb>0,x=4,y=H-4;
     bombIcon(x+4,y-4,on,now);
     neon('×'+UP.bomb,x+10,y,`700 10px ${NEO}`,on?'#ffc8a0':'#8a8a92',on?'rgba(255,110,40,.8)':'transparent','left')}
-  // 배리어 — 화면 우측 하단, 아이콘 × 숫자 (최소 공간)
-  if(state!=='shop'){const on=UP.barrier>0,x=W-4,y=H-4;
-    const t='×'+UP.barrier;ctx.font=`700 10px ${NEO}`;const tw=ctx.measureText(t).width;
-    barrierIcon(x-tw-8,y-4,on,now);
-    neon(t,x,y,`700 10px ${NEO}`,on?'#a0e0ff':'#8a8a92',on?'rgba(80,200,255,.8)':'transparent','right')}
   // 보스 체력
   if(boss&&(state==='boss'||state==='dying')){const x=56,y=22,w=128,p=Math.max(0,boss.hp)/boss.maxHp;
     ctx.fillStyle='rgba(30,0,10,.7)';rrect(x,y,w,4.5,2.2);ctx.fill();
@@ -1937,8 +1911,7 @@ function hitShip(){if(DEV.god||inv>0||ship.dead>0||!(state==='play'||state==='wa
 
 addEventListener('keydown',e=>{keys[e.key]=1;
   if((e.key==='Enter'||e.code==='Space')&&!menuOpen){if(state==='title'){startRun();e.preventDefault();return}if(state==='howto'){confirmHowTo();e.preventDefault();return}if(state==='over'&&stT>1.5){toTitle();e.preventDefault();return}}
-  if((e.code==='Space'||e.key==='b'||e.key==='B')&&!e.repeat&&!menuOpen){useBomb();e.preventDefault()}
-  if((e.key==='v'||e.key==='V')&&!e.repeat&&!menuOpen){useBarrier();e.preventDefault()}});
+  if((e.code==='Space'||e.key==='b'||e.key==='B')&&!e.repeat&&!menuOpen){useBomb();e.preventDefault()}});
 cv.addEventListener('contextmenu',e=>{e.preventDefault();useBomb()});   // 우클릭 = 폭탄
 addEventListener('keyup',e=>keys[e.key]=0);
 // ---------- 조작 ----------
@@ -1949,7 +1922,6 @@ const toCanvas=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*
 const canSteer=()=>!frozen&&!ship.dead&&!ship.enter&&state!=='over'&&state!=='shop'&&state!=='map'&&state!=='title'&&state!=='howto'&&state!=='event'&&state!=='ending'&&!menuOpen;
 const clampShip=()=>{ship.x=Math.max(10,Math.min(W-10,ship.x));ship.y=Math.max(20,Math.min(H-14,ship.y))};
 const onBomb=(x,y)=>x<24&&y>H-18;
-const onBarrier=(x,y)=>x>W-28&&y>H-18;
 const onMenuBtn=(x,y)=>x>W-16&&x<W-4&&y>3&&y<15&&(state==='play'||state==='boss'||state==='warning'||state==='dying'||state==='segclear'||state==='clear'||state==='over');
 cv.addEventListener('pointerdown',e=>{const [x,y]=toCanvas(e);
   if(state==='title'&&!menuOpen){startRun();e.preventDefault();return}
@@ -1957,7 +1929,6 @@ cv.addEventListener('pointerdown',e=>{const [x,y]=toCanvas(e);
   if(state==='over'){if(stT>1.5)toTitle();e.preventDefault();return}
   if(onMenuBtn(x,y)){setMenu(!menuOpen);e.preventDefault();return}
   if(onBomb(x,y)){useBomb();e.preventDefault();return}
-  if(onBarrier(x,y)){useBarrier();e.preventDefault();return}
   if(e.pointerType==='mouse'){mouse=[x,y];if(canSteer()){ship.x=x;ship.y=y;clampShip()}return}
   if(touch.id===null){touch.id=e.pointerId;touch.x=x;touch.y=y;cv.setPointerCapture&&cv.setPointerCapture(e.pointerId)}
   e.preventDefault()});
@@ -2004,14 +1975,14 @@ $('dOff').onclick=()=>{Object.assign(DEV,{on:false,god:false,full:false});$('dGo
 $('dGod').onchange=e=>DEV.god=e.target.checked;$('dFull').onchange=e=>DEV.full=e.target.checked;
 $('dBoss').onclick=e=>{const b=e.target.closest('[data-db]');if(b)devBoss(+b.dataset.db)};
 // 무기 즉시 적용: 장비 레벨을 바로 바꿈 (게임 중에도 다음 발사부터 반영). 스테이지 이동 시에도 유지
-const DEV_W=ITEMS.filter(it=>!it.fixed).concat([{id:'bomb',icon:'💣',name:'폭탄',max:3},{id:'barrier',icon:'🔵',name:'배리어',max:3},{id:'life',icon:'❤️',name:'목숨',max:9}]);
+const DEV_W=ITEMS.filter(it=>!it.fixed).concat([{id:'bomb',icon:'💣',name:'폭탄',max:3},{id:'life',icon:'❤️',name:'목숨',max:9}]);
 const wLv=it=>it.id==='shield'?UP.shieldMax:it.id==='life'?(state==='title'?DEV.lives:lives):UP[it.id];
 function wSet(it,v){v=Math.max(it.id==='life'?1:0,Math.min(it.max,v));if(it.id==='shield'){UP.shieldMax=v;UP.shield=v}else if(it.id==='life'){lives=v;DEV.lives=v}else UP[it.id]=v}
 function renderDevW(){if(lives==null)lives=3;$('dWep').innerHTML=DEV_W.map((it,i)=>{const l=wLv(it);return `<div class="w${l?' on':''}"><button data-w="${i}" data-d="-1">−</button><span>${it.icon} ${it.name}<b>${l} / ${it.max}</b></span><button data-w="${i}" data-d="1">+</button></div>`}).join('');
   $('dWepNote').textContent=state==='title'?'(다음 출격에 적용)':'(바로 적용)'}
 $('dWep').onclick=e=>{const b=e.target.closest('[data-w]');if(!b)return;const it=DEV_W[+b.dataset.w];wSet(it,wLv(it)+ +b.dataset.d);SFX.coin();renderDevW()};
 $('dWMax').onclick=()=>{for(const it of DEV_W)wSet(it,it.max);renderDevW()};
-$('dWClr').onclick=()=>{for(const it of DEV_W)wSet(it,it.id==='life'?3:it.id==='bomb'?1:it.id==='barrier'?1:0);renderDevW()};
+$('dWClr').onclick=()=>{for(const it of DEV_W)wSet(it,it.id==='life'?3:it.id==='bomb'?1:0);renderDevW()};
 let devSec=1;
 function renderDevS(){$('dSec').innerHTML=ORDER.map((k,i)=>`<button data-s="${i+1}" class="${devSec===i+1?'sel':''}">S${i+1}<small>${THEMES[k].planet.replace(' 행성','')}</small></button>`).join('');
   $('dRow').innerHTML=THEMES[ORDER[devSec-1]].seg.map((n,r)=>`<button data-r="${r}">${r+1}줄<small>${n.split(' → ')[0]}</small></button>`).join('')}
@@ -2053,7 +2024,7 @@ function frame(now){
   if(!ship.enter)ship.x=Math.max(10,Math.min(W-10,ship.x)),ship.y=Math.max(20,Math.min(H-14,ship.y));
   {const vx=(ship.x-(ship.px??ship.x))/dt;ship.px=ship.x;   // 좌우 이동 → 기울기(뱅크)
    ship.bank=(ship.bank||0)+(Math.max(-1,Math.min(1,vx/80))-(ship.bank||0))*Math.min(1,dt*10)}
-  if(state!=='shop'&&state!=='map'&&state!=='event'&&state!=='ending')scroll+=SPEED*mult*dt;camX=(ship.x-CX)*.3;inv=Math.max(0,inv-dt);slow=Math.max(0,slow-dt);flashT=Math.max(0,flashT-dt);barrierT=Math.max(0,barrierT-dt);
+  if(state!=='shop'&&state!=='map'&&state!=='event'&&state!=='ending')scroll+=SPEED*mult*dt;camX=(ship.x-CX)*.3;inv=Math.max(0,inv-dt);slow=Math.max(0,slow-dt);flashT=Math.max(0,flashT-dt);
   if(state==='play'&&scroll>=run.end){state='segclear';stT=0;bgmStop();SFX.clear();for(const c of coins)gainGold(COIN_V);coins.length=0;
     run.bonus=(run.mode==='treasure'?0:40+20*(stage-1))+(run.elite?80:0)+(noDmg?40:0)+(EASY&&run.pos.r===0&&run.mode!=='treasure'?80:0);gold+=run.bonus}   // 마지막 항: 섹터 1 첫 전투 보너스
   if(state==='segclear'&&stT>2.6)openMap();
